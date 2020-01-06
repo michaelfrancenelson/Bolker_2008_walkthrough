@@ -1,0 +1,285 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{amssymb}
+\usepackage{amsmath}
+
+\newcommand{\R}{{\sf R}}
+\newcommand{\code}[1]{\texttt{#1}}
+\title{Lab 2: solutions}
+\author{\copyright 2005 Ben Bolker}
+
+\newcounter{exercise}
+\numberwithin{exercise}{section}
+\newcommand{\exnumber}{\addtocounter{exercise}{1} \theexercise \thinspace}
+
+\begin{document}
+\maketitle
+ 
+\textbf{Exercise\exnumber}: nothing to do
+
+\textbf{Exercise\exnumber}:
+
+Re-create the data frame to play with:
+
+<<>>=
+loc = factor(rep(LETTERS[1:3],2))
+day = factor(rep(1:2,each=3))
+set.seed(1001)
+val = round(runif(6),3)
+d = data.frame(loc,day,val); d
+@ 
+
+Separate data with one row for each
+location and one column for each day:
+<<>>=
+unstack(d,val~day)
+@ 
+Because \R\ doesn't allow numbers
+alone as column names, it puts
+an {\tt X} in front of the values
+of \code{day} to get the column
+names \code{X1} and \code{X2}.
+
+Separate data with one row for each
+day and one column for each location:
+<<>>=
+unstack(d,val~loc)
+@ 
+
+While less complicated than \code{reshape()},
+\code{stack()} and \code{unstack()} don't
+preserve information very well: for example,
+the row names in the first example are
+not set to \code{A}, \code{B}, \code{C}.
+
+\textbf{Exercise\exnumber}:
+
+Use \code{levels=3:10} to make sure that all values
+between 3 and 10, even those not represented in
+the data set, are included in the factor definition
+and thus appear as zeros rather than being skipped
+when you plot the factor.
+
+<<fig=TRUE>>=
+f=factor(c(3,3,5,6,7,8,10))
+op=par(mfrow=c(1,2))
+plot(f)
+f=factor(c(3,3,5,6,7,8,10),levels=3:10)
+plot(f)
+par(op)
+@ 
+
+\textbf{Exercise\exnumber}:
+
+Read in and recreate the seed predation data
+and table:
+<<>>=
+data = read.table("seedpred.dat",header=TRUE)
+data$available=data$remaining+data$taken
+t1 = table(data$available,data$taken)
+v = as.numeric(log10(1+t1))
+r = row(t1)
+c = col(t1)
+@ 
+
+Some people used 
+<<>>=
+r = rep(1:5,times=6)
+c = rep(1:6,each=5)
+@ 
+to achieve the same goal; what you have
+to know in order to get things in the
+right order is that \R\ reads matrices
+as vectors columns-first, the same
+way that it creates them (with \code{matrix})
+(unless you specify \code{matrix(...,byrow=TRUE)}).
+
+Create versions of the variables that are
+sorted in order of increasing values
+of \code{v} (\verb+v_sorted=sort(v)+ would
+have the same effect as the first line):
+<<>>=
+v_sorted = v[order(v)]
+r_sorted = r[order(v)]
+c_sorted = c[order(v)]
+@ 
+
+Alternately,
+<<>>=
+v_sorted = sort(v)
+@ 
+gives the same value for \code{v}.
+
+Draw the plots:
+<<fig=TRUE>>=
+op=par(mfrow=c(2,2),mgp=c(2,1,0),mar=c(4.2,3,1,1))
+plot(sort(v))
+plot(v,col=r,pch=c)
+plot(v_sorted,col=r_sorted,pch=c_sorted)
+legend(0,2.8,pch=1,col=1:5,legend=1:5)
+legend(6,2.8,pch=1:6,col=1,legend=0:5)
+text(0,3,"available",adj=0)
+text(8,3,"taken",adj=0)
+par(op)
+@ 
+
+The first plot shows the sorted data;
+the second plot shows the data coded
+by color, and the third shows the
+data sorted and coded (thanks to Ian
+and Jeff for the idea of the legends).
+I tweaked the margins and label spacing
+slightly with \code{mgp} and \code{mar}
+in the \code{par()} command.
+
+In fact, this plot probably \emph{doesn't}
+give a lot of insights that aren't better
+conveyed by the barplots or the bubble plot \ldots
+
+\textbf{Exercise\exnumber}:
+
+Read in the data (again), take the
+subset with 5 seeds available,
+and generate the table
+of (number taken) $\times$ (Species):
+<<>>=
+data = read.table("seedpred.dat",header=TRUE)
+data2 = data
+data2$available=data2$remaining+data2$taken
+data2 = data2[data2$available==5,]
+t1 = table(data2$taken,data2$Species)
+@ 
+
+Draw the plots:
+<<fig=TRUE>>=
+op=par(mfrow=c(2,1),mgp=c(2.5,1,0),mar=c(4.1,3.5,1.1,1.1))
+logt1=log10(1+t1)
+barplot(logt1,beside=TRUE,ylab="log10(1+taken)")
+library(gplots)
+barplot2(t1+1,beside=TRUE,log="y",ylab="taken+1")
+par(op)
+@ 
+
+Once again, I'm using \code{par()} to tweak graphics
+options and squeeze the plots a little closer together.
+\code{barplot2()} has a \code{log} option that
+lets us plot the values on a logarithmic scale
+rather than converting to logs --- but it hiccups
+if we have 0 values, so we still have to plot
+\code{t1+1}.  (\code{barplot2()} also uses
+different default bar colors.)
+
+Alternatively, if you want to use lattice graphics:
+<<fig=TRUE>>=
+trellis.par.set(canonical.theme(color=FALSE))
+barchart(t(logt1),stack=FALSE,auto.key=TRUE)
+@ 
+(it turns out I have to transpose the table
+to get it the right way around in this figure).
+
+\textbf{Exercise\exnumber}:
+
+Read in the measles data again:
+
+<<>>=
+data = read.table("ewcitmeas.dat",header=TRUE,na.strings="*")
+@ 
+
+Separate out the
+incidence data (columns 4 through 10), find
+the minima and maxima by column, and compute the
+range:
+<<>>=
+incidence = data[,4:10]
+imin = apply(incidence,2,min,na.rm=TRUE)
+imax = apply(incidence,2,max,na.rm=TRUE)
+irange = imax-imin
+@ 
+
+Another way to get the range: apply the
+\code{range()} command, which will return
+a matrix where the first row is the minima
+and the second row --- then subtract:
+<<>>=
+iranges = apply(incidence,2,range,na.rm=TRUE); iranges
+irange = iranges[2,]-iranges[1,]
+@ 
+
+Or you could define a function that computes the difference:
+<<>>=
+rangediff = function(x) {
+  diff(range(x,na.rm=TRUE))
+}
+irange = apply(incidence,2,rangediff)
+@ 
+
+Now use \code{scale()} to subtract the minimum and
+divide by the range:
+<<>>=
+scaled_incidence = scale(incidence,center=imin,scale=irange)
+@ 
+
+Checking:
+<<>>=
+summary(scaled_incidence)
+apply(scaled_incidence,2,range,na.rm=TRUE)
+@ 
+
+\textbf{Exercise\exnumber}:
+
+You first need to calculate the column means
+so you can tell \code{sweep()} to subtract them
+(which is what \code{scale(x,center=TRUE,scale=FALSE)}
+does):
+<<>>=
+imean = colMeans(incidence,na.rm=TRUE)
+scaled_incidence = sweep(incidence,2,imean,"-")
+@ 
+
+Check:
+<<>>=
+c1 = colMeans(scaled_incidence,na.rm=TRUE); c1
+@ 
+(these numbers are very close to zero \ldots but not exactly equal,
+because of round-off error)
+<<>>=
+all(abs(c1)<1e-11)
+@ 
+
+\textbf{Exercise\exnumber *}: 
+Resurrect long-format data:
+<<>>=
+date = as.Date(paste(data$year+1900,data$mon,data$day,sep="/"))
+city_names = colnames(data)[4:10]
+data = cbind(data,date)
+data_long=reshape(data,direction="long",
+  varying=list(city_names),v.name="incidence",
+  drop=c("day","mon","year"),times=factor(city_names),
+  timevar="city")
+@ 
+
+Calculate min, max, and range difference:
+<<>>=
+city_max = tapply(data_long$incidence,data_long$city,max,na.rm=TRUE)
+city_min = tapply(data_long$incidence,data_long$city,min,na.rm=TRUE)
+range1 = city_max-city_min
+@ 
+
+<<>>=
+scdat1 = data_long$incidence-city_min[data_long$city]
+scdat = scdat1/range1[data_long$city]
+@ 
+
+Check:
+<<>>=
+tapply(scdat,data_long$city,range,na.rm=TRUE)
+@ 
+
+\textbf{Exercise\exnumber *}: 
+???
+
+\end{document}
+
+
+

@@ -1,0 +1,1847 @@
+
+\newcommand{\dlow}{d_{\text{\small low}}}
+\newcommand{\dhigh}{d_{\text{\small high}}}
+\newcommand{\dnull}{d_0}
+
+<<echo=FALSE>>=
+## source("plotCI.R") ## ??
+library(plotrix)
+library(emdbook) ## for dzinbinom and rzinbinom
+library(bbmle)
+library(MASS)
+source("chapskel.R")
+@ 
+
+\section*{Summary}
+
+This chapter introduces techniques and
+ideas related to simulating
+ecological patterns.  Its main goals are:
+(1) to show you how to generate patterns you
+can use to sharpen your intuition and test your estimation
+tools; and (2) to introduce statistical
+power and related concepts, and show you how to
+estimate statistical power by simulation.
+This chapter and the supplements will also give you 
+more practice working with \R.
+
+\section{Introduction}
+
+Chapters~\ref{chap:determ} and \ref{chap:stoch},
+gave a basic overview of
+functions to describe deterministic patterns and
+probability distributions to describe stochastic patterns.
+This chapter will show you how to use stochastic
+simulation to understand and test your data.
+Simulation is sometimes called \emph{forward} modeling, to
+emphasize that you pick a model and parameters
+and work forward to predict patterns in the data.
+Parameter estimation, or \emph{inverse} modeling
+(the main focus of this book),
+starts from the data and
+works backward to choose a model and 
+estimate parameters.
+
+Ecologists often use simulation to 
+explore the patterns that emerge from
+ecological models. Often they use theoretical models
+without accompanying data, in order to understand qualitative
+patterns and plan future studies.
+But even if you have data,
+models, but you might want to start by simulating your
+system.
+You can use simulations to explore
+the functions
+and distributions you chose to quantify
+your data.
+If you can choose parameters
+that make the simulated output from those functions
+functions and distributions approximate
+your data,  you can confirm that
+the models are reasonable --- and simultaneously
+find a rough estimate of the parameters.
+
+You can also use simulated ``data'' from your system to test your
+estimation procedures.  Chapters~6--8 will show you how to estimate
+parameters; in this chapter I'll work with more ``canned'' procedures
+like nonlinear regression.  Since you never know the true answer to an
+ecological question --- you only have imperfect measurements with
+which you're trying to get as close to the answer as possible ---
+simulation is the only way to test whether you can correctly estimate
+the parameters of an ecological system.  It's always good to test such
+a best-case scenario, where you know that the functions and
+distributions you're using are correct, before you proceed to
+real data.
+
+\emph{Power analysis} is a specific kind
+of simulation testing where you explore how large a
+sample size you would need to get a reasonably precise
+estimate of your parameters.
+You can also also use power analysis to explore
+how variations in experimental design would change
+your ability to answer ecological questions.
+
+\section{Stochastic simulation}
+
+Static ecological processes, where the data
+represent a snapshot of some ecological system,
+are easy to simulate\footnote{Dynamic processes are
+more challenging. See Chapter~\ref{chap:dyn}.}.
+For static data, we can use a single function to simulate
+the deterministic process and then
+add heterogeneity.  Often, however, we will
+chain together several different mathematical functions and
+probability distributions representing different
+stages in an ecological process to produce
+surprisingly complex and rich descriptions
+of ecological systems.
+
+I'll start with three simple
+examples that illustrate the general procedure,
+and then move on to two slightly
+more in-depth examples.
+
+\subsection{Simple examples}
+
+\subsubsection{Single groups}
+Figure~\ref{fig:sim1} shows the results of
+two simple simulations, each with a single
+group and single continuous covariate.
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=8>>=
+op=par(mfrow=c(1,2))
+par(lwd=2,bty="l",las=1,cex=1.5)
+x = 1:20
+a =2; b=1
+y_det = a+b*x
+y = y_det+rnorm(20,sd=2)
+plot(x,y)
+abline(lm(y~x),lty=2)
+abline(a,b)
+legend("topleft",c("true","best fit"),
+       lty=1:2,bty="n")
+##
+b = 1
+a = 20
+k = 5
+n=25
+xmax=5
+axmax=5
+x= runif(n,min=0,max=xmax)
+y_det= a*b/(b+x)
+y = rnbinom(n,mu=y_det,size=k)
+plot(x,y,xlim=c(0,axmax),axes=FALSE)
+axis(side=1,at=0:5)
+axis(side=2)
+box()
+curve(a*b/(b+x),add=TRUE,lty=1,to=xmax)
+#mfun = function(a,b,k) {
+#  -sum(dnbinom(y,mu=a/(b+x),size=k,log=TRUE))
+#}
+m1 = mle2(y~dnbinom(mu=a*b/(b+x),size=k),
+  start=list(a=20,b=1,k=1))
+curve(coef(m1)["a"]*coef(m1)["b"]/(coef(m1)["b"]+x),add=TRUE,lty=2,to=xmax)
+legend("topright",
+       c("true","best fit"),
+       lty=1:2,
+       bty="n")
+par(op)
+@ 
+\caption{Two simple simulations: a linear function
+with normal errors
+($Y \sim \mbox{Normal}(a+bx,\sigma^2)$), and a hyperbolic function with
+negative binomial errors
+($Y \sim \mbox{NegBin}(\mu=a b/(b+x),k)$).}
+\label{fig:sim1}
+\end{figure}
+
+The first simulation (Figure~\ref{fig:sim1}a) 
+is a linear model with normally distributed
+errors. It might represent productivity as a function of 
+nitrogen concentration, or predation risk as a function
+of predator density.  The
+mathematical formula is $Y \sim \mbox{Normal}(a+bx,\sigma^2)$,
+specifying that $Y$ is a random variable drawn 
+from a normal distribution with mean $a+bx$ and variance
+$\sigma^2$.  The symbol $\sim$ means ``is distributed according to''.
+This model can also be written as
+$y_i=a+bx_i+\varepsilon_i$, $\varepsilon_i \sim N(0,\sigma^2)$,
+specifying that the $i$\textsuperscript{th} value of $Y$, $y_i$, is
+equal to $a+b x_i$ plus a normally distributed error
+term with mean zero.
+I will always use the first form because
+it is more general:
+normally distributed error is one of the few kinds
+that can simply be added onto the deterministic model in this way.
+The two lines on the plot show both
+the theoretical relationship between
+$y$ and $x$ and the best-fit line (by linear regression,
+\code{lm(y\~{}x)} (Section~\ref{sec:linreg}).
+The lines differ slightly because of the randomness incorporated in the
+simulation.
+
+A few lines of \R\ code will run this simulation.
+Set up the values of $x$, and specify values for the
+parameters $a$ and $b$:
+<<>>=
+x = 1:20
+a =2; b=1
+@ 
+
+Calculate the deterministic part of the model:
+<<>>=
+y_det = a+b*x
+@ 
+
+Pick 20~random normal deviates with the mean
+equal to the deterministic equation and $\sigma=2$:
+<<>>=
+y=rnorm(20,mean=y_det,sd=2)
+@ 
+(you could also specify this as
+\verb!y = y_det+rnorm(20,sd=2)!, corresponding to the
+additive model $y_i=a+bx_i+\varepsilon_i$, $\varepsilon_i \sim N(0,\sigma^2)$
+(the \code{mean} parameter is zero by default).
+However, the additive form works only for the Normal, and not for most of the
+other distributions we will be using).
+
+The second simulation uses
+hyperbolic functions ($y=ab/(b+x)$) with negative binomial
+error: in symbols, $Y \sim \mbox{NegBin}(\mu=a b/(b+x),k)$.
+The function is parameterized so that $a$ is the intercept
+term (when $x=0$, $y=a b/b=a$).
+This simulation might represent the
+decreasing fecundity of two different species
+with increasing population density:
+the hyperbolic function is a natural expression of the decreasing
+quantity of a limiting resource per individual.  
+
+In this case, we cannot 
+express the model as the deterministic function 
+``plus error''.
+Instead, we have to
+incorporate the deterministic model as a control on
+one of the parameters of the error distribution---in this case, the
+mean $\mu$.
+(Although the negative binomial is a discrete distribution,
+its parameters $\mu$ and $k$ are continuous.)
+Ecological models typically describe the differences in
+the mean among groups or as covariates change, but we could
+also allow the variance or the shape of the distribution to
+change.
+
+The \R\ code for this simulation is easy, too.
+Define parameters
+<<>>=
+a = 20
+b = 1
+k = 5
+@ 
+
+How you simulate the $x$ values depends on the
+experimental design you are trying to simulate.
+In this case,
+we choose 50~$x$ values randomly distributed between 0 and 5
+to simulate a study were the samples are chosen from
+natural varying sites, in contrast to the previous
+simulation where $x$ varied systematically (\code{x=1:20}),
+simulating an experimental or observational study that
+samples from a gradient in the predictor variable $x$.
+
+<<>>=
+x= runif(50,min=0,max=5)
+@ 
+
+Now we calculate the deterministic
+mean \code{y\_det}, and then sample
+negative binomial values with the
+appropriate mean and overdispersion:
+<<>>=
+y_det= a*b/(b+x)
+y = rnbinom(50,mu=y_det,size=k)
+@ 
+
+\subsubsection{Multiple groups}
+
+Ecological studies typically
+compare the properties of organisms
+in different groups (e.g. 
+control and treatment, 
+parasitized and unparasitized,
+high and low altitude).
+
+Figure~\ref{fig:sim2} shows a
+simulation that 
+extends the hyperbolic simulation
+above to compares the
+effects of a continuous covariate
+in two different groups (species
+in this case).  
+Both groups have the same overdispersion
+parameter $k$, but the hyperbolic
+parameters $a$ and $b$ differ:
+\begin{equation}
+Y \sim \mbox{NegBin}(\mu=a_i b_i/(b_i+x),k)
+\end{equation}
+where $i$ is 1 or 2 depending on the species
+of an individual.
+
+Suppose we still have 50~individuals,
+but the first~25 are
+species~1 and the second~25 are
+species~2.
+We use \code{rep} to set up a factor that
+describes the group structure
+(the \R\ command \code{gl} is also useful
+for more complicated group assignments):
+<<>>=
+g = factor(rep(1:2,each=25))
+@ 
+
+Defining vectors of parameters, each
+with one element per species,
+or a single parameter for $k$ since the
+species are equivalent in this case:
+<<>>=
+a=c(20,10)
+b=c(1,2)
+k=5
+@ 
+
+\R's vectorization makes it easy
+to incorporate different parameters for different species
+into the formula, by using the group vector \code{g} to
+specify which element of the parameter vectors to use for any
+particular individual.
+
+<<>>=
+y_det= a[g]/(b[g]+x)
+y = rnbinom(50,mu=y_det,size=k)
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+##
+## b = c(1,2)
+## a = c(20,10)
+## k = 5
+## g = rep(1:2,each=25)
+## x= runif(50,min=0,max=5)
+## y_det= a[g]*b/(b+x)
+## y = rnbinom(50,mu=y_det,size=k)
+m2 = mle2(y~dnbinom(mu=a*b/(b+x),size=k),
+  parameters=list(a~g,b~g),
+  start=list(a=20,b=1,k=1))
+axmax=8
+xmax=5
+op=par(lwd=2,las=1,mgp=c(3,1,0),bty="l",cex=1.5)
+plot(x,y,pch=as.numeric(g),xlim=c(0,axmax),axes=FALSE,lwd=1)
+axis(side=1,at=0:5)
+axis(side=2)
+box()
+curve(a[1]/(b[1]+x),add=TRUE,col="gray",to=xmax)
+curve(a[2]/(b[1]+x),add=TRUE,lty=2,col="gray",to=xmax)
+c2 = coef(m2)
+curve(c2[1]*c2[3]/(c2[3]+x),add=TRUE,lty=1,to=xmax)
+curve((c2[1]+c2[2])*(c2[3]+c2[4])/(c2[3]+c2[4]+x),add=TRUE,lty=2,to=xmax)
+legend("topright",
+       outer(c("data","true","best fit"),
+             c("(sp. 1)","(sp. 2)"),paste),
+       lty=c(NA,1,1,NA,2,2),
+       lwd=c(1,2,2,1,2,2),
+       col=rep(c("black","gray","black"),2),
+       pch=c(1,NA,NA,2,NA,NA),cex=0.8,bty="n")
+par(op)
+@ 
+\caption{Simulation results from a hyperbolic/negative
+binomial model with groups differing in
+both intercept and slope:
+$Y \sim \mbox{NegBin}(\mu=a_i b_i/(b_i+x),k)$.
+Parameters: $a=\{20,10\}$, $b=\{1,2\}$, $k=5$.}
+\label{fig:sim2}
+\end{figure}
+
+\subsection{Intermediate examples}
+
+\subsubsection{Reef fish settlement}
+
+<<echo=FALSE>>=
+set.seed(1001)
+N = 603
+a = 0.696
+b = 9.79
+mu=25.32
+zprob=0.123
+k=0.932
+recrprob = function(S) { a/(1+(a/b)*S) }
+settlers = rzinbinom(N,mu=mu,size=k,zprob=zprob)
+recr = rbinom(N,prob=recrprob(settlers),size=settlers)
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=10>>=
+op = par(mfrow=c(1,2),mar=c(5,4,2,0.2),lwd=2,las=1,cex=1.5,bty="l")
+hist(settlers,breaks=40,col="gray",ylab="Frequency",xlab="Settlers",main="")
+plot(settlers,recr,xlab="Settlers",ylab="Recruits")
+curve(a*x/(1+(a/b)*x),add=TRUE)
+par(op)
+@ 
+\caption{Damselfish recruitment:
+(a) distribution of settlers; (b) recruitment as a function
+of settlement density}
+\label{fig:schmitt}
+\end{figure}
+
+The damselfish settlement data
+from \cite{Schmitt+1999} 
+(p.~\pageref{sec:damsel})
+include random variation in settlement density
+(the density of larvae arriving on a given
+anemone) and random variation in 
+density-dependent recruitment 
+(number of settlers surviving
+for 6~months on an anemone).
+
+To simulate the variation in settlement density
+I took random draws from
+a zero-inflated negative binomial
+(p.~\pageref{zinbinom}), although a non-inflated binomial, or even
+a geometric distribution (i.e. a negative
+binomial with $k=1$) might be
+sufficient to describe the data.
+
+Schmitt \emph{et al.}
+modeled density-dependent recruitment
+with a Beverton-Holt curve (equivalents
+to the Michaelis-Menten function).
+I have simulated this curve with
+binomial error (for survival of recruits)
+superimposed.
+The model is 
+\begin{equation}
+R \sim \mbox{Binom}(N=S,p=a/(1+(a/b)S)).
+\end{equation}
+(With the recruitment probability per settler $p$ given as
+the hyperbolic function $a/(1+(a/b)S)$, the mean number of recruits is 
+Beverton-Holt: $Np = aS/(1+(a/b)S)$.)
+The settlement density $S$ is drawn from the zero-inflated negative
+binomial distribution shown in Figure~\ref{fig:schmitt}a.
+
+Set up the parameters, including the number
+of samples ($N$):
+<<>>=
+N = 603
+a = 0.696
+b = 9.79
+mu=25.32
+zprob=0.123
+k=0.932
+@ 
+
+Define a function for the recruitment probability:
+<<>>=
+recrprob = function(S) { a/(1+(a/b)*S) }
+@ 
+
+Now simulate the number of settlers and the
+number of recruits, using \code{rzinbinom}
+from the \code{emdbook} package:
+<<>>=
+settlers = rzinbinom(N,mu=mu,size=k,zprob=zprob)
+recr = rbinom(N,prob=recrprob(settlers),size=settlers)
+@ 
+
+
+% (d) a ``triangular'' or ``factor-ceiling'' distribution: uniform with exponentially decreasing maximum
+% \cite{Thomson+1996};
+
+% The fourth model is more theoretical, and just shows a set
+% of data that are uniformly distributed for any specific value of $x$, but where
+% the maximum of the uniform distribution varies with $x$:
+% $y \sim \mbox{Unif}(0,\exp(-ax))$.  This kind of data is very
+% common in ecological settings where the covariate we've measured
+% may set an upper bound on performance (survival/growth/fecundity), but where
+% other factors (predation, limitation by other nutrients, etc.) determines
+% the actual performance of the organism.
+
+
+\subsubsection{Pigweed distribution and fecundity}
+
+<<echo=FALSE>>=
+set.seed(1001)
+L = 30
+nparents = 50
+offspr_per_parent = 10
+noffspr = nparents*offspr_per_parent
+dispdist = 2
+parent_x = runif(nparents,min=0,max=L)
+parent_y = runif(nparents,min=0,max=L)
+angle = runif(noffspr,min=0,max=2*pi)
+dist = rexp(noffspr,1/dispdist)
+offspr_x = rep(parent_x,each=offspr_per_parent)+cos(angle)*dist
+offspr_y = rep(parent_y,each=offspr_per_parent)+sin(angle)*dist
+pos <- cbind(offspr_x,offspr_y)
+ndist <- as.matrix(dist(pos,upper=TRUE,diag=TRUE))
+nbrcrowd = apply(ndist<2,1,sum)-1
+ci = nbrcrowd*3
+M=2.3
+alpha=0.49
+mass_det=M/(1+ci)
+mass = rgamma(length(mass_det),scale=mass_det,shape=alpha)
+b = 271.6; k= 0.569
+seed_det = b*mass
+seed = rnbinom(length(seed_det),mu=seed_det,size=k)
+f= fitdistr(nbrcrowd,"negative binomial")
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op=par(mfrow=c(2,2),mar=c(5,5,0.2,0.2),lwd=1,las=1,mgp=c(3.5,1,0))
+## plot 1
+plot(offspr_x,offspr_y,xlab="",ylab="")
+## plot 2
+b1 = barplot(table(factor(nbrcrowd,levels=0:max(nbrcrowd)))/length(nbrcrowd),
+xlab="Number of neighbors",ylab="Proportion")
+points(dnbinom(0:max(nbrcrowd),size=f$estimate["size"],
+mu=f$estimate["mu"]),pch=16,type="b")
+## plot 3
+plot(ci,mass,cex=0.5,log="y",xlab="Competition index",ylab="Biomass (g)")
+curve(M/(1+x)*alpha,add=TRUE,from=0)
+## plot 4
+## x = runif(76,min=0,max=5)
+seed_det = b*mass
+seed = rnbinom(length(seed_det),mu=seed_det,size=k)
+par(mgp=c(2.5,1,0))
+plot(mass,1+seed,log="xy",xlab="Mass",ylab="1+Seed set")
+curve(b*x+1,add=TRUE)
+##abline(a=0,b=b,lty=1)
+curve(qnbinom(0.975,mu=b*x,size=k)+1,lty=2,from=0.001,add=TRUE,type="s")
+curve(qnbinom(0.025,mu=b*x,size=k)+1,lty=2,from=0.001,add=TRUE,type="s")
+par(op)
+@ 
+\caption{Pigweed simulations.
+(a) Spatial pattern (Poisson cluster process).
+(b) Distribution of number of neighbors within 2~m.
+(c) End-of-year biomass, based on a hyperbolic
+function of crowding index with a gamma error distribution.
+(d) Seed set, proportional to biomass with
+a negative binomial error distribution.}
+\label{fig:pigweed}
+\end{figure}
+
+\cite{PacalaSilander1990} did
+a series of experiments quantifying
+the 
+strength and spatial 
+scale of competition between 
+the annual weeds velvetweed (\emph{Abutilon theophrasti}) and
+pigweed (\emph{Amaranthus retroflexus}).  They were interested in
+neighborhood competition among
+nearby plants.
+Local dispersal of seeds changes the distribution of the
+number of neighbors per plant.
+If plants were randomly distributed we would
+expect a Poisson distribution of neighbors within a given distance,
+but if seeds have a limited
+dispersal range so that
+plants are spatially aggregated, we expect a distribution
+with higher variance (and a higher mean number of neighbors
+for a given overall plant density) such as the negative binomial.
+Neighbors increase local competition for nutrients, which in turn
+decreases plants' growth rate, their biomass at the end of
+the growing season, and their fecundity (seed set).
+Thus differences in dispersal
+and spatial patterning within and among species can
+in theory change competitive outcomes \cite{BPN2003},
+although Pacala and Silander found that spatial structure
+had little effect in their system.
+
+To explore the patterns of competition driven by local
+dispersal and crowding, we can simulate this spatial
+competitive process.
+
+Let's start by simulating a spatial
+distribution of plants in an $L\times L$ plot ($L=30 \mbox{m}$ below).
+We'll use a \emph{Poisson cluster process}, 
+where mothers are located randomly in
+space at points $\{x_p,y_p\}$
+(called a \emph{Poisson process} in spatial ecology), and
+their children are distributed nearby
+(only the children, and not the mothers, are included in the final
+pattern).  The simulation includes $N=50$ parents, for which we pick 50
+$x$ and 50 $y$ values, each uniformly distributed between 0 and $L$.
+The distance of each child from its parent is exponentially distributed
+with rate=$1/d$ (mean dispersal distance $d$),
+and the direction is random --- that is, uniformly distributed between
+0 and $2\pi$ radians\footnote{\R, like most computer languages, works
+in radians rather than degrees; to convert from degrees to radians,
+multiply by $2\pi/360$.  Since \R\ doesn't understand Greek letters,
+use \code{pi} to denote $\pi$: \code{radians=degrees*2*pi/360}.}.
+I use a little bit of trigonometry
+to calculate the offspring locations 
+(Figure~\ref{fig:pigweed}a).
+
+The formal mathematical definition of the model 
+for offspring location is:
+\begin{equation}
+\begin{array}{lrcl}
+\mbox{parent locations} & x_p, y_p & \sim & U(0,L) \nonumber \\
+\mbox{distance from parent} & r & \sim & \mbox{Exp}(0,1/d) \nonumber \\
+\mbox{dispersal angle} & \theta & \sim & U(0,2 \pi) \nonumber \\
+\mbox{offspring } x & x_c & \sim & x_p + r \cos \theta \nonumber \\
+\mbox{offspring } y & y_c & \sim & y_p + r \sin \theta. \nonumber
+\end{array}
+\end{equation}
+
+In \R, set up the parameters:
+<<>>=
+set.seed(1001)
+L = 30
+nparents = 50
+offspr_per_parent = 10
+noffspr = nparents*offspr_per_parent
+dispdist = 2
+@ 
+
+Pick locations for the parents:
+<<>>=
+parent_x = runif(nparents,min=0,max=L)
+parent_y = runif(nparents,min=0,max=L)
+@ 
+
+Pick angles and distances for dispersal:
+<<>>=
+angle = runif(noffspr,min=0,max=2*pi)
+dist = rexp(noffspr,1/dispdist)
+@ 
+
+Add the offspring displacements to the parent coordinates
+(using \\
+\verb+rep(...,each=offspr_per_parent)+):
+<<>>=
+offspr_x = rep(parent_x,each=offspr_per_parent)+cos(angle)*dist
+offspr_y = rep(parent_y,each=offspr_per_parent)+sin(angle)*dist
+@
+
+If you wanted to allow different numbers of offspring
+for each parent --- for example, 
+drawn from a Poisson distribution --- you
+could use \code{offspr\_per\_parent={}rpois(nparents,lambda)}
+and then \code{rep(..., times=offspr\_per\_parent)}.  Instead of
+specifying that each parent's coordinates should be repeated
+the same number of times, you would be telling \R\ to repeat 
+each parent's coordinates
+according to its number of offspring.
+
+Next we calculate the neighborhood density, or the number
+of individuals within 2~m of each plant (not counting itself).
+Figure~\ref{fig:pigweed}(b) shows this distribution, along with
+a fitted negative binomial distribution.
+This calculation reduces the spatial pattern to a
+simpler non-spatial distribution of crowding.
+% although we
+%did have to decide on a particular size (2~m) for the competition
+%neighborhood.
+
+<<>>=
+pos <- cbind(offspr_x,offspr_y)
+ndist <- as.matrix(dist(pos,upper=TRUE,diag=TRUE))
+nbrcrowd = apply(ndist<2,1,sum)-1
+@ 
+
+Next we use a relationship that Pacala and Silander found
+between end-of-year mass ($M$) and competition
+index ($C$).  They fitted this relationship based on 
+a competition index estimated as a function of
+the neighborhood
+density of conspecific (pigweed) and heterospecific
+(velvetleaf) competitors, $C = 1+c_{pp} n_p + c_{vp} n_v$.
+For this example, I simply made up a proportionality
+constant to match the observed range of competition
+indices.  Pacala and Silander found
+that biomass $M \sim \mbox{Gamma}(\mbox{shape}=m/(1+C),
+\mbox{scale}=\alpha$), with $m=2.3$ and $\alpha=0.49$.
+
+<<>>=
+ci = nbrcrowd*3
+M=2.3
+alpha=0.49
+mass_det=M/(1+ci)
+mass = rgamma(length(mass_det),scale=mass_det,shape=alpha)
+@ 
+
+Finally, we simulate seed set as a function of
+biomass, again using a relationship estimated
+by Pacala and Silander.
+Seed set is proportional to mass, 
+with negative binomial errors:
+$S \sim \mbox{NegBin}(\mu=bM,k)$,
+with $b=271.6$, $k= 0.569$.
+<<>>=
+b = 271.6; k= 0.569
+seed_det = b*mass
+seed = rnbinom(length(seed_det),mu=seed_det,size=k)
+@ 
+Figure~\ref{fig:pigweed}c shows
+both mass and (1+seed set) on a logarithmic
+scale, along with dashed lines showing
+the 95\% confidence limits of the theoretical
+distribution.
+
+<<echo=FALSE>>=
+f= fitdistr(nbrcrowd,"negative binomial")
+@ 
+
+
+The idea behind realistic static models is that they can link
+together simple deterministic and stochastic models of each
+process in a chain of ecological processes---in this case
+from spatial distribution to neighborhood crowding to
+biomass to seed set.  (Pacala and Silander actually
+went a step further and computed the density-dependent
+survival probability.
+We could simulate this using
+a standard model like 
+$\mbox{survival} \sim \mbox{Binom}(N=1,p=\mbox{logistic}(a+bC))$, 
+where the logistic function
+allows the survival probability to be an increasing function
+of competition index without letting it ever go above 1.)
+
+Thus, although it's hard to write down a simple 
+function or distribution that describes
+the relationship between competition index and the number surviving,
+as shown here we can break the relationship down into stages in
+the ecological process and use a simple model for each stage.
+
+
+<<eval=FALSE,echo=FALSE>>=
+## triangular plot
+a=2
+b=0.5
+x = runif(100,0,4)
+y = runif(100,max=a*exp(-b*x))
+plot(x,y)
+curve(a*exp(-b*x),lty=2,add=TRUE)
+@ 
+\section{Power analysis}
+
+Power analysis in the narrow sense means figuring
+out the (frequentist) statistical power, the
+probability of failing to reject the null hypothesis
+when it is false (Figure~\ref{fig:power1}).
+Power analysis is important, but
+the narrow frequentist definition suffers from some
+of the problems that we are trying to move beyond
+by learning new statistical methods,
+such as a focus on $p$ values and on
+the ``truth'' of a particular null hypothesis.
+Thinking about power analysis even in 
+this narrow sense is already a vast improvement on
+the naive and erroneous ``the null hypothesis is false
+if $p<0.05$ and true if $p>0.05$'' approach.
+However, we should really be considering a much broader
+question:
+\textbf{How do the
+quality and quantity of my data and the true
+properties (parameters) of my ecological system
+affect the quality of the answers to my questions
+about ecological systems?}
+
+For any real experiment or
+observation situation, we don't know what is really
+going on (the ``true'' model or parameters), so
+we don't have the information required to answer
+these questions from the data alone.
+But we can approach them by
+analysis or simulation.
+Historically, questions about statistical power
+could only be answered by sophisticated analyses,
+and only for standard statistical models and
+experimental designs such as one-way ANOVA or
+linear regression.  Increases in computing
+power have extended power analyses to many new
+areas, and  \R's capability to run many repeated
+stochastic simulations is a great help.
+Paradoxically, the mathematical difficulty of
+deriving power formulas is a great equalizer:
+since even research statisticians typically 
+use simulations to estimate power,
+it's now possible (by learning
+simulation, which is easier than learning advanced
+mathematical statistics) to work on an equal footing
+with even cutting-edge researchers.
+
+\begin{figure}
+<<echo=FALSE>>=
+powplot <- function(m0=45.5,m1=54,sd=1.745,len=100,col1="gray",col2=gray(0.2)) {
+  rng <- range(c(m0-4*sd,m1-4*sd,m0+4*sd,m1+4*sd))
+  curve(dnorm(x,m0,sd),from=rng[1],to=rng[2],yaxs="i",
+        ylim=c(0,dnorm(m0,m0,sd)*1.1),axes=FALSE,ylab="",xlab="")
+  axis(side=1)
+  box()
+  ##  plot(pvec1,dnorm(pvec1,m0,sd),type="l",xlim=rng)
+  ## lines(pvec2,dnorm(pvec2,m1,sd))
+  qval <- qnorm(c(0.025,0.975),m0,sd)
+  pvec <- sort(c(qval,seq(rng[1],rng[2],length=len)))
+  abline(v=qval,lty=2)
+  pvec.up <- pvec[pvec>=qval[2]]
+  pfun <- function(x,y,...)
+    polygon(c(x,rev(x)),c(rep(0,length(x)),rev(y)),...)
+  pfun(pvec.up,dnorm(pvec.up,m1,sd),col=col1)
+  pfun(pvec.up,dnorm(pvec.up,m0,sd),col=col2)
+  pvec.down <- pvec[pvec<=qval[1]]
+  pfun(pvec.down,dnorm(pvec.down,m0,sd),col=col2)
+  pfun(pvec.down,dnorm(pvec.down,m1,sd),col=col1)
+  ##polygon(c(pvec1b,rev(pvec1b)),
+  ##          c(rep(0,length(pvec1b)),dnorm(rev(pvec1b),m1,sd)),col="gray")
+  power=pnorm(qval[2],m1,sd,lower=FALSE)+pnorm(qval[1],m1,sd)
+  curve(dnorm(x,m1,sd),from=rng[1],to=rng[2],add=TRUE,lwd=2)
+  invisible(power)
+}
+
+powval <- function(m0=45.5,m1=54,sd=1.745,alpha=0.95) {
+  1-(pnorm(qnorm(1-(1-alpha)/2,m0,sd),m1,sd)-
+      pnorm(qnorm((1-alpha)/2,m0,sd),m1,sd))
+}
+@ 
+
+<<fig=TRUE,echo=FALSE,width=8>>=
+op <- par(mfrow=c(1,2))
+par(lwd=2,las=1,bty="l",cex=1.5,mgp=c(2.5,1,0))
+par(mar=c(4,4,2,1))
+powplot(m0=0,m1=2,sd=0.75)
+mtext(side=2,las=0,"Probability",cex=1.5,line=1)
+mtext(side=1,las=0,"x",cex=1.5,line=2.5)
+text(c(0,2),c(0.56,0.56),
+     c(expression(H[0]),expression(H[1])))
+text(-2.6,0.1,expression(alpha))
+arrows(c(-2.5,-2.2),
+       c(0.09,0.09),
+       c(-1.95,1.4),
+       c(0.026,0.026),
+       angle=15)
+text(4,0.4,"Power")
+text(4,0.37,expression(1-beta))
+arrows(4,0.36,2,0.3,angle=15)
+##xvec <- seq(35,55,len=100)
+par(mar=c(4,4,2,2))
+curve(powval(x,m0=0,sd=0.25),from=-5,to=5,ylab="Power",xlab="Effect size")
+##plot(xvec,sapply(xvec,function(x)powval(m1=x)),type="l")
+abline(h=0.05)
+curve(powval(x,m0=0,sd=0.75),lty=2,add=TRUE)
+curve(powval(x,m0=0,sd=2),lty=3,add=TRUE)
+points(2,powval(2,m0=0,sd=0.75),pch=16)
+par(xpd=NA,adj=0)
+text(c(1.5,2.5,3.5),
+     c(1.03,0.88,0.36),
+     c(expression(sigma==0.25),
+       expression(sigma==0.75),
+       expression(sigma==2)),
+     cex=1,xpd=NA)
+par(op)
+@ 
+\caption{The frequentist definition of power.
+In the left-hand plot, the type~I (false positive) rate $\alpha$
+is the area under the tails of the null hypothesis $H_0$; the type~II
+error rate, $\beta$, is the area under the sampling distribution
+of the alternative hypothesis ($H_1$) between the tails of the
+null hypothesis; thus the power $1-\beta$ is the gray area 
+shown that lies above the upper critical value of the null
+hypothesis curve.  (There is also a tiny area where $H_1$ overlaps
+the lower tail of $H_0$.)
+The right-hand plot shows power as a function of
+effect size (distance between the means) and
+standard deviation; the point shows the situation
+(effect size=2, $\sigma=0.75$) illustrated in
+the left figure.}
+\label{fig:power1}
+\end{figure}
+
+The first part of the rather vague (but common-sense) question
+above is about ``quantity and quality of data and the
+true properties of the ecological system''.  These
+properties include:
+\begin{itemize}
+\item{Number of data points (number of observations/sampling intensity)}
+\item{Distribution of data (experimental design)
+\begin{itemize}
+\item{Number of observations per site, number of sites}
+\item{Temporal and spatial extent (distance between
+the farthest samples, controlling the largest 
+scale you can measure) and grain (distance between
+the closest samples, controlling the smallest scale you can measure)}
+\item{Even or clustered distribution in space and/or time.
+Blocking.
+Balance (i.e., equal or similar numbers of observations
+in each treatment)}
+\item{Distribution of continuous covariates ---
+mimicking the natural distribution, or 
+\emph{stratified} to sample evenly across
+the natural range of values, or 
+artificially extended to a wider range}
+\end{itemize}
+}
+\item{Amount of variation (measurement/sampling error,
+    demographic stochasticity, environmental variation).
+    Experimental control or quantification of variation.}
+\item{Effect size (small or large), or
+the distance of the true parameter from the null-hypothesis value.}
+\end{itemize}
+These properties will determine
+how much information you can extract from your data.
+Large data sets are better than smaller
+ones; balanced data sets with wide ranges are
+better than unbalanced data sets with narrow ranges;
+data sets with large extent (maximum
+spatial and/or temporal range) and small grain
+(minimum distance between samples) are best;
+and larger effects are obviously easier to
+detect and characterize.  
+There are obvious tradeoffs between 
+effort (measured in person-hours or dollars)
+and the number of samples, and in how
+you allocate that effort.
+Would you prefer more information about fewer samples,
+or less information about more?  More observations
+at fewer sites or fewer at more sites? Should you spend
+your effort increasing extent or decreasing
+grain?
+
+Subtler tradeoffs also affect the
+value of an experiment.
+For example, controlling 
+extraneous variation allows a more powerful answer
+to a statistical question --- but how do we know
+what is ``extraneous''?  Variation actually affects the function of
+ecological systems \citep[Jensen's inequality:][]{RuelAyres1999}.
+Measuring a plant in a constant
+laboratory environment may turn out to answer
+the wrong question: we ultimately want to know how
+the plant performs in the natural environment, not in the lab,
+and variability is an important part of most environments.  
+In contrast,
+performing ``unrealistic'' manipulations like pushing population
+densities beyond their natural limits may help
+to identify density-dependent processes that
+are real and important but undetectable at ambient
+densities \citep{Osenberg+2002}.
+There is no simple answer to these questions, but
+they're important to think about.
+
+The quality of the answers we get from our
+analyses is as multifaceted
+as the quality of the data.
+\emph{Precision} specifies how finely you can estimate
+a parameter --- the number of significant digits, or
+the narrowness of the confidence interval --- while \emph{accuracy}
+specifies how likely your answer is to be correct.
+Accurate but imprecise answers are better
+than precise but inaccurate ones: at least
+in this case you know that your answer is imprecise,
+rather than having misleadingly precise but inaccurate
+answers.
+But you need both precision and accuracy to
+understand and predict ecological systems.
+
+More specifically, I will show how to estimate
+the following aspects of precision and accuracy
+for the damselfish system:
+\begin{itemize}
+\item{\emph{Bias} (accuracy): bias is the
+expected difference between the estimate
+and the true value of the parameter. If
+you run a large number of simulations 
+with a true value of $d$ and
+estimate a value of $\hat d$ for each one,
+then the bias is $E[\hat d-d]$.
+Most simple statistical estimators are unbiased,
+and so most of us have come to expect (wrongly) that
+statistical estimates are generally unbiased.
+Most statistical estimators are indeed
+\emph{asymptotically} unbiased, which means that
+in the limit of a large amount of data they
+will give the right answer on average, but
+a surprisingly large number of common
+estimators are biased
+\citep{Poulin1996,Doak+2005}.}
+\item{\emph{Variance} (precision): variance,
+or $E[(\hat d-E[\hat d])^2]$,
+measures the variability of the point estimates
+($\hat d$) around their mean value.  Just as
+an accurate but imprecise answer is worthless,
+unbiased answers are worthless if they have high variance.
+With low bias we know that
+we get the right answer \emph{on average}, but
+high variability means that any particular estimate
+could be way off.
+With real data, we never know which estimates
+are right and which are wrong.}
+\item{\emph{Confidence interval width} (precision):
+the width of the confidence intervals, either in absolute
+terms or as a proportion of the estimated value,
+provides useful information on the precision of
+your estimate.  
+If the confidence interval is estimated correctly
+(see coverage, below) then the confidence interval
+should be related to the variance among estimates.}
+\item{\emph{Mean squared error} (MSE: accuracy and precision) 
+combines bias and variance as (bias$^2$+variance).
+It represents
+the total variation around the true value, rather
+than the average estimated value
+$(E[d-\hat d])^2+E[(\hat d-E[\hat d])^2] = 
+E[(\hat d-d)^2]$.
+MSE gives an overall sense of the quality of the estimator.}
+\item{\emph{Coverage} (accuracy): when we
+sample data and estimate parameters, we try to estimate the
+uncertainty in those parameters.
+Coverage describes how accurate those
+confidence intervals are, and (once again) can only
+be estimated via simulation.  If the confidence
+intervals (for a given confidence level $1-\alpha$)
+are $\dlow$ and $\dhigh$, then the
+coverage describes the proportion or percentage
+of simulations in which the confidence intervals actually
+include the true value ($\mbox{Prob}(\dlow < d < \dhigh)$).
+Ideally, the observed coverage should equal the 
+nominal coverage of $1-\alpha$; values that are
+too high are pessimistic, overstating the level
+of uncertainty, while values that are too low
+are optimistic. (It often takes several hundred
+simulations to get a reasonably precise
+estimate of the coverage, especially when estimating the coverage for
+95\% confidence intervals.)}
+\item{\emph{Power} (precision): finally, the
+narrow-sense power gives the
+probability of correctly rejecting the null hypothesis,
+or in other words the fraction of the times that
+the null-hypothesis value $d_0$ will be outside
+of the confidence limits: ($\mbox{Prob}(d_0 < \dlow \mbox{ or } d_0>\dhigh)$).
+In frequentist language, it is $1-\beta$, where
+$\beta$ is the probability of making a type~II error. \\
+\begin{center}
+\begin{tabular}{c|cc}
+              & $H_0$ true   & $H_0$ false \\
+\hline
+accept $H_0$  &  $1-\alpha$  &  $\beta$ \\
+reject $H_0$  & $\alpha$     & $1-\beta$ 
+\end{tabular} 
+\end{center}
+
+Typically you specify an alternative hypothesis
+$H_1$, a desired type~I error rate $\alpha$, and 
+a desired power $(1-\beta)$ and
+then calculate the required sample size, or calculate $(1-\beta)$ as
+a function of sample size, \emph{for some particular} $H_1$.
+When the effect size is zero (the difference
+between the null and the
+alternate hypotheses is zero --- i.e. the null hypothesis is true),
+the power is undefined, but it approaches $\alpha$\footnote{Not zero!
+even when the null hypothesis is true, we reject it a proportion
+$\alpha$ of the time: thus we can expect to correctly reject the null
+hypothesis, even for very small effects, with probability at
+least $\alpha$.} as the effect size gets small
+($H_1 \to H_0$).
+
+\R\ has built-in functions for several standard cases
+(power of tests of difference between means of two
+normal populations [\code{power.t.test}],
+tests of difference in proportions, [\code{power.prop.test}],
+and one-way, balanced ANOVA [\code{power.anova.test}])%
+\footnote{The \code{Hmisc}
+package, available on CRAN, has a few more power calculators.}.
+For more discussion of these cases, or for other
+fairly straightforward examples, you 
+can look in any relatively advanced biometry book (e.g. \cite{SokalRohlf1995}),
+or even find a calculator on the web (search for
+``statistical power calculator'').
+For more complicated and ecologically realistic examples,
+however, you'll probably have to find the answer through
+simulation, as demonstrated below.
+}
+\end{itemize}
+
+\subsection{Simple examples}
+
+\subsubsection{Linear regression}
+<<echo=FALSE>>=
+x = 1:20
+a =2; b=1; sd=8
+N = 20
+@ 
+
+Let's start by estimating the statistical power of
+detecting the linear trend in Figure~\ref{fig:sim1}a,
+as a function of sample size.  
+In order to find out whether we can reject the
+null hypothesis in a single ``experiment'', we 
+simulate a data set with a given slope, intercept,
+and number of data points; run a linear regression;
+extract the $p$-value; and see whether it is less
+than our specified $\alpha$ criterion (usually 0.05).
+For example:
+<<>>=
+y_det = a+b*x
+y = rnorm(N,mean=y_det,sd=sd)
+m = lm(y~x)
+coef(summary(m))["x","Pr(>|t|)"]
+@ 
+Extracting $p$-values from \R\ analyses can be
+tricky.  In this case, the coefficients
+of the \emph{summary} of the linear fit are a matrix
+including the standard error, $t$ statistic, and
+$p$-value for each parameter; I used
+matrix indexing to pull out the specific value
+I wanted.  More generally, you
+will have to use the \code{names} and
+\code{str} commands to pick through the results of
+a test to find the $p$-value.
+
+In order to estimate the \emph{probability} of
+successfully rejecting the null hypothesis when
+it is false (the power), we have to repeat this
+procedure many times and calculate the proportion
+of the time that we reject the null hypothesis.
+
+Specify the number of simulations to run
+(400 is a reasonable number if we want
+to calculate a percentage --- even 100 would
+do to get a crude estimate):
+<<>>=
+nsim = 400
+@ 
+
+Set up a vector to hold the $p$-value for each
+simulation:
+<<>>=
+pval = numeric(nsim)
+@ 
+
+Now repeat what we did above \Sexpr{nsim} times, each
+time saving the $p$-value in the storage vector:
+<<linregpow1,cache=TRUE>>=
+for (i in 1:nsim) {
+  y_det = a+b*x
+  y = rnorm(N,mean=y_det,sd=sd)
+  m = lm(y~x)
+  pval[i] = coef(summary(m))["x","Pr(>|t|)"]
+}
+@ 
+
+Calculate the power:
+<<>>=
+sum(pval<0.05)/nsim
+@ 
+
+However, we don't just want to know
+the power for a single experimental design.
+Rather, we want to know how the power
+changes as we change some aspect of the design
+such as the sample size or the variance.
+Thus we have to repeat the
+entire procedure above multiple times, each time
+changing some parameter of the simulation such as
+the slope, or the error variance, or the 
+distribution of the $x$ values.
+Coding this in \R\ usually involves nested \code{for}
+loops.
+For example:
+
+<<linregpow2,cache=TRUE>>=
+bvec = seq(-2,2,by=0.1)
+power.b = numeric(length(bvec))
+for (j in 1:length(bvec)) {
+  b = bvec[j]
+  for (i in 1:nsim) {
+    y_det = a+b*x
+    y = rnorm(N,mean=y_det,sd=sd)
+    m = lm(y~x)
+    pval[i] = coef(summary(m))["x","Pr(>|t|)"]
+  }
+  power.b[j] = sum(pval<0.05)/nsim
+}
+@
+
+The results would resemble a noisy version
+of the right subfigure in Figure~\ref{fig:power1}.
+The power equals $\alpha$=0.05 when the slope is zero,
+rising to 0.8 for slope $\approx \pm 1$.
+
+You could repeat these calculations for a different
+set of parameters (e.g. changing the sample size,
+or the number of parameters).  If you were feeling
+ambitious, you could calculate the power for
+many combinations of (e.g.) slope and sample size,
+using yet another \code{for} loop; saving the
+results in a matrix; and using \code{contour}
+or \code{persp} to plot the results.
+
+\subsubsection{Hyperbolic/negative binomial data}
+
+What about the power to detect the difference
+between the two groups shown in Figure~\ref{fig:sim1}b
+with hyperbolic dependence on $x$, negative binomial
+errors, and different intercepts and hyperbolic slopes?
+
+In order to estimate the power of the analysis, we
+have to know how to test statistically for a difference
+between the two groups.  Jumping the gun a little bit
+(this topic will be covered in much greater detail in Chapter~6),
+we can define \emph{negative log-likelihood functions} both for a
+null model that assumes the intercept is the
+same for both groups as well as for
+a more complex model that allows for
+differences in the intercept.
+<<echo=FALSE>>=
+load("negbinhyp-batch2.RData")
+nsim <- 200
+@ 
+
+The \code{mle2} command in the \code{bbmle} package
+lets us fit the parameters of these models, and the
+\code{anova} command gives us a $p$-value for the difference
+between the models (p.~\pageref{mle2groups}):
+<<eval=FALSE>>=
+m0 = mle2(y~dnbinom(mu=a*b*x/(b+x),size=k),start=list(a=15,b=1,k=5))
+m1 = mle2(y~dnbinom(mu=a*b*x/(b+x),size=k),
+  parameters=list(a~g,b~g),
+  start=list(a=15,b=1,k=5))
+anova(m0,m1)[2,"Pr(>Chisq)"]
+@ 
+
+Without showing the details, we now run a \code{for} loop that
+simulates the system above \Sexpr{nsim} times each for a range of
+sample sizes, uses \code{anova} to calculate the $p$-values, and
+calculates the proportion of $p$-values $<0.05$ for each sample size.
+Figure~\ref{fig:negbinhyppow} shows the results.  For small sample
+sizes ($<20$), the power is abysmal ($\approx 0.2--0.4$).  Power then
+rises approximately linearly, rising to acceptable levels (0.8 and up)
+for sample sizes of 50--100 and greater.  The variation in
+Figure~\ref{fig:negbinhyppow} is due to stochastic variation.  We could
+run more simulations per sample size to reduce the variation, but it's
+probably unnecessary since all power analysis is approximate anyway.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op <- par(lwd=2,las=1,bty="l",cex=1.5,mgp=c(2.5,1,0))
+plot(Nvec[power.N>0],power.N[power.N>0],log="x",type="b",
+     xlab="Sample size",
+     ylab="Power",ylim=c(0,1),axes=FALSE)
+axis(side=2)
+axis(side=1,cex.axis=0.8)
+abline(h=1,lty=2)
+box()
+#grid()
+par(op)
+@ 
+\caption{Statistical power to detect differences between
+two hyperbolic functions with intercepts $a=\{10,20\}$,
+slopes $b=\{2,1\}$, and negative binomial $k=5$, 
+as a function of sample size.  Sample size is plotted
+on a logarithmic scale.}
+\label{fig:negbinhyppow}
+\end{figure}
+
+\subsubsection{Bias and variance in estimates of
+the negative binomial $k$ parameter}
+
+For another simple example, one that demonstrates that there's
+more to life than $p$-values, consider the problem of
+estimating the $k$ parameter of a negative binomial
+distribution.  Are standard estimators biased? How large
+a sample do you need for a reasonably accurate estimate
+of aggregation?
+
+Statisticians have long been aware that
+maximum likelihood estimates of the negative
+binomial $k$ and similar
+aggregation indices, while better
+than simpler method of moments estimates
+(p.~\pageref{negbinom-moments}),
+are biased for small
+sample sizes \citep{Pieters+1977,%
+Piegorsch1990,Poulin1996,LloydSmith2007}.
+While you could delve into the statistical
+literature on this topic and even find
+special-purpose estimators that
+reduce the bias \citep{SahaPaul2005}, it's
+empowering to be able to explore the
+problem yourself through simulation.
+
+We can generate negative binomial samples with \code{rnbinom},
+and the \code{fitdistr} command from the \code{MASS} package
+is a convenient way to estimate the parameters.
+\code{fitdistr} finds maximum likelihood estimates, 
+which generally have good properties --- but are
+not infallible, as we will see shortly.  For a single sample:
+<<echo=FALSE>>=
+set.seed(1001)
+@ 
+<<>>=
+x = rnbinom(100,mu=1,size=0.5)
+f = fitdistr(x,"negative binomial")
+f
+@ 
+(the standard deviations of the parameter estimates
+are given in parentheses).
+You can see that for this example the value
+of $k$ (\code{size}) is underestimated 
+relative to the true value of 0.5 --- but how
+do the estimates behave in general?
+
+In order to dig the particular values we want
+(estimated $k$ and standard deviation
+of the estimate) out of the object that \code{fitdistr}
+returns, we have to use \code{str(f)} to examine its
+internal structure. It turns out that
+\verb+f$estimate["size"]+ 
+and \verb+f$sd["size"]+ are the numbers we want.
+
+Set up a vector of sample sizes 
+(\code{lseq} is a function 
+from the \code{emdbook} package that generates a logarithmically
+spaced sequence) and set aside space for the estimated
+$k$ and its standard deviation:
+<<>>=
+Nvec = round(lseq(20,500,length=100))
+estk = numeric(length(Nvec))
+estksd = numeric(length(Nvec))
+@ 
+
+Now pick samples and estimate the parameters:
+<<negbinpow1>>=
+set.seed(1001)
+for (i in 1:length(Nvec)) {
+  N = Nvec[i]
+  x = rnbinom(N,mu=1,size=0.5)
+  f = fitdistr(x,"negative binomial")
+  estk[i] = f$estimate["size"]
+  estksd[i] = f$sd["size"]
+}
+@ 
+
+\begin{figure}
+<<echo=FALSE,width=10,fig=TRUE>>=
+op <- par(mfrow=c(1,2))
+par(lwd=2,las=1,bty="l",cex=1.5,mgp=c(2.5,1,0))
+plot(Nvec,estk,log="x",xlab="Sample size",ylab="Estimated k",axes=FALSE)
+axis(side=2)
+axis(side=1,cex.axis=0.7)
+box()
+lines(Nvec,predict(loess(estk~Nvec)))
+abline(h=0.5,lty=2)
+plot(Nvec,estksd,log="xy",xlab="Sample size",ylab="Estimated sd(k)",
+     mgp=c(3,1,0),axes=FALSE)
+axis(side=2)
+axis(side=1,cex.axis=0.7)
+box()
+@ 
+\caption{Estimates of negative binomial $k$ with increasing
+sample size.  In left-hand figure, solid line is a \code{loess} fit.
+Horizontal dashed line is the true value.
+The $y$ axis in the right-hand figure is logarithmic.}
+\label{fig:negbinpow}
+\end{figure}
+
+Figure~\ref{fig:negbinpow} shows the results:
+the estimate is indeed biased, and highly variable,
+for small sample sizes.
+For sample sizes below about 100, the estimate
+$k$ is biased upward by about 20\%
+on average. The coefficient of variation (standard deviation divided
+by the mean) is similarly greater than 0.2 for
+sample sizes less than 100.
+
+
+\subsection{Detecting under- and overcompensation in fish data}
+
+Finally, we will explore a more extended and complex example --- the
+difficulty of estimating the
+exponent $d$ in the Shepherd function,
+$R=aS/(1+(a/b)S^d)$ ((Figure~\ref{fig:power1}c).
+This parameter controls whether the Shepherd
+function is undercompensating ($d<1$:
+recruitment increases indefinitely as the
+number of settlers grows),
+saturating ($d=1$: recruitment reaches an
+asymptote), or overcompensating
+($d>1$: recruitment decreases at high settlement).
+% As a reminder, when $d=1$ the Shepherd function
+% reduces to the Beverton-Holt (Michaelis-Menten{\slash}Holling type~II)
+% function and the number of recruits $R$ increases to an asymptote as
+% the number of settlers $S$ grows.  When $d>1$, the Shepherd function
+% is overcompensating (the number of recruits grows to a maximum but
+% decreases at high settler densities); when $d<1$ it is
+% undercompensating (the recruitment curve never reaches an asymptote,
+% although the rate of increase of the curve continually slows).
+\cite{Schmitt+1999} set $d=1$
+%, as is common in
+%fisheries examples, among other reasons 
+in part because $d$ is very
+hard to estimate reliably --- we are about to see just how hard.
+
+You can use the simulation approach described above to generate
+simulated ``data sets'' of different sizes whose characteristics
+matched Schmitt et al.'s data: a zero-inflated negative binomial
+distribution of numbers of settlers and a Shepherd-function
+relationship (with a specified value of $d$) between the number
+of settlers and the number of recruits.  For each simulated data set,
+use \R's \code{nls} function to estimate the values of the
+parameters by nonlinear least squares
+\footnote{Non-linear least-squares
+fitting assumes constant, normally distributed error, ignoring
+the fact that the data are really binomially distributed.
+Chapter~\ref{chap:opt} will 
+present more sophisticated maximum likelihood approaches to
+this problem.}. Then calculate the confidence
+limits on $d$ (using \code{confint}) and record the estimated
+value of the parameter and the lower and upper confidence limits.
+
+<<echo=FALSE>>=
+mm = nls(recr~a*settlers/(1+(a/b)*settlers),start=c(a=0.696,b=9.79))
+shep = nls(recr~a*settlers/(1+(a/b)*settlers^d),start=c(coef(mm),d=1))
+
+recrprob = function(x,a,b,d) a/(1+(a/b)*x^d)
+
+simdata = function(n,d=1,a=0.696,b=9.79) {
+  scoefs = c(mu=25.32,k=0.932,zprob=0.123)
+  settlers = rzinbinom(n,mu=scoefs["mu"],size=scoefs["k"],zprob=scoefs["zprob"])
+  recr = rbinom(n,prob=recrprob(settlers,a,b,d),size=settlers)
+  data.frame(settlers=settlers,recr=recr)
+}
+
+getvals = function(n=100,d=1) {
+  OK = FALSE
+  while (!OK) {
+    z = simdata(n,d)
+    mm = try(nls(recr~a*settlers/(1+(a/b)*settlers),start=c(a=0.696,b=9.79),data=z))
+    shep = try(nls(recr~a*settlers/(1+(a/b)*settlers^d),start=c(coef(mm),d=1),data=z))
+    OK = (class(shep)!="try-error" && class(mm)!="try-error")
+    if (OK) {
+      mm.ci = try(confint(mm))
+      shep.ci = try(confint(shep))
+      if (class(shep.ci)=="try-error") {
+        s0 = summary(shep)
+        ci_width = qt(0.975,s0$df[2])*s0$parameters[,"Std. Error"]
+        shep.ci=c(s0$parameters[,"Estimate"]-ci_width,
+          s0$parameters[,"Estimate"]+ci_width)
+      }
+    }
+  }
+  res = c(coef(mm),mm.ci,coef(shep),shep.ci)
+  names(res) = c("a.mm","b.mm","a.mm.lo","b.mm.lo","a.mm.hi","b.mm.hi",
+         "a.shep","b.shep","d.shep","a.shep.lo","b.shep.lo","d.shep.lo",
+         "a.shep.hi","b.shep.hi","d.shep.hi")
+  res
+}
+@ 
+
+<<echo=FALSE,eval=FALSE>>=
+set.seed(1001)
+nvec = c(50,100,200,300,400,500,1000,2000)
+nsim=100
+dvec = seq(0.7,1.3,by=0.1)
+r1= getvals()
+resmat = matrix(ncol=length(r1)+3,nrow=nsim*length(nvec)*length(dvec))
+c0 = 1
+for (i in 1:length(dvec)) {
+  for (j in 1:length(nvec)) {
+     for (k in 1:nsim) {
+       cat(i,j,k,"\n")
+       resmat[c0,] = c(dvec[i],nvec[j],k,getvals(n=nvec[j],d=dvec[i]))
+     }
+   }
+}     
+@ 
+
+<<echo=FALSE>>=
+load("chap5-batch2.RData")
+d.null = 1
+true.b=9.79
+## nsim=400  ## for batch2
+faclist <- list(factor(resmat[,"d"]),factor(resmat[,"n"]))
+a.mm.mean =   tapply(resmat[,"a.mm"],faclist,mean)
+b.mm.mean =   tapply(resmat[,"b.mm"],faclist,mean)
+b.mm.sd =     tapply(resmat[,"b.mm"],faclist,sd)
+a.shep.mean = tapply(resmat[,"a.shep"],faclist,mean)
+b.shep.mean = tapply(resmat[,"b.shep"],faclist,mean)
+b.shep.sd =   tapply(resmat[,"b.shep"],faclist,sd)
+d.shep.mean = tapply(resmat[,"d.shep"],faclist,mean)
+d.shep.sd =   tapply(resmat[,"d.shep"],faclist,sd)
+rshepOK <-    resmat[resmat[,"shep.ci.OK"]==1,]
+##rshepOK <-    resmat
+d.shep.OK <-  table(factor(rshepOK[,"d"]),factor(rshepOK[,"n"]))
+faclist2 <- list(factor(rshepOK[,"d"]),factor(rshepOK[,"n"]))
+d.shep.pow =  with(as.data.frame(rshepOK),
+  tapply(d.shep.hi<d.null |  d.shep.lo>d.null,faclist2,sum))/d.shep.OK
+d.shep.cov = with(as.data.frame(rshepOK),
+  tapply(d.shep.hi>d & d.shep.lo<d,faclist2,sum))/d.shep.OK
+d.shep.cwid = tapply(resmat[,"d.shep.hi"]-resmat[,"d.shep.lo"],
+  faclist,mean)
+@ 
+
+\begin{figure}
+<<echo=FALSE>>=
+nsim = 20
+trueval=1.2
+nullval=1
+r1 = resmat[resmat[,"n"]==1000 & resmat[,"d"]==trueval & resmat[,"shep.ci.OK"],]
+totsim=nrow(r1)
+dm = mean(r1[,"d.shep"])
+bias = dm-trueval
+dsd = sd(r1[,"d.shep"])
+dcover = sum(r1[,"d.shep.lo"]<trueval &  r1[,"d.shep.hi"]>trueval)/totsim
+dpow = sum(r1[,"d.shep.lo"]>nullval |  r1[,"d.shep.hi"]<nullval)/totsim
+ddens = density(r1[,"d.shep"],n=700,from=0.9,to=1.6)
+ddens.l = density(r1[,"d.shep.lo"],n=700,from=0.9,to=1.6)
+##ddens.u = density(r1[,"d.shep.hi"])
+@ 
+
+<<fig=TRUE,echo=FALSE>>=
+r=require(plotrix,quietly=TRUE,warn.conflicts=FALSE)
+plotCI(1:nsim,r1[1:nsim,"d.shep"],li=r1[1:nsim,"d.shep.lo"],ui=r1[1:nsim,"d.shep.hi"],xlab="Simulation",
+       ylab=expression(hat(d)),xlim=c(1,40),axes=FALSE,ylim=c(0.9,1.6))
+abline(h=trueval,lwd=2)
+abline(h=nullval,lwd=2,lty=2)
+axis(side=2)
+axis(side=1,at=c(1,10,20))
+box()
+axis.break(breakpos=25,axis=1,style="zigzag",brw=0.05)
+n = length(ddens$x)
+p1 = 35
+sc=-0.8
+polygon(c(p1+ddens$y*sc,p1),c(ddens$x,min(ddens$x)),col="gray")
+segments(p1+ddens$y[1:(n-1)]*sc,ddens$x[1:(n-1)],
+         p1+ddens$y[2:n]*sc,ddens$x[2:n])
+sc2=+0.8
+#polygon(c(p1+ddens.l$y*sc2,p1),c(ddens.l$x,min(ddens.l$x)),col="gray")
+covvals=which(ddens.l$x<trueval)
+powvals=which(ddens.l$x>nullval)
+npowvals=which(ddens.l$x<nullval)
+polygon(c(p1,p1+ddens.l$y[powvals]*sc2,p1),c(nullval,ddens.l$x[powvals],max(ddens.l$x)),col="lightgray")
+polygon(c(p1,p1+ddens.l$y[covvals]*sc2,p1),c(min(ddens.l$x),ddens.l$x[covvals],trueval),col="darkgray")
+polygon(c(p1,p1+ddens.l$y[npowvals]*sc2,p1),c(min(ddens.l$x),ddens.l$x[npowvals],nullval),col=gray(0.2))
+segments(p1+ddens.l$y[1:(n-1)]*sc2,ddens.l$x[1:(n-1)],
+         p1+ddens.l$y[2:n]*sc2,ddens.l$x[2:n])
+rect(23,0.95,28,1.6,col="white",border=NA)
+text(33,1.58,"estimates",adj=1)
+text(36,1.58,"lower\nbounds",adj=0)
+text(22,1.23,expression(paste("mean: ",E,"[",hat(d),"]")),adj=0)
+text(22,1.18,expression(paste("true: ",d)),adj=0)
+text(22,0.98,expression(paste("null: ",d[0])),adj=0)
+text(rep(36,3),c(1.23,1.1,0.97),c("a","b","c"),cex=1.5,adj=0)
+abline(h=dm,lty=2)
+arrows(32.25,dm,32.25,dm-dsd,angle=90)
+text(33,dm-dsd/2,expression(sigma[hat(d)]))
+@
+\caption{Simulations and power/coverage.
+Points and error bars show point estimates ($\hat d$) and
+95\% confidence limits ($\dlow$, $\dhigh$) for the first 20
+out of 400 simulations with a true value of $d=1.2$ and
+1000 samples. 
+Horizontal lines show the mean value of $\hat d$,
+$E[\hat d]=$\Sexpr{round(dm,3)}; the true value
+for this set of simulations, $d=1.2$; and the
+null value, $d_0=1$. The left-hand density 
+in the figure represents the
+distribution of $\hat d$ for all 400 simulations.
+The right-hand density represents the distribution of
+the lower confidence limit, $\dlow$. The distance between $d$
+(solid horizontal line) and $E[\hat d]$ 
+(short-dashed horizontal line) shows the bias. 
+The error bar showing the standard deviation
+of $\hat d$, $\sigma_{\hat d}$, 
+shows the square root of the variance of $\hat d$.
+The coverage is the proportion of lower confidence limits
+that fall below the true value, area $b+c$ in the
+lower-bound density.
+The power is the proportion of lower confidence limits that
+fall above the null value, area $a+b$
+in the lower-bound density.  For simplicity,
+I have omitted the distribution of the upper bounds $\dhigh$.
+}
+\label{fig:simpow1}
+\end{figure}
+
+Figure~\ref{fig:simpow1} shows the point estimates ($\hat d$) and
+95\% confidence limits ($\dlow$, $\dhigh$) for the first 20
+out of 400 simulations with 1000~simulated
+observations and a true value of $d=1.2$.
+The figure also illustrates
+several of the summary statistics discussed above:
+bias, variance, power, and coverage (see the caption
+for details).
+
+
+For this particular case ($n=1000$, $d=1.2$) I
+can compute the bias (\Sexpr{round(bias,4)}),
+variance (\Sexpr{round(dsd^2,3)}, or $\sigma_{\hat d}$ =
+\Sexpr{round(dsd,3)}), mean-squared-error
+(\Sexpr{round(bias^2+dsd^2,3)}), coverage
+(\Sexpr{round(dcover,3)}), and power (\Sexpr{round(dpow,3)}).
+With 1000 observations, things look pretty
+good, but 1000 observations is a lot and $d=1.2$ represents
+a lot of overcompensation.
+The real value of power analyses
+comes when we compare the quality of estimates across a range
+of sample sizes and effect sizes.
+
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=9,height=9>>=
+clabyoff = -0.1
+op=par(mfrow=c(2,2),mar=c(4.2,4.1,2,1),mgp=c(2.5,1,0),las=1,cex=1.5,
+  bty="l",lwd=2)
+##mtext("a",side=2,outer=FALSE,col=2,at=0.5)
+##mtext("a",side=2,col=4,las=0,cex=2,las=1,adj=0,padj=1.1)
+## bias
+matplot(nvec,t(d.shep.mean),type="b",col=1,pch="7890123",
+       xlab="Sample size",ylab="Estimated d",axes=FALSE)
+axis(side=1,cex.axis=0.8)
+axis(side=2,cex.axis=0.8)
+box()
+par(xpd=NA)
+corner.label("a",yoff=clabyoff,xoff=0,cex=2)
+par(xpd=FALSE)
+#plotCI(nvec[col(d.shep.sd)],d.shep.mean,d.shep.sd/5,add=TRUE)
+abline(h=dvec,lty=1:length(dvec),lwd=2,col="gray")
+##
+##
+matplot(nvec,t(d.shep.cwid),type="b",col=1,pch="7890123",
+       xlab="Sample size",ylab="Confidence interval width",axes=FALSE)
+axis(side=1,cex.axis=0.8)
+axis(side=2,cex.axis=0.8)
+box()
+par(xpd=NA)
+corner.label("b",yoff=clabyoff,xoff=0,cex=2)
+par(xpd=FALSE)
+
+matplot(nvec,t(d.shep.cov),type="b",pch="7890123",col=1,
+        xlab="Sample size",ylab="Coverage",mgp=c(3,1,0),ylim=c(0.75,1.0),
+        cex.axis=0.8)
+par(xpd=NA)
+corner.label("c",yoff=clabyoff,xoff=0,cex=2)
+par(xpd=FALSE)
+abline(h=0.95,lwd=2)
+matplot(nvec,t(d.shep.pow),type="b",pch="7890123",col=1,
+        ylab=expression(paste("Power or ",alpha)),
+        xlab="Sample size",ylim=c(0,1),cex.axis=0.8)
+par(xpd=NA)
+corner.label("d",yoff=clabyoff,xoff=0,cex=2)
+par(xpd=FALSE)
+abline(h=0.05,lty=2)
+abline(h=0.8,lty=2)
+par(op)
+@ 
+\caption{Summaries of
+statistical accuracy, precision,
+and power for extimating
+the Shepherd exponent $d$,
+for a range of $d$ values from 
+undercompensation, $d=0.7$ (line marked
+``7'') to overcompensation $d=1.3$ (line
+marked ``3'').
+(a) Estimated $d$: the estimates are strongly
+biased upwards for sample sizes less
+than 500, especially for undercompensation ($d<1$).
+(b) Confidence interval width:
+the confidence intervals are large ($>0.4$) for
+sample sizes smaller than about 500, 
+for any value of $d$.
+(c) Coverage of the nominal 95\%
+confidence intervals is adequate for
+large sample size ($>250$) and overcompensation
+($d>1$), but poor even for large sample sizes
+when $d<1$.
+(d) For statistical power ($1-\beta$)
+of at least 0.8, sample sizes of 500--1000 are
+required if $d \le 0.7$ or $d \ge 1.2$; sample sizes
+of 1000 if $d=0.8$; and sample sizes of at least
+2000 if $d=0.9$ or $d=1.1$.
+When $d=1.0$ (``0'' line), the probability
+of rejecting the null hypothesis is a little above
+the nominal value of $\alpha=0.05$.
+}
+\label{fig:shep-pow1}
+\end{figure}
+
+Figure~\ref{fig:shep-pow1} gives a gloomier
+picture, showing the bias, precision, coverage, and
+power for a range of $d$ values from 0.7 to 1.3 and
+a range of sample sizes from 50 to 2000.
+It takes sample sizes of at least 500 to obtain reasonably
+unbiased estimates with adequate precision,
+and even then the coverage may be low if
+$d<1.0$ and the power low if $d$ is close
+to 1 ($0.9 \le d \le 1.1$).
+Because of the upward bias in $d$ at low sample
+sizes, the calculated power is actually \emph{higher}
+at very low sample sizes, but this is not
+particularly comforting.
+The power of the analysis slightly
+better for overcompensation than undercompensation.
+The relatively low power values are
+as expected from Fig.~\ref{fig:shep-pow1}b, which
+shows wide confidence intervals. Low power would 
+also be predictable from the high variance of the
+estimates, which I didn't even bother to show
+in Fig.~\ref{fig:shep-pow1}a because they obscured
+the figure too much.
+
+Another use for our simulations is to take a first
+look at the tradeoffs involved in adding complexity
+to models. Figure~\ref{fig:shep-pow2} shows estimates
+of $b$, the asymptote if $d=1$, for different
+sample sizes and values of $d$.  If $d=1$, then
+the Shepherd model reduces to the Beverton-Holt model.
+In this case, you might think that it wouldn't matter whether you
+used the Shepherd or the Beverton-Holt model to estimate
+the $b$ parameter, but there are serious disadvantages
+to the Shepherd function.
+First, even when $d=1$, the Shepherd estimate of $d$
+is biased upwards for low sample sizes, leading to a
+severe upward bias in the estimate of $b$.  Second, not shown
+on the graph because it would have obscured everything
+else, the variance of the Shepherd estimate is far
+higher than the variance of the Beverton-Holt estimate
+(e.g. for a sample size of 200, the Beverton-Holt estimate is
+\Sexpr{round(b.mm.mean["1","200"],2)} $\pm$ \Sexpr{round(b.mm.sd["1","200"],2)}
+(s.d.),
+while the Shepherd estimate is 
+\Sexpr{round(b.shep.mean["1","200"],2)} $\pm$ \Sexpr{round(b.shep.sd["1","200"],2)} (s.d.)).
+
+On the other hand, if $d$ is \emph{not} equal to 1, the bias in 
+the Beverton-Holt estimate of $b$ is large and more or less independent
+of sample size.  For reasonable sample sizes,
+if $d=0.9$ the Beverton-Holt estimate is biased upward by
+\Sexpr{round(b.mm.mean["0.9",nvec>200]-9.79)};
+if $d=1.1$ it is biased downward by
+\Sexpr{9.79-round(b.mm.mean["1.1",nvec>200])}.
+Since the Beverton-Holt model isn't flexible
+enough to account for the changes in shape caused
+by $d$, it has to modify $b$ in order to compensate.
+
+This general phenomenon is called the \emph{bias--variance
+tradeoff} (see p.~\pageref{biasvar}): 
+more complex models in general reduce bias
+at the price of increased variance. (The small-sample bias
+of the Shepherd is a separate, and slightly less general,
+phenomenon.)
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+matplot(nvec,t(b.mm.mean[3:5,]),pch="901",
+        ylab="Estimate of b",xlab="Number of samples",col="darkgray",
+        type="b",ylim=c(5,20))
+plotCI(rep(nvec,3),t(b.mm.mean[3:5,]),t(b.mm.sd[3:5,]),add=TRUE)
+matpoints(nvec,t(b.shep.mean[3:5,]),pch="901",col=1,type="b")
+##
+##matplot(nvec,t(b.shep.mean[3:5,]),pch="901",col=1,type="b")
+tmpsd = t(b.shep.sd[3:5,])
+tmpsd[tmpsd>5] = NA
+##plotCI(rep(nvec,3),t(b.shep.mean[3:5,]),tmpsd,add=TRUE)
+abline(h=true.b,lwd=2)
+text(c(1160,1168,471,1232),
+     c(6.7,9.5,12.5,15.4),
+     c("B-H est.: d=1.1",
+       "B-H est.: d=1.0",
+       "Shepherd est.",
+       "B-H est.: d=0.9"),adj=0)
+@ 
+\caption{Estimates of $b$, using Beverton-Holt or
+Shepherd functions, for different values of $d$
+and sample sizes.}
+\label{fig:shep-pow2}
+\end{figure}
+
+
+% Simple (analytic) example:
+% power curve?
+
+% Trying to detect difference of a sample of $n$ values with
+% mean $\mu$, variance $\sigma^2$ from 0: expected value
+% of mean is $\mu$, standard error is $\sigma^2/n$.
+% What is the chance that the mean falls below the 97.5 quantile
+% of the null distribution, a normal distribution with
+% mean 0 and standard deviation $\sigma/\sqrt{n}$?
+% It's the lower tail of the distribution
+% $\mbox{Normal}(0,\sigma^2/n)$:
+% $\beta=\Phi(\Phi^{-1}$
+
+<<echo=FALSE>>=
+## obsolete/not used
+powfun = function(mu,sigma,n,alpha=0.05,two.tail=FALSE) {
+  if (!two.tail) {
+    critlevel = qnorm(1-alpha,mean=0,sd=sigma/sqrt(n))
+    pnorm(critlevel,mean=mu,sd=sigma/sqrt(n),lower.tail=FALSE)
+  } else {
+    upper = qnorm(1-alpha/2,mean=0,sd=sigma/sqrt(n))
+    lower = qnorm(alpha/2,mean=0,sd=sigma/sqrt(n))
+    pnorm(upper,mean=mu,sd=sigma/sqrt(n),lower.tail=FALSE)+
+      pnorm(lower,mean=mu,sd=sigma/sqrt(n),lower.tail=TRUE)
+  }
+}
+@ 
+
+%\begin{figure}
+<<eval=FALSE,echo=FALSE>>=
+xvec = seq(-5,10,by=0.1)
+m=2.75
+alpha=0.05
+upperq=1-alpha
+xvec.low = c(xvec[xvec<upperq],upperq)
+xvec.hi =  c(upperq,xvec[xvec>upperq])
+op=par(mfrow=c(1,2))
+plot(xvec,dnorm(xvec),type="l",lwd=2,xlab="x",ylab="Probability density")
+polygon(c(xvec.low,rev(xvec.low)),c(rep(0,length(xvec.low)),dnorm(rev(xvec.low),mean=m)),col="darkgray",border=NA)
+polygon(c(xvec.hi,rev(xvec.hi)),c(rep(0,length(xvec.hi)),dnorm(rev(xvec.hi),mean=m)),col="lightgray",border=NA)
+polygon(c(xvec.hi,rev(xvec.hi)),c(rep(0,length(xvec.hi)),dnorm(rev(xvec.hi),mean=0)),col=gray(0.3),border=NA)
+curve(dnorm(x),lwd=2,add=TRUE)
+upperq = qnorm(1-alpha)
+abline(v=upperq,lty=2)
+abline(v=0)
+lines(xvec,dnorm(xvec,mean=m))
+text(upperq+0.2,0.02,expression(alpha),col="white",cex=1.5,adj=0)
+text(upperq-0.2,0.02,expression(beta),cex=1.5,adj=1)
+text(m,0.2,expression(1-beta),cex=1.5,adj=0.5)
+##
+curve(powfun(x,sigma=1,n=1,two.tail=TRUE),from=-8,to=8,lwd=2,
+      ylab=expression(paste("Power ",(1-beta))),xlab=expression(mu))
+par(op)
+@ 
+%\caption{Basic power curves (normal distributions)}
+%\label{fig:power1}
+%\end{figure}
+
+Because it is fundamentally difficult to estimate parameters or test
+hypotheses with noisy data, and most ecological data sets are noisy,
+power analyses are often depressing.  On the other hand, even if
+things are bad, it's better to know how bad they are than just to
+guess; knowing how much you really know is important.  In addition,
+there are design decisions you can make (e.g. number of treatments vs
+number of replicates per treatment) that optimize power given the
+constraints of time and money.
+
+Remember that systematic biases, pseudo-replication,
+etc. --- factors that are rarely accounted for in your experimental
+design or in your power analysis -- are
+often far more important than the
+fussy details of your statistical design.
+While you should quantify the power of your
+experiment to make sure it has a reasonable of success,
+thoughtful experimental design
+(e.g. measuring
+and statistically accounting for covariates
+such as mass, rainfall, etc.; pairing control
+and treatment samples; or expanding the range
+of covariates tested)
+will make a much bigger difference than tweaking 
+the details of your experiment to
+squeeze out a little bit more statistical power.
+
+% \newpage
+% \section{\R\ supplement}
+
+% <<>>=
+% ndist <- sqrt((outer(offspr_x,offspr_x,"-"))^2+(outer(offspr_y,offspr_y,"-"))^2)
+% @

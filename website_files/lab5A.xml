@@ -1,0 +1,501 @@
+<?xml version="1.0"?>
+<!DOCTYPE html    PUBLIC "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN"
+           "http://www.w3.org/Math/DTD/mathml2/xhtml-math11-f.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="GENERATOR" content="TtM 3.70" />
+ <style type="text/css">
+ div.p { margin-top: 7pt; }
+ span.roman {font-family: serif; font-style: normal; font-weight: normal;} 
+</style>
+ 
+
+
+<title> Lab 5: stochastic simulation --- solutions </title>
+</head>
+<body>
+ 
+<h1 align="center">Lab 5: stochastic simulation - solutions </h1>
+
+<h3 align="center">Ben Bolker </h3>
+
+ &#169; 2005 Ben Bolker
+
+<div class="p"><!----></div>
+<b>Exercise  1:</b>
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;n&nbsp;=&nbsp;100
+&#62;&nbsp;x&nbsp;=&nbsp;runif(n,&nbsp;min&nbsp;=&nbsp;0,&nbsp;max&nbsp;=&nbsp;10)
+&#62;&nbsp;a&nbsp;=&nbsp;1
+&#62;&nbsp;b&nbsp;=&nbsp;0.5
+&#62;&nbsp;s&nbsp;=&nbsp;3
+&#62;&nbsp;y_det&nbsp;=&nbsp;a&nbsp;*&nbsp;x&nbsp;*&nbsp;exp(-b&nbsp;*&nbsp;x)
+&#62;&nbsp;y&nbsp;=&nbsp;rgamma(n,&nbsp;shape&nbsp;=&nbsp;s,&nbsp;scale&nbsp;=&nbsp;y_det/s)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(x,&nbsp;y)
+&#62;&nbsp;curve(a&nbsp;*&nbsp;x&nbsp;*&nbsp;exp(-b&nbsp;*&nbsp;x),&nbsp;add&nbsp;=&nbsp;TRUE)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5A-002.png" alt="lab5A-002.png" />
+
+<div class="p"><!----></div>
+<b>Exercise  2:</b>
+
+<div class="p"><!----></div>
+Redo spatial distribution simulation:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;set.seed(1001)
+&#62;&nbsp;nparents&nbsp;=&nbsp;50
+&#62;&nbsp;noffspr&nbsp;=&nbsp;10
+&#62;&nbsp;L&nbsp;=&nbsp;30
+&#62;&nbsp;parent_x&nbsp;=&nbsp;runif(nparents,&nbsp;min&nbsp;=&nbsp;0,&nbsp;max&nbsp;=&nbsp;L)
+&#62;&nbsp;parent_y&nbsp;=&nbsp;runif(nparents,&nbsp;min&nbsp;=&nbsp;0,&nbsp;max&nbsp;=&nbsp;L)
+&#62;&nbsp;angle&nbsp;=&nbsp;runif(nparents&nbsp;*&nbsp;noffspr,&nbsp;min&nbsp;=&nbsp;0,&nbsp;max&nbsp;=&nbsp;2&nbsp;*&nbsp;pi)
+&#62;&nbsp;dist&nbsp;=&nbsp;rexp(nparents&nbsp;*&nbsp;noffspr,&nbsp;0.5)
+&#62;&nbsp;offspr_x&nbsp;=&nbsp;rep(parent_x,&nbsp;each&nbsp;=&nbsp;noffspr)&nbsp;+&nbsp;cos(angle)&nbsp;*&nbsp;dist
+&#62;&nbsp;offspr_y&nbsp;=&nbsp;rep(parent_y,&nbsp;each&nbsp;=&nbsp;noffspr)&nbsp;+&nbsp;sin(angle)&nbsp;*&nbsp;dist
+&#62;&nbsp;dist&nbsp;=&nbsp;sqrt((outer(offspr_x,&nbsp;offspr_x,&nbsp;"-"))^2&nbsp;+&nbsp;(outer(offspr_y,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;offspr_y,&nbsp;"-"))^2)
+&#62;&nbsp;nbrcrowd&nbsp;=&nbsp;apply(dist&nbsp;&lt;&nbsp;2,&nbsp;1,&nbsp;sum)&nbsp;-&nbsp;1
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculate mean and standard deviation of neighborhood crowding:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;m&nbsp;=&nbsp;mean(nbrcrowd)
+&#62;&nbsp;s2&nbsp;=&nbsp;var(nbrcrowd)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Method of moments: 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi><mo>=</mo><mi>m</mi></mrow></math>;
+variance 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo>=</mo><mi>&mu;</mi><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>&mu;</mi><mo stretchy="false">/</mo><mi>k</mi><mo stretchy="false">)</mo></mrow></math>
+or 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi><mo>=</mo><mi>&mu;</mi><mo stretchy="false">/</mo><mo stretchy="false">(</mo>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">/</mo><mi>&mu;</mi><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo></mrow></math>.
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;k.est&nbsp;=&nbsp;m/(s2/m&nbsp;-&nbsp;1)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Plot distribution of neighborhood crowding:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;b1&nbsp;=&nbsp;barplot(table(factor(nbrcrowd,&nbsp;levels&nbsp;=&nbsp;0:max(nbrcrowd)))/length(nbrcrowd),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xlab&nbsp;=&nbsp;"Number&nbsp;of&nbsp;neighbors",&nbsp;ylab&nbsp;=&nbsp;"Proportion")
+&#62;&nbsp;points(b1,&nbsp;dnbinom(0:max(nbrcrowd),&nbsp;mu&nbsp;=&nbsp;m,&nbsp;size&nbsp;=&nbsp;k.est),&nbsp;pch&nbsp;=&nbsp;16)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5A-006.png" alt="lab5A-006.png" />
+
+<div class="p"><!----></div>
+<b>Exercise  3:</b>
+
+<div class="p"><!----></div>
+Continue with pigweed simulation:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;ci&nbsp;=&nbsp;nbrcrowd&nbsp;*&nbsp;3
+&#62;&nbsp;M&nbsp;=&nbsp;2.3
+&#62;&nbsp;alpha&nbsp;=&nbsp;0.49
+&#62;&nbsp;mass_det&nbsp;=&nbsp;M/(1&nbsp;+&nbsp;ci)
+&#62;&nbsp;mass&nbsp;=&nbsp;rgamma(length(mass_det),&nbsp;scale&nbsp;=&nbsp;mass_det,&nbsp;shape&nbsp;=&nbsp;alpha)
+&#62;&nbsp;b&nbsp;=&nbsp;271.6
+&#62;&nbsp;k&nbsp;=&nbsp;0.569
+&#62;&nbsp;seed_det&nbsp;=&nbsp;b&nbsp;*&nbsp;mass
+&#62;&nbsp;seed&nbsp;=&nbsp;rnbinom(length(seed_det),&nbsp;mu&nbsp;=&nbsp;seed_det,&nbsp;size&nbsp;=&nbsp;k)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculate the median: the median is identical
+to the 50% quantile of the distribution,
+or <tt>qnbinom(0.5)</tt>.
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;logxvec&nbsp;=&nbsp;seq(-7,&nbsp;1,&nbsp;length&nbsp;=&nbsp;100)
+&#62;&nbsp;xvec&nbsp;=&nbsp;10^logxvec
+&#62;&nbsp;med&nbsp;=&nbsp;qnbinom(0.5,&nbsp;mu&nbsp;=&nbsp;b&nbsp;*&nbsp;xvec,&nbsp;size&nbsp;=&nbsp;k)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(mass,&nbsp;1&nbsp;+&nbsp;seed,&nbsp;log&nbsp;=&nbsp;"xy",&nbsp;xlab&nbsp;=&nbsp;"Mass",&nbsp;ylab&nbsp;=&nbsp;"1+Seed&nbsp;set")
+&#62;&nbsp;curve(b&nbsp;*&nbsp;x&nbsp;+&nbsp;1,&nbsp;add&nbsp;=&nbsp;TRUE)
+&#62;&nbsp;lower&nbsp;=&nbsp;qnbinom(0.025,&nbsp;mu&nbsp;=&nbsp;b&nbsp;*&nbsp;xvec,&nbsp;size&nbsp;=&nbsp;k)
+&#62;&nbsp;upper&nbsp;=&nbsp;qnbinom(0.975,&nbsp;mu&nbsp;=&nbsp;b&nbsp;*&nbsp;xvec,&nbsp;size&nbsp;=&nbsp;k)
+&#62;&nbsp;lines(xvec,&nbsp;lower&nbsp;+&nbsp;1,&nbsp;lty&nbsp;=&nbsp;2,&nbsp;type&nbsp;=&nbsp;"s")
+&#62;&nbsp;lines(xvec,&nbsp;upper&nbsp;+&nbsp;1,&nbsp;lty&nbsp;=&nbsp;2,&nbsp;type&nbsp;=&nbsp;"s")
+&#62;&nbsp;lines(xvec,&nbsp;med&nbsp;+&nbsp;1,&nbsp;lwd&nbsp;=&nbsp;2,&nbsp;type&nbsp;=&nbsp;"s")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5A-009.png" alt="lab5A-009.png" />
+
+<div class="p"><!----></div>
+The median is lower than the mean because
+the distribution is right-skewed; like the 
+upper and lower quantiles, the median of
+the (discrete) negative binomial distribution changes
+by discrete steps rather than smoothly like
+the mean.
+
+<div class="p"><!----></div>
+<b>Exercise  4:</b>
+
+<div class="p"><!----></div>
+Set up simulation:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;rzinbinom&nbsp;=&nbsp;function(n,&nbsp;mu,&nbsp;size,&nbsp;zprob)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ifelse(runif(n)&nbsp;&lt;&nbsp;zprob,&nbsp;0,&nbsp;rnbinom(n,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;size))
++&nbsp;}
+&#62;&nbsp;a&nbsp;=&nbsp;0.696
+&#62;&nbsp;b&nbsp;=&nbsp;9.79
+&#62;&nbsp;recrprob&nbsp;=&nbsp;function(x,&nbsp;a&nbsp;=&nbsp;0.696,&nbsp;b&nbsp;=&nbsp;9.79)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;x)
++&nbsp;}
+&#62;&nbsp;scoefs&nbsp;=&nbsp;c(mu&nbsp;=&nbsp;25.32,&nbsp;k&nbsp;=&nbsp;0.932,&nbsp;zprob&nbsp;=&nbsp;0.123)
+&#62;&nbsp;settlers&nbsp;=&nbsp;rzinbinom(603,&nbsp;mu&nbsp;=&nbsp;scoefs["mu"],&nbsp;size&nbsp;=&nbsp;scoefs["k"],&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;zprob&nbsp;=&nbsp;scoefs["zprob"])
+&#62;&nbsp;recr&nbsp;=&nbsp;rbinom(603,&nbsp;prob&nbsp;=&nbsp;recrprob(settlers),&nbsp;size&nbsp;=&nbsp;settlers)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Draw the figure:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;op&nbsp;=&nbsp;par(mfrow&nbsp;=&nbsp;c(1,&nbsp;2),&nbsp;mar&nbsp;=&nbsp;c(5,&nbsp;4,&nbsp;2,&nbsp;0.2))
+&#62;&nbsp;hist(settlers,&nbsp;breaks&nbsp;=&nbsp;40,&nbsp;col&nbsp;=&nbsp;"gray",&nbsp;ylab&nbsp;=&nbsp;"Frequency",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xlab&nbsp;=&nbsp;"Settlers",&nbsp;main&nbsp;=&nbsp;"")
+&#62;&nbsp;plot(settlers,&nbsp;recr,&nbsp;xlab&nbsp;=&nbsp;"Settlers",&nbsp;ylab&nbsp;=&nbsp;"Recruits")
+&#62;&nbsp;curve(a&nbsp;*&nbsp;x/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;x),&nbsp;add&nbsp;=&nbsp;TRUE)
+&#62;&nbsp;par(op)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5A-011.png" alt="lab5A-011.png" />
+
+<div class="p"><!----></div>
+<b>Exercise  5:</b>
+
+<div class="p"><!----></div>
+Using the relationships <tt>shape1</tt>=
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo>=</mo><mi>P</mi><mi>&theta;</mi></mrow></math> and <tt>shape2</tt>=
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>P</mi><mo stretchy="false">)</mo><mi>&theta;</mi></mrow></math>
+relating the Morris (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>P</mi></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&theta;</mi></mrow></math>) to the standard statistical parameterization:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;rmbbinom&nbsp;=&nbsp;function(n,&nbsp;size,&nbsp;p,&nbsp;theta)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;rbinom(n,&nbsp;size&nbsp;=&nbsp;size,&nbsp;prob&nbsp;=&nbsp;rbeta(n,&nbsp;shape1&nbsp;=&nbsp;p&nbsp;*&nbsp;theta,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shape2&nbsp;=&nbsp;(1&nbsp;-&nbsp;p)&nbsp;*&nbsp;theta))
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;a&nbsp;=&nbsp;0.696
+&#62;&nbsp;b&nbsp;=&nbsp;9.79
+&#62;&nbsp;recrprob&nbsp;=&nbsp;function(x,&nbsp;a&nbsp;=&nbsp;0.696,&nbsp;b&nbsp;=&nbsp;9.79)&nbsp;a/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;x)
+&#62;&nbsp;scoefs&nbsp;=&nbsp;c(mu&nbsp;=&nbsp;25.32,&nbsp;k&nbsp;=&nbsp;0.932,&nbsp;zprob&nbsp;=&nbsp;0.123)
+&#62;&nbsp;settlers&nbsp;=&nbsp;rzinbinom(603,&nbsp;mu&nbsp;=&nbsp;scoefs["mu"],&nbsp;size&nbsp;=&nbsp;scoefs["k"],&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;zprob&nbsp;=&nbsp;scoefs["zprob"])
+&#62;&nbsp;recr&nbsp;=&nbsp;rmbbinom(603,&nbsp;p&nbsp;=&nbsp;recrprob(settlers),&nbsp;theta&nbsp;=&nbsp;10,&nbsp;size&nbsp;=&nbsp;settlers)
+&#62;&nbsp;plot(settlers,&nbsp;recr,&nbsp;xlab&nbsp;=&nbsp;"Settlers",&nbsp;ylab&nbsp;=&nbsp;"Recruits")
+&#62;&nbsp;curve(a&nbsp;*&nbsp;x/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;x),&nbsp;add&nbsp;=&nbsp;TRUE)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5A-013.png" alt="lab5A-013.png" />
+
+<div class="p"><!----></div>
+<b>Exercise  6:</b>
+Redefine linear simulation function:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;linsim&nbsp;=&nbsp;function(nt&nbsp;=&nbsp;20,&nbsp;N0&nbsp;=&nbsp;2,&nbsp;dN&nbsp;=&nbsp;1,&nbsp;sd_process&nbsp;=&nbsp;sqrt(2),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sd_obs&nbsp;=&nbsp;sqrt(2))&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cur_N&nbsp;=&nbsp;N0
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nobs&nbsp;=&nbsp;numeric(nt)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nobs[1]&nbsp;=&nbsp;cur_N&nbsp;+&nbsp;rnorm(1,&nbsp;sd&nbsp;=&nbsp;sd_obs)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(i&nbsp;in&nbsp;2:nt)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cur_N&nbsp;=&nbsp;cur_N&nbsp;+&nbsp;rnorm(1,&nbsp;mean&nbsp;=&nbsp;dN,&nbsp;sd&nbsp;=&nbsp;sd_process)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nobs[i]&nbsp;=&nbsp;cur_N&nbsp;+&nbsp;rnorm(1,&nbsp;sd&nbsp;=&nbsp;sd_obs)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return(Nobs)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Run it 1000 times:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nsim&nbsp;=&nbsp;1000
+&#62;&nbsp;Nmat&nbsp;=&nbsp;matrix(nrow&nbsp;=&nbsp;20,&nbsp;ncol&nbsp;=&nbsp;nsim)
+&#62;&nbsp;for&nbsp;(i&nbsp;in&nbsp;1:nsim)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nmat[,&nbsp;i]&nbsp;=&nbsp;linsim(sd_process&nbsp;=&nbsp;2,&nbsp;sd_obs&nbsp;=&nbsp;2)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Draw the figure:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;matplot(1:20,&nbsp;Nmat,&nbsp;col&nbsp;=&nbsp;"gray",&nbsp;type&nbsp;=&nbsp;"l",&nbsp;lty&nbsp;=&nbsp;1)
+&#62;&nbsp;lines(1:20,&nbsp;rowMeans(Nmat),&nbsp;lwd&nbsp;=&nbsp;2)
+&#62;&nbsp;matlines(1:20,&nbsp;t(apply(Nmat,&nbsp;1,&nbsp;quantile,&nbsp;c(0.025,&nbsp;0.975))),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lty&nbsp;=&nbsp;2,&nbsp;col&nbsp;=&nbsp;1)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5A-016.png" alt="lab5A-016.png" />
+
+<div class="p"><!----></div>
+<b>Exercise  7:</b>
+
+<div class="p"><!----></div>
+Redefine <tt>immigsim</tt> with negative binomial instead of Poisson growth:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;immignbsim&nbsp;=&nbsp;function(nt&nbsp;=&nbsp;20,&nbsp;N0&nbsp;=&nbsp;2,&nbsp;immig,&nbsp;surv,&nbsp;k)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;N&nbsp;=&nbsp;numeric(nt)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;N[1]&nbsp;=&nbsp;N0
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(i&nbsp;in&nbsp;2:nt)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nsurv&nbsp;=&nbsp;rbinom(1,&nbsp;size&nbsp;=&nbsp;N[i&nbsp;-&nbsp;1],&nbsp;prob&nbsp;=&nbsp;surv)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;N[i]&nbsp;=&nbsp;Nsurv&nbsp;+&nbsp;rnbinom(1,&nbsp;mu&nbsp;=&nbsp;immig,&nbsp;size&nbsp;=&nbsp;k)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return(N)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Define parameters:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nsim&nbsp;=&nbsp;1000
+&#62;&nbsp;nt&nbsp;=&nbsp;30
+&#62;&nbsp;p&nbsp;=&nbsp;0.95
+&#62;&nbsp;N0&nbsp;=&nbsp;2
+&#62;&nbsp;immig&nbsp;=&nbsp;10
+&#62;&nbsp;k&nbsp;=&nbsp;0.5
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;nvec&nbsp;=&nbsp;c(3,&nbsp;5,&nbsp;7,&nbsp;10,&nbsp;15,&nbsp;20)
+&#62;&nbsp;kvec&nbsp;=&nbsp;c(5,&nbsp;1,&nbsp;0.5)
+&#62;&nbsp;nsim&nbsp;=&nbsp;500
+&#62;&nbsp;powsimresults&nbsp;=&nbsp;matrix(nrow&nbsp;=&nbsp;length(nvec)&nbsp;*&nbsp;length(kvec)&nbsp;*&nbsp;nsim,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ncol&nbsp;=&nbsp;6)
+&#62;&nbsp;colnames(powsimresults)&nbsp;=&nbsp;c("n",&nbsp;"k",&nbsp;"sim",&nbsp;"slope",&nbsp;"slope.lo",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"slope.hi")
+&#62;&nbsp;ctr&nbsp;=&nbsp;1
+&#62;&nbsp;for&nbsp;(j&nbsp;in&nbsp;1:length(kvec))&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k&nbsp;=&nbsp;kvec[j]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(i&nbsp;in&nbsp;1:length(nvec))&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nt&nbsp;=&nbsp;nvec[i]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tvec&nbsp;=&nbsp;1:nt
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(sim&nbsp;in&nbsp;1:nsim)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;current.sim&nbsp;=&nbsp;immignbsim(nt&nbsp;=&nbsp;nt,&nbsp;N0&nbsp;=&nbsp;N0,&nbsp;surv&nbsp;=&nbsp;p,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;immig&nbsp;=&nbsp;immig,&nbsp;k&nbsp;=&nbsp;k)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lm1&nbsp;=&nbsp;lm(current.sim&nbsp;~&nbsp;tvec)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;slope&nbsp;=&nbsp;coef(lm1)["tvec"]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ci.slope&nbsp;=&nbsp;confint(lm1)["tvec",&nbsp;]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;powsimresults[ctr,&nbsp;]&nbsp;=&nbsp;c(nt,&nbsp;k,&nbsp;sim,&nbsp;slope,&nbsp;ci.slope)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ctr&nbsp;=&nbsp;ctr&nbsp;+&nbsp;1
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Construct a list of factors for cross-tabulating:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;faclist&nbsp;=&nbsp;list(factor(powsimresults[,&nbsp;"n"]),&nbsp;factor(powsimresults[,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"k"]))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculate all the cross-tabulated summary statistics:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;slope.mean&nbsp;=&nbsp;tapply(powsimresults[,&nbsp;"slope"],&nbsp;faclist,&nbsp;mean)
+&#62;&nbsp;slope.sd&nbsp;=&nbsp;tapply(powsimresults[,&nbsp;"slope"],&nbsp;faclist,&nbsp;sd)
+&#62;&nbsp;ci.good&nbsp;=&nbsp;(powsimresults[,&nbsp;"slope.hi"]&nbsp;&#62;&nbsp;immig)&nbsp;&amp;&nbsp;(powsimresults[,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"slope.lo"]&nbsp;&lt;&nbsp;immig)
+&#62;&nbsp;nsim&nbsp;=&nbsp;500
+&#62;&nbsp;slope.cov&nbsp;=&nbsp;tapply(ci.good,&nbsp;faclist,&nbsp;sum)/nsim
+&#62;&nbsp;null.value&nbsp;=&nbsp;0
+&#62;&nbsp;reject.null&nbsp;=&nbsp;(powsimresults[,&nbsp;"slope.hi"]&nbsp;&lt;&nbsp;null.value)&nbsp;|&nbsp;(powsimresults[,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"slope.lo"]&nbsp;&#62;&nbsp;null.value)
+&#62;&nbsp;slope.pow&nbsp;=&nbsp;tapply(reject.null,&nbsp;faclist,&nbsp;sum)/nsim
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Some plots:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;par(mfrow&nbsp;=&nbsp;c(2,&nbsp;2))
+&#62;&nbsp;matplot(nvec,&nbsp;slope.mean,&nbsp;type&nbsp;=&nbsp;"b")
+&#62;&nbsp;matplot(nvec,&nbsp;slope.sd,&nbsp;type&nbsp;=&nbsp;"b")
+&#62;&nbsp;matplot(nvec,&nbsp;slope.cov,&nbsp;type&nbsp;=&nbsp;"b")
+&#62;&nbsp;matplot(nvec,&nbsp;slope.pow,&nbsp;type&nbsp;=&nbsp;"b")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5A-022.png" alt="lab5A-022.png" />
+
+<div class="p"><!----></div>
+<b>Exercise  8:</b>
+
+<div class="p"><!----></div>
+Redo code with quadratic function, testing against a null value of zero:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nvec&nbsp;=&nbsp;c(3,&nbsp;5,&nbsp;7,&nbsp;10,&nbsp;15,&nbsp;20)
+&#62;&nbsp;nsim&nbsp;=&nbsp;500
+&#62;&nbsp;powsimresults&nbsp;=&nbsp;matrix(nrow&nbsp;=&nbsp;length(nvec)&nbsp;*&nbsp;nsim,&nbsp;ncol&nbsp;=&nbsp;5)
+&#62;&nbsp;colnames(powsimresults)&nbsp;=&nbsp;c("n",&nbsp;"sim",&nbsp;"quad",&nbsp;"quad.lo",&nbsp;"quad.hi")
+&#62;&nbsp;ctr&nbsp;=&nbsp;1
+&#62;&nbsp;for&nbsp;(i&nbsp;in&nbsp;1:length(nvec))&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nt&nbsp;=&nbsp;nvec[i]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tvec&nbsp;=&nbsp;1:nt
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(sim&nbsp;in&nbsp;1:nsim)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;current.sim&nbsp;=&nbsp;immigsim(nt&nbsp;=&nbsp;nt,&nbsp;N0&nbsp;=&nbsp;N0,&nbsp;surv&nbsp;=&nbsp;p,&nbsp;immig&nbsp;=&nbsp;immig)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lm1&nbsp;=&nbsp;lm(current.sim&nbsp;~&nbsp;tvec&nbsp;+&nbsp;I(tvec^2))
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;quad&nbsp;=&nbsp;coef(lm1)[3]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ci.quad&nbsp;=&nbsp;confint(lm1)[3,&nbsp;]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;powsimresults[ctr,&nbsp;]&nbsp;=&nbsp;c(nt,&nbsp;sim,&nbsp;quad,&nbsp;ci.quad)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ctr&nbsp;=&nbsp;ctr&nbsp;+&nbsp;1
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculate all the tabulated summary statistics (skipping coverage):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;quad.mean&nbsp;=&nbsp;tapply(powsimresults[,&nbsp;"quad"],&nbsp;nfac,&nbsp;mean)
+&#62;&nbsp;quad.sd&nbsp;=&nbsp;tapply(powsimresults[,&nbsp;"quad"],&nbsp;nfac,&nbsp;sd)
+&#62;&nbsp;nsim&nbsp;=&nbsp;500
+&#62;&nbsp;null.value&nbsp;=&nbsp;0
+&#62;&nbsp;reject.null&nbsp;=&nbsp;(powsimresults[,&nbsp;"quad.hi"]&nbsp;&lt;&nbsp;null.value)&nbsp;|&nbsp;(powsimresults[,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"quad.lo"]&nbsp;&#62;&nbsp;null.value)
+&#62;&nbsp;quad.pow&nbsp;=&nbsp;tapply(reject.null,&nbsp;nfac,&nbsp;sum)/nsim
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Some plots:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;op&nbsp;=&nbsp;par(mfrow&nbsp;=&nbsp;c(2,&nbsp;2))
+&#62;&nbsp;plot(nvec,&nbsp;quad.mean,&nbsp;type&nbsp;=&nbsp;"b")
+&#62;&nbsp;plot(nvec,&nbsp;quad.sd,&nbsp;type&nbsp;=&nbsp;"b")
+&#62;&nbsp;plot(nvec,&nbsp;quad.pow,&nbsp;type&nbsp;=&nbsp;"b")
+&#62;&nbsp;par(op)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5A-025.png" alt="lab5A-025.png" />
+
+<br /><br /><hr /><small>File translated from
+T<sub><font size="-1">E</font></sub>X
+by <a href="http://hutchinson.belmont.ma.us/tth/">
+T<sub><font size="-1">T</font></sub>M</a>,
+version 3.70.<br />On  7 Oct 2005, 11:39.</small>
+</body></html>

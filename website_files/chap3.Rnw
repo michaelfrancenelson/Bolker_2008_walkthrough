@@ -1,0 +1,2368 @@
+<<echo=FALSE,results=hide>>=
+source("chapskel.R")
+library(emdbook)
+library(plotrix)
+library(bbmle)
+@ 
+
+% \todo{Tie-ins to data sets?  Give function expressions
+% in captions for Figures 7-10?}
+
+\section{Summary}
+This chapter first covers the mathematical
+tools and \R\ functions that you need
+in order to figure out the shape and
+properties of a mathematical function
+from its formula.  It then presents a broad
+range of commonly used functions and explains their
+general properties and ecological uses.
+
+\section{Introduction}
+You've now learned how to start exploring
+the patterns in your data.
+The methods introduced in 
+Chapter~2 provide only \emph{qualitative}
+descriptions of patterns: when you explore
+your data, you don't want to commit yourself
+too soon to any particular description of those
+patterns.  In order to tie the patterns to
+ecological theory, however, we often want
+to use particular
+mathematical functions
+to describe the deterministic
+patterns in the data.
+Sometimes phenomenological descriptions,
+intended to describe the pattern as simply 
+and accurately as possible, are sufficient.
+Whenever possible, however, it's better to use mechanistic 
+descriptions with meaningful parameters, derived from
+a theoretical model that you or someone else has invented
+to describe the underlying processes driving the pattern.
+(Remember from Chapter~\ref{chap:intro} that the same function can be
+either phenomenological or mechanistic depending on context.)
+In any case, you need to know something
+about a wide range of possible functions,
+and even more to learn (or remember)
+how to discover the properties of a new
+mathematical function.  This chapter first presents a variety
+of analytical and computational methods for finding out about
+functions, and then goes through a ``bestiary'' of 
+useful functions for ecological modeling.
+The chapter uses differential calculus heavily.
+If you're
+rusty, it would be a good idea to look at the Appendix
+for some reminders.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+data(ReedfrogSizepred)
+attach(ReedfrogSizepred,warn=FALSE)
+logist2 <- function(x,sizep1,sizep2,sizep3) {
+ exp(sizep1*(sizep3-x))/(1+exp(sizep2*sizep1*(sizep3-x)))
+}
+ricker <- function(x,a,b) {
+  a*x*exp(-b*x)
+}
+powricker <- function(x,a,b,g) {
+  b*(x/a*exp(1-x/a))^g
+}
+tricker <- function(x,a,b,t,min=0.0001) {
+  ifelse(x<t,min,b*((x-t)/a*exp(1-(x-t)/a)))
+}
+lik2 <- function(sizep1,sizep2,sizep3) {
+  p.pred <- logist2(TBL,sizep1,sizep2,sizep3)
+  -sum(dbinom(Kill,size=10,prob=p.pred,log=TRUE))
+}
+lik3 <- function(a,b) {
+  p.pred <- ricker(TBL,a,b)
+  -sum(dbinom(Kill,size=10,prob=p.pred,log=TRUE))
+}
+lik4 <- function(a,b,g) {
+  p.pred <- powricker(TBL,a,b,g)
+  -sum(dbinom(Kill,size=10,prob=p.pred,log=TRUE))
+}
+lik5 <- function(a,b,t) {
+  p.pred <- tricker(TBL,a,b,t)
+  -sum(dbinom(Kill,size=10,prob=p.pred,log=TRUE))
+}
+SizePredP <- mle2(lik2,start=list(sizep1=0,sizep2=1,sizep3=12),
+                 method="Nelder-Mead")
+rfit <- mle2(lik3,start=list(a=0.4,b=0.3))
+prfit <- mle2(lik4,start=list(a=0.4,b=0.3,g=1))
+trfit <- mle2(lik5,start=list(a=0.4,b=0.3,t=8))
+##
+op = par(lwd=2,bty="l",las=1,mgp=c(2.5,1,0),cex=1.5)
+sizeplot(TBL,Kill,xlab="Tadpole Size (TBL in mm)",ylab="Number killed",
+         xlim=c(0,40),scale=0.7)
+with(as.list(coef(SizePredP)),curve(logist2(x,sizep1,sizep2,sizep3)*10,add=TRUE))
+with(as.list(coef(rfit)),curve(ricker(x,a,b)*10,add=TRUE,lty=2))
+with(as.list(coef(prfit)),curve(powricker(x,a,b,g)*10,add=TRUE,lty=3))
+## with(as.list(coef(trfit)),curve(tricker(x,a,b,t)*10,add=TRUE,lty=4))
+par(xpd=NA)
+legend(20,5,c("Ricker","power-Ricker","modified logistic"),
+       lty=c(2,3,1),lwd=2,bty="n")
+par(xpd=FALSE)
+par(op)
+detach(ReedfrogSizepred)
+@ 
+\caption{Tadpole predation as a function of size, with some possible
+functions fitted to the data.}
+\label{fig:frog}
+\end{figure}
+
+For example, look again at the data introduced in Chapter~2 on
+predation rate of tadpoles as a function of tadpole size (Figure~\ref{fig:frog}).
+We need to know what kinds of functions might be suitable for
+describing these data.
+The data which are humped in the middle and 
+slightly skewed to the
+right, which probably reflects the
+balance between small tadpoles' ability to hide
+from (or be ignored by) predators large tadpoles'
+ability to escape them or be too big to swallow.
+What functions could fit this pattern?  What do their
+parameters mean in terms of the shapes of the curves?
+In terms of ecology?
+How do we ``eyeball'' the data to obtain approximate
+parameter values, which we will need as a starting point
+for more precise estimation and as a check on our results?
+
+The Ricker function, $y=axe^{-bx}$, is a standard choice
+for hump-shaped ecological patterns that are skewed
+to the right, but Figure~\ref{fig:frog} shows that it
+doesn't fit well.
+Two other choices, the power-Ricker \citep{Persson+1998}
+and a modified logistic equation
+\citep{VoneshBolker2005} and 
+fit pretty well: later in the chapter we will explore some
+strategies for modifying standard functions to make them 
+more flexible.
+
+% The first half of the chapter presents some general strategies
+% for finding out how a function behaves.
+% (You probably learned most 
+% of this material once in a calculus class.)
+% The second half presents a variety of functions
+% that are useful in ecological modeling.
+
+\section{Finding out about functions numerically}
+
+\subsection{Calculating and plotting curves}
+
+You can use \R\ to experiment numerically with different functions.
+It's better to experiment numerically \emph{after} you've got some
+idea of the mathematical and ecological meanings of the parameters:
+otherwise you may end up using the computer as an expensive guessing
+tool.  It really helps to have some idea what the parameters of a
+function mean, so you can eyeball your data first and get a rough idea
+of the appropriate values (and know more about what to tweak, so you
+can do it intelligently).  Nevertheless, I'll show you first some of
+the ways that you can use \R\ to compute and draw pictures of
+functions so that you can sharpen your intuition as we go along.
+
+As examples, I'll use the (negative) exponential function, $ae^{-bx}$
+(\R\ uses \code{exp(x)} for the exponential function $e^x$)
+and the Ricker function, $axe^{-bx}$.  Both
+are very common in ecological modeling.
+
+As a first step, you can simply use \R\ as
+a calculator to plug values
+into functions: e.g. \code{2.3*exp(1.7*2.4)}.
+Since most functions in \R\ operate on vectors
+(or ``are vectorized'', ugly as the expression is), you can calculate values
+for a range of inputs or parameters with a single command.
+
+Next simplest, you can use the \code{curve} function
+to have \R\ compute and plot values
+for a range of inputs: use \code{add=TRUE} to
+add curves to an existing plot (Figure~\ref{fig:curves}).
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+op = par(lwd=2,bty="l",las=1,mgp=c(2.5,1,0),cex=1.5)
+curve(2*exp(-x/2),from=0,to=7,ylim=c(0,2),ylab="",xlab="")
+curve(2*exp(-x),add=TRUE,lty=4)
+curve(x*exp(-x/2),add=TRUE,lty=2)
+curve(2*x*exp(-x/2),add=TRUE,lty=3)
+par(cex=1)
+text(0.4,1.9,expression(paste(y==2*e^{-x/2})),adj=0)
+text(2,1.55,expression(paste(y==x*e^{-x/2})))
+text(2.4,0.84,expression(paste(y==2*x*e^{-x/2})),adj=0)
+text(2.8,0,expression(paste(y==2*e^{-x})))
+par(op)
+@ 
+\caption{Negative exponential 
+($y=ae^{-bx}$) and Ricker 
+($y=axe^{-bx}$) functions: \code{curve}}
+\label{fig:curves}
+\end{figure}
+(Remember the differences between mathematical and \R\ notation:
+the exponential is $ae^{-bx}$ or $a\exp(-bx)$ 
+in math notation, but it's
+\code{a*exp(-b*x)} in \R.  Using math notation in a computer
+context will give you an error.
+Using computer notation in
+a math context is just ugly.)
+
+If you want to keep the values of the function and do other
+things with them, you may want to define your own vector of
+$x$ values (with \code{seq}: call it something like \code{xvec})
+and then use \R\ to compute the values
+(e.g., \code{xvec = seq(0,7,length=100)}).
+<<echo=FALSE>>=
+xvec = seq(0,7,length=100)
+@ 
+
+If the function you want to compute \emph{does not} work on a whole
+vector at once, then you can't use either of the above recipes.  The
+easiest shortcut in this case, and a worthwhile thing to do for other
+reasons, is to write your own small \R\ function that computes the
+value of the function for a given input value, then use
+\code{sapply} to run the function on all of the values in your $x$
+vector.  When you write such an \R\ function, you would typically make
+the input value ($x$) be the first argument, followed by all of the
+other parameters.  It often saves time if you assign \emph{default
+  values} to the other parameters: in the following example, the
+default values of both $a$ and $b$ are~1.
+<<>>=
+ricker = function(x,a=1,b=1) {
+  a*x*exp(-b*x)
+}
+yvals = sapply(xvec,ricker)
+@ 
+(in this case, since \code{ricker} only uses vectorized
+operations, \code{ricker(xvec)} would work just as well).%
+\footnote{The definition of ``input values'' and
+``parameters'' is flexible.
+You can also compute the values of the
+function for a fixed value of $x$ and a range of one
+of the parameters,
+e.g. \code{ricker(1,a=c(1.1,2.5,3.7))}.}
+%or
+%\code{sapply(ricker,c(1.1,2.5,3.7),x=1)} (this last version
+%works because \R\ sees \code{x=1} and 
+%fills in the value of \code{x} first,
+%then decides that the vector of values must correspond to
+%\code{a}, the next argument in the list of arguments).}
+
+\subsection{Plotting surfaces}
+
+Things get a bit more complicated when you consider
+a function of two (or more) variables:
+\R's range of 3D graphics is more limited,
+it is harder to vectorize operations over two different
+parameters, and you may want to compute the value of
+the function so many times that you start to have to
+worry about computational efficiency (this is our first
+hint of the so-called \emph{curse of dimensionality},
+which will come back to haunt us later).
+
+Base \R\ doesn't have exact multidimensional analogues
+of \code{curve} and \code{sapply}, but
+I've supplied some in the \code{emdbook} package:
+\code{curve3d} and \code{apply2d}.
+The \code{apply2d} function takes an
+$x$ vector and a $y$ vector and computes the value
+of a function for all of the combinations, while
+\code{curve3d} does the same thing
+for surfaces that \code{curve} does for curves:
+it computes the function value for a range of values
+and plots it\footnote{For simple functions you can use the
+built-in \code{outer} function, but \code{outer}
+requires vectorized functions: \code{apply2d}
+works around this limitation.}.
+The basic function for plotting surfaces in \R\ is
+\code{persp}.
+You can also use 
+\code{image} or \code{contour}
+to plot 2D graphics, or \code{wireframe} [\code{lattice} package],
+ or \code{persp3d} [\code{rgl} package] as alternatives to \code{persp}.
+With \code{persp} and \code{wireframe},
+you may want to play with the viewing point for the
+3D perspective (modify \code{theta} and \code{phi} 
+for \code{persp} and \code{screen} for \code{wireframe});
+the \code{rgl} package lets you use the mouse to move the viewpoint.
+
+For example, \cite{VoneshBolker2005} suggested a way
+to combine size- and density-dependent tadpole mortality
+risk by using
+a variant logistic function
+of size as in Figure~\ref{fig:frog} to compute an attack rate $\alpha(s)$,
+then assuming that \emph{per capita}
+mortality risk declines with density $N$
+as $\alpha(s)/(1+\alpha(s) H N)$, where $H$ is the handling time
+(Holling type~II functional response).  Supposing we
+already have a function \code{attackrate} that computes
+the attack rate as a function of size, our mortality risk
+function would be:
+<<>>=
+mortrisk = function(N,size,H=0.84) {
+  a <- attackrate(size)
+  a/(1+a*N*H)
+}
+@ 
+The \code{H=0.84} in the function
+definition sets the \emph{default} value of the handling
+time parameter: if I leave \code{H} out
+(e.g. \code{mortrisk(N=10,size=20)}) then
+\R\ will fill in the default values for any missing
+parameters.  Specifying reasonable
+defaults can save a lot of typing.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+cspp <- coef(SizePredP)
+## larval density given as 125/m^2,
+## no predators given as 2/tank=25/m^2 --
+## says larval density was 10/tank
+logist3 <- function(N,size,sizep1=cspp["sizep1"],
+                    sizep2=cspp["sizep2"],
+                    sizep3=cspp["sizep3"],
+                    N.s=10,H=0.84,pred.s=2,days.s=3) {
+  gamma.s <- logist2(size,sizep1,sizep2,sizep3)/(pred.s*days.s)
+  alpha.sd <- gamma.s/(1-gamma.s*N.s*H)
+  alpha.sd/(1+alpha.sd*N*H)
+}                 
+## for N=N.s should give size-specific pred. (gamma.s) back
+## (G/(1-GNH))/(1+GNH/(1-GNH)) =
+## (G/(1-GNH))/((1-GNH+GNH)/(1-GNH)) =
+## (G/(1-GNH))/(1/(1-GNH)) = G.
+op = par(lwd=1,bty="l",las=1,mgp=c(2.5,1,0),cex=1.5)
+par(mar=c(0.5,2.5,0.5,1))
+curve3d(logist3(x,y),from=c(10,0),to=c(40,30),ticktype="detailed",
+        theta=50,r=1e9,xlab="Density",ylab="Size",zlab="")
+par(srt=90,xpd=NA)
+text(-1.8e-9,2.4e-10,"Mortality risk",srt=90)
+##plot(logist3(10,1:40),type="b")
+## points(logist2(1:40,sizep1=cspp["sizep1"],
+##                     sizep2=cspp["sizep2"],
+##                     sizep3=cspp["sizep3"])/6,type="b",col=2,lwd=2)
+#curve3d(ricker.exp.2d(x,y,b2=0.5),from=c(0,0),to=c(8,8),theta=225)
+par(op)
+@
+\caption{%\raggedright 
+Perspective plot for the mortality risk function
+used in \cite{VoneshBolker2005}: \code{curve3d(mortrisk(N=x,size=y),to=c(40,30),theta=50)}.}
+\label{fig:curve3d}
+\end{figure}
+
+
+
+\section{Finding out about functions analytically}
+
+Exploring functions numerically is quick and easy,
+but limited.
+In order to really understand a function's
+properties, you must explore it analytically --- i.e.,
+you have to analyze its equation mathematically.
+To do that and then translate
+your mathematical intuition
+into ecological intuition, you must remember
+some algebra and calculus.
+In particular, this section will explain how to
+take limits at the ends of the range of the function;
+understand the behavior in the middle of the range;
+find critical points;
+understand what the parameters mean and how they
+affect the shape of the curve; and
+approximate the function near an arbitrary point (Taylor expansion).
+These tools will probably 
+tell you everything you need to know about a function.
+
+\subsection{Taking limits: what happens at either end?}
+
+\paragraph{Function values}
+You can take the limit of a function as $x$ gets large ($x \to \infty$)
+or small ($x \to 0$, or $x \to -\infty$ for a function that makes
+sense for negative $x$ values).
+The basic principle is to throw out lower-order terms.
+As $x$ grows, it will eventually grow much larger than
+the largest constant term in the equation.
+Terms with larger powers of $x$ will 
+dwarf smaller powers, and exponentials will dwarf any power.
+If $x$ is very small then you apply the same logic in reverse; constants
+are bigger than (positive) powers of $x$, and negative powers ($x^{-1}=1/x$,
+$x^{-2}=1/x^2$, etc.) are bigger than any constants.  (Negative exponentials go to
+1 as $x$ approaches zero, and 0 as $x$ approaches $\infty$.)
+Exponentials are stronger
+than powers: $x^{-n} e^x$ eventually gets big and
+$x^{n} e^{-x}$ eventually gets small as $x$ increases,
+no matter how big $n$ is.
+
+Our examples of the exponential and the Ricker function are almost too
+simple: we already know that the negative exponential function approaches 1 (or
+$a$, if we are thinking about the form $ae^{-bx}$) as $x$ approaches 0
+and 0 as $x$ becomes large.  The Ricker is slightly more interesting:
+for $x=0$ we can calculate the value of the function directly (to get
+$a\cdot 0 \cdot e^{-b \cdot 0} = 0 \cdot 1 = 0$) or argue
+qualitatively that the $e^{-bx}$ part approaches 1 and the $ax$ part
+approaches zero (and hence the whole function approaches zero).
+For large $x$ we have a concrete example of the $x^n
+e^{-x}$ example given above (with $n=1$) and use our knowledge that
+exponentials always win to say that the $e^{-bx}$ part should dominate
+the $ax$ part to bring the function down to zero in the limit.
+(When you are doing this kind of qualitative reasoning you can
+almost always ignore the constants in the equation.)
+
+As another example, consider the Michaelis-Menten function ($f(x) = ax/(b+x)$).
+We see that as $x$ gets large we can say that $x \gg b$, no matter
+what $b$ is ($\gg$ means ``is much greater than''),
+so $b+x \approx x$, so
+\begin{equation}
+\frac{ax}{b+x} \approx \frac{ax}{x} = a:
+\end{equation}
+the curve reaches a constant value of $a$.
+As $x$ gets small, $b \gg x$ so
+\begin{equation}
+\frac{ax}{b+x} \approx \frac{ax}{b}:
+\end{equation}
+the curve approaches a straight line through the origin, with slope $a/b$.
+As $x$ goes to zero you can see that the value of
+the function is exactly zero ($a \times 0)/(b + 0) = 0/b =
+0$).
+
+For more difficult functions that contain a fraction whose numerator
+and denominator both approach zero or infinity in some limit
+(and thus make it hard to find the limiting value), you can try
+\emph{L'H\^opital's Rule}, which says that the limit of the function
+equals the limit of the ratio of the derivatives of the numerator
+and the denominator: 
+\begin{equation}
+\lim \frac{a(x)}{b(x)} = \lim \frac{a'(x)}{b'(x)}.
+\end{equation}
+(a'(x) is an alternative
+notation for $\frac{da}{dx}$).
+
+\paragraph{Derivatives}
+As well as knowing the limits of the function, we also want
+to know how the function increases or decreases toward them: the limiting slope.
+Does the function shoot up or down
+(a derivative that ``blows up'' to positive or negative infinity),
+change linearly (a derivative that reaches a positive or negative
+constant limiting value), or flatten out (a derivative with limit 0)?
+To figure this out, we need to take the derivative with respect
+to $x$ and then find its limit at the edges of the range.
+
+The derivative of the exponential function $f(x)=ae^{-bx}$ is easy
+(if it isn't, review the Appendix): $f'(x)=-ab e^{-bx}$.
+When $x=0$ this becomes $ab$, and
+when $x$ gets large the $e^{-bx}$ part goes to zero, so the
+answer is zero.  Thus (as you may already have known), the slope of
+the (negative) exponential is negative at the origin ($x=0$)
+and the curve flattens out as $x$ gets large.
+
+The derivative of the Ricker is only a little harder (use the product rule):
+\begin{equation}
+\frac{d axe^{-bx}}{dx} = (a \cdot e^{-bx} + ax \cdot -b e^{-bx})
+= (a - abx) \cdot e^{-bx} = a (1-bx) e^{-bx}.
+\end{equation}
+At zero, this is easy to compute: $a (1-b\cdot 0) e^{-b \cdot 0} = a \cdot 1 \cdot 1 = a$.
+As $x$ goes to infinity, the $(1-bx)$ term becomes
+negative (and large in magnitude)
+and the $e^{-bx}$ term goes toward zero, and we again
+use the fact that exponentials dominate linear and polynomial
+functions to see that the curve flattens out, rather than
+becoming more and more negative and crashing toward negative
+infinity.  (In fact, we already know that the curve approaches
+zero, so we could also have deduced that the curve must flatten
+out and the derivative must approach zero.)
+
+In the case of the Michaelis-Menten function
+it's easy to figure out the slope at zero (because the
+curve becomes approximately $(a/b)x$ for small $x$),
+but in some cases you might have to take the
+derivative first and then set $x$ to 0.   The derivative of
+$ax/(b+x)$ is (using the quotient rule) 
+\begin{equation}
+\frac{(b+x) \cdot a - ax \cdot 1}{(b+x)^2} = 
+\frac{ab+ax- ax}{(b+x)^2} = 
+\frac{ab}{(b+x)^2}
+\end{equation}
+which (as promised) is approximately $a/b$ when $x \approx 0$ (following
+the rule that $(b+x) \approx b$ for $x \approx 0$).
+Using the quotient rule often gives you
+a complicated denominator, but when you are only
+looking for points where the derivative is zero,
+you can calculate when the numerator is zero
+and ignore the derivative.
+
+\subsection{What happens in the middle?  Scale parameters and half-maxima}
+It's also useful to know what happens in the middle of a function's
+range.
+
+For \emph{unbounded} functions (functions that increase
+to $\infty$ or decrease to $-\infty$ at the ends of their
+range), such as the exponential,
+we may not be able to find special points
+in the middle of the range, although it's worth trying
+out special cases such as $x=1$ (or $x=0$ for functions
+that range over negative and positive values) just to see 
+if they have simple
+and interpretable answers.
+
+In the exponential function $ae^{-bx}$, $b$ is a \emph{scale
+parameter}.
+In general, if a parameter appears in a function
+in the form of $bx$ or $x/c$, its effect is to scale the curve
+along the $x$-axis --- stretching it or shrinking it, but keeping the
+qualitative shape the same.  If the scale parameter is in the form
+$bx$ then $b$ has inverse-$x$ units (if $x$ is a time measured in
+hours, then $b$ is a rate per hour with units hour$^{-1}$).
+If it's in the form $x/c$ then $c$ has the same units as $x$, 
+and we can call $c$
+a ``characteristic scale''.  Mathematicians often choose the form $bx$
+because it looks cleaner, while ecologists may prefer $x/c$ because
+it's easier to interpret the parameter when it has the same units as
+$x$.  Mathematically, the two forms are equivalent, with $b=1/c$; this
+is an example of changing the \emph{parameterization} of a function
+(see p.~\pageref{sec:param}).
+
+For the negative exponential function $ae^{-bx}$,
+the characteristic scale $1/b$ is
+also sometimes called the \emph{$e$-folding time} 
+(or $e$-folding distance if $x$ measures distance rather than time).
+The value of the function drops from $a$ at $x=0$
+to $a/e=ae^{-1}$ when $x=1/b$, and drops 
+a further factor of $e=2.718 \ldots \approx 3$
+every time $x$ increases by $1/b$ (Figure~\ref{fig:charscale}).  
+Exponential-based functions
+can also be described in terms of the \emph{half-life} (for
+decreasing functions) or \emph{doubling time} (for increasing functions),
+which is $T_{1/2} = \ln 2/b$. When $x = T_{1/2}$, $y=a/2$, and every time
+$x$ increases by $T_{1/2}$ the function drops by another factor of 2.)
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=10>>=
+op = par(mfrow=c(1,2))
+par(lwd=2,bty="l",las=1,mgp=c(2.5,1,0),cex=1.5)
+curve(exp(-x),axes=FALSE,from=0,to=3,xaxs="i",
+      xlab="",ylab="")
+mgp = par("mgp")
+jot <- 0.015
+ylocs1 = c(2^(-1:-3))
+ylocs2 = exp(-1:-3)
+ylocs = c(ylocs1,ylocs2)
+xlocs1 = -log(ylocs1)
+xlocs2 = -log(ylocs2)
+xlocs = -log(ylocs)
+n = length(ylocs)
+n1 = length(ylocs1)
+n2 = length(ylocs2)
+axis(side=2,at=c(1,ylocs),labels=rep("",length(ylocs)+1))
+ynudge <- c(0,0,0,+0.03,0,-0.05,-0.03)
+par(xpd=NA)
+axis(side=2,at=c(1,ylocs)+ynudge,tck=0,
+     labels=expression(a,a/2,a/4,a/8,a/e,a/e^2,a/e^3),cex.axis=0.75)
+par(xpd=FALSE)
+par(mgp=c(3.5,0.75,0))
+xnudge = c(0,0,0.19,0,-0.06,0)
+axis(side=1,at=c(0,xlocs),labels=rep("",length(xlocs)+1))
+axis(side=1,at=c(0,xlocs+xnudge),tck=0,
+     labels=expression(0,frac(log(2),b),2*frac(log(2),b),3*frac(log(2),b),
+       frac(1,b),frac(2,b),frac(3,b)),cex.axis=0.6,padj=0.5)
+segcols = c("black","black")
+seglty = c(3,2)
+segments(rep(0,n1),ylocs1,xlocs1,ylocs1,lty=seglty[1],col=segcols[1])
+segments(xlocs1,rep(0,n1),xlocs1,ylocs1,lty=seglty[1],col=segcols[1])
+segments(rep(0,n2),ylocs2,xlocs2,ylocs2,lty=seglty[2],col=segcols[2])
+segments(xlocs2,rep(0,n2),xlocs2,ylocs2,lty=seglty[2],col=segcols[2])
+box()
+## corner.label2("a","topleft",inset=0.025)
+legend("topright",
+       c("half-lives",
+         "e-folding\nsteps"),
+       lty=seglty,col=segcols,y.intersp=0.8,bty="n")
+text(2,0.45,expression(f(x)==a*e^{-b*x}),cex=1.5)
+###
+par(mgp=c(2.5,1,0))
+curve(x/(1+x),axes=FALSE,from=0,to=8,xaxs="i",
+      yaxs="i",
+      xlab="",ylab="",ylim=c(0,1.02))
+xlocs <- 1:5
+ylocs <- xlocs/(1+xlocs)
+axis(side=1,at=xlocs,
+     labels=expression(b,2*b,3*b,4*b,5*b),cex.axis=0.75)
+axis(side=2,at=c(ylocs,1),labels=rep("",length(ylocs)+1))
+ynudge <- c(0,0,0,+0.01,+0.04)
+axis(side=2,at=c(ylocs+ynudge,1),tck=0,
+     labels=expression(a/2,2*a/3,3*a/4,4*a/5,5*a/6,a),cex.axis=0.75)
+par(xpd=NA)
+text(7.25,0.5,expression(f(x)==frac(a*x,b+x)),cex=1.5)
+par(xpd=FALSE)
+abline(h=1,lty=2)
+n <- length(xlocs)
+segments(rep(0,n),ylocs,xlocs,ylocs,lty=3,col="black")
+segments(xlocs,rep(0,n),xlocs,ylocs,lty=3,col="black")
+box()
+## corner.label2("b","topleft",inset=0.025,bg="white")
+par(op)
+@ 
+\caption{(Left)
+Half-lives and $e$-folding times for a negative exponential function.
+(Right) Half-maximum and characteristic scales for a Michaelis-Menten function.}
+\label{fig:charscale}
+\end{figure}
+
+For the Ricker function, we already know that the function is
+zero at the origin and approaches zero as $x$ gets large.
+We also
+know that the derivative is positive at zero and negative
+(but the curve is flattening out, so the derivative
+is increasing toward zero), as $x$ gets large.  We can deduce\footnote{Because
+the Ricker function has continuous derivatives} that
+the derivative must be zero and the function must reach a peak
+somewhere in the middle; we will calculate the location and height of
+this peak in the next section.
+
+For functions that reach an asymptote, like the Michaelis-Menten,
+it's useful to know when the function gets ``halfway
+up''---the \emph{half-maximum} is a point on the $x$-axis, not the
+$y$-axis.  We figure this out by figuring out the asymptote (=$a$
+\newcommand{\xhalf}{x_{1/2}}
+for this parameterization of the Michaelis-Menten function) and solving $f(\xhalf) = \mbox{asymptote}/2$.
+In this case
+\begin{eqnarray*}
+\frac{a \xhalf}{b + \xhalf} & = & \frac{a}{2} \\
+a \xhalf & = & \frac{a}{2} \cdot (b + \xhalf) \\
+\left(a-\frac{a}{2}\right) \xhalf & = & \frac{ab}{2} \\
+\xhalf & = & \frac{2}{a} \cdot \frac{ab}{2} = b.
+\end{eqnarray*}
+The half-maximum $b$ is the characteristic scale parameter for
+the Michaelis-Menten: we can see this by dividing the numerator
+and denominator by $b$ to get $f(x)=a \cdot(x/b)/(1+x/b)$.
+As $x$ increases by half-maximum units (from $\xhalf$ to $2 \xhalf$
+to $3 \xhalf$), the function first reaches 1/2 its asymptote, then
+2/3 of its asymptote, then 3/4 \ldots
+(Figure~\ref{fig:charscale}).
+
+We can calculate the half-maximum for any function that
+starts from zero and reaches an asymptote,
+although it may not be a simple expression.
+
+\subsection{Critical points and inflection points}
+We might also be interested in the \emph{critical points}---maxima
+and minima --- of a function.
+To find the critical points of $f$, remember from calculus that they
+occur where $f'(x)=0$; calculate the derivative, solve it for $x$, and plug
+that value for $x$ into $f(x)$ to determine the value (peak height/trough depth)
+at that point\footnote{The derivative is also
+zero at \emph{saddle points}, where the function temporarily
+flattens on its way up or down.}.
+The exponential function is \emph{monotonic}:
+it is always either increasing or decreasing
+depending on the sign of $b$ 
+(its slope is always either positive or negative for all values of $x$) --- %
+so it never has any critical points.
+
+The Michaelis-Menten curve is also monotonic: we figured out above
+that its derivative is $ab /(b+x)^2$.  Since the denominator is
+squared, the derivative is always positive.
+(Strictly speaking, this is only true if $a>0$.  Ecologists are
+usually sloppier than mathematicians, who are careful to point out all
+the assumptions behind a formula (like $a>0$, $b>0$, $x \ge 0$).  I'm
+acting like an ecologist rather than a mathematician, assuming parameters
+and $x$ values are positive unless otherwise stated.)
+While remaining positive, the derivative decreases to zero
+as $x \to \infty$ (because $a/(1+bx)^2 \approx a/(bx)^2 \propto 1/x^2$);
+such a function is called \emph{saturating}.
+
+We already noted that the Ricker function, $ax e^{-bx}$,
+has a peak in the middle somewhere: where is it?
+Using the product rule:
+\begin{eqnarray*}
+\frac{d(a x e^{-bx})}{dx} & = & 0 \\
+a e^{-bx} +  a x (-b e^{-b x}) & = & 0 \\
+(1-bx) a e^{-bx} & = & 0 
+\end{eqnarray*}
+The left-hand side can only be zero if $1-bx=0$, $a=0$ (a
+case we're ignoring as ecologists), or $e^{-bx}=0$.
+The exponential part $e^{-bx}$ is never equal to 0, 
+so we simply solve $(1-bx)=0$ to get $x=1/b$.
+Plugging this value of $x$ back into the equation tells us that
+the height of the peak is $(a/b) e^{-1}$.
+(You may have noticed that the peak location, $1/b$, is
+the same as the characteristic scale for the Ricker equation.)
+
+\subsection{Understanding and changing parameters}
+\label{sec:param}
+Once you know something about a function (its value at zero or other
+special points, value at $\infty$, half-maximum, slope at certain
+points, and the relationship of these values to the parameters), you
+can get a rough idea of the meanings of the parameters.  You will
+find, alas, that scientists rarely stick to one parameterization.
+Reparameterization seems like an awful nuisance --- why can't everyone
+just pick one set of parameters and stick to it? --- but, even setting
+aside historical accidents that make different fields adopt different
+parameterizations, different parameterizations are useful in different
+contexts.  Different parameterizations have different mechanistic
+interpretations.
+For example, we'll see in a minute that the Michaelis-Menten
+function can be interpreted (among other possibilities) in terms of
+enzyme reaction rates and half-saturation constants or in terms of predator attack
+rates and handling times.  Some parameterizations make it easier to
+estimate parameters by eye.
+For example, half-lives are easier to see than
+$e$-folding times, and peak heights are easier to see than slopes.
+Finally, some sets of parameters are strongly correlated, making them
+harder to estimate from data.  For example, if you write the equation
+of a line in the form $y=ax+b$, the estimates of the slope $a$ and the
+intercept $b$ are negatively correlated, but if you instead say
+$y=a(x-\bar x)+\bar y$, estimating the mean value of $y$ rather than
+the intercept, the estimates are uncorrelated.  You just have to brush
+up your algebra and learn to switch among parameterizations.
+
+We know the following things about the
+Michaelis-Menten function $f(x)=ax/(b+x)$:
+the value at zero $f(0)=0$;
+the asymptote $f(\infty)=a$;
+the initial slope $f'(0)=a/b$;
+and the half-maximum (the characteristic scale) is $b$.
+
+You can use these characteristics
+crudely estimate the parameters from the data.
+Find the asymptote and the $x$ value at which $y$ reaches
+half of its maximum value, and you have $a$ and $b$.
+(You can approximate these values by eye, or 
+use a more objective procedure
+such as taking the mean of the last 10\% of the data
+to find the asymptote.)
+Or you can estimate the asymptote and the initial slope
+($\Delta y/\Delta x$), perhaps by linear regression on the
+first 20\% of the data, and then use the algebra
+$b=a/(a/b)=\mbox{asymptote}/(\mbox{initial slope})$ to
+find $b$.
+
+Equally important, you can use this knowledge of the curve to
+translate among algebraic, geometric, and mechanistic meanings.
+When we use the Michaelis-Menten in community ecology as the Holling
+type~II functional response, its formula is 
+$P(N) =\alpha N/(1+\alpha H N)$, where $P$ is the predation rate,
+$N$ is the density of prey,
+$\alpha$ is the
+attack rate, and $H$ is the handling time.  In this context, the
+initial slope is $\alpha$ and the asymptote is $1/H$. Ecologically, this
+makes sense because at low densities the predators will consume prey
+at a rate proportional to the attack rate ($P(N) \approx \alpha N$)
+while at high densities the
+predation rate is entirely limited by handling time 
+($P(N) \approx 1/H$). It makes sense
+that the predation \emph{rate} is the inverse of the handling
+\emph{time}: if it takes half an hour to handle 
+(capture, swallow, digest, etc.) a prey, 
+and essentially no time to locate a new one (since the prey
+density is very high), then the predation rate is
+1/(0.5 hour) = 2/hour.  The half-maximum
+in this parameterization is $1/(\alpha H)$.
+
+\newcommand{\vmax}{v_{\text{\small max}}}
+On the other hand, biochemists 
+usually parameterize the
+function more as we did above, with a maximum rate $\vmax$
+and a half-maximum $K_m$: as a function of concentration $C$,
+$f(C) = \vmax C/(K_m+C)$.
+
+As another example, recall the following facts
+about the Ricker function $f(x)=axe^{-bx}$:
+the value at zero $f(0)=0$;
+the initial slope $f'(0)=a$;
+the horizontal location of the peak is at $x=1/b$;
+and the peak height is $a/(be)$.
+The form we wrote above is algebraically simplest,
+but it might be more convenient to parameterize
+the curve in terms of its peak location (let's say $p=1/b$):
+$y=axe^{-x/p}$.
+Fisheries biologists
+often use another parameterization, $R=Se^{-a_3-bS}$, 
+where $a_3=\ln a$ \citep{QuinnDeriso1999}. 
+
+\subsection{Transformations}
+
+Beyond changing the parameterization, you can also
+change the scales of the $x$ and $y$ axes,
+or in other words \emph{transform} the data.
+For example, in the Ricker example just given
+($R=Se^{-a_3-bS}$), if we plot 
+$-\ln (R/S)$ against $S$, we get the line
+$-\ln (R/S)=a_3+bS$, which makes it easy to see
+that $a_3$ is the intercept and
+$b$ is the slope.
+
+Log transformations of $x$ or $y$ or both are common because they make
+exponential relationships into straight lines.  If $y=ae^{-bx}$ and we
+log-transform $y$ we get $\ln y= \ln a -bx$ (a \emph{semi-log} plot).
+If $y=a x^b$ and we log-transform both $x$ and $y$ we get $\ln y = \ln
+a + b \ln x$ (a \emph{log-log} plot).
+
+Another example: if we have a Michaelis-Menten curve and plot $x/y$
+against $y$, the relationship is
+$$
+x/y = \frac{x}{ax/(b+x)} = \frac{b+x}{a} = \frac{1}{a} \cdot x+ \frac{b}{a},
+$$
+which represents a straight line with slope $1/a$ and intercept
+$b/a$.
+
+All of these transformations are called \emph{linearizing transformations}.
+Researchers often used them in the past 
+to fit straight lines to data when
+when computers were slower.
+Linearizing is not recommended when there is another
+alternative such as nonlinear regression,
+but transformations are still useful.
+Linearized data are 
+easier to eyeball, so you
+can get rough estimates of slopes and intercepts
+by eye, and it is easier to see deviations from linearity
+than from (e.g.) an exponential curve.
+Log-transforming data on geometric growth of a population
+lets you look at \emph{proportional} changes in the population
+size (a doubling of the population is always represented by the
+distance on the $y$ axis).
+Square-root-transforming data on 
+variances lets you look at standard deviations, which are
+measured in the same units as the original data and may thus
+be easier to understand.
+
+The \emph{logit} or \emph{log-odds} function,
+$\mbox{logit}(x) = \log(x/(1-x))$\footnote{Throughout this
+book I use $\log(x)$ to mean the natural logarithm of $x$,
+also called $\ln(x)$ or $\log_e(x)$. If you need a refresher
+on logarithms, see the Appendix.} (\code{qlogis(x)} in \R)
+is another common linearizing transformation.
+If $x$ is a probability then $x/(1-x)$
+is the ratio of the probability of occurrence ($x$) to the probability
+of non-occurrence $1-x$, which is called the odds (for example, a probability
+of 0.1 or 10\% corresponds to odds of 0.1/0.9 = 1/9).
+The logit transformation makes a logistic curve, $y=e^{a+bx}/(1+e^{a+bx})$, into a straight line:
+\begin{equation}
+\begin{split}
+y & =  e^{a+bx}/(1+e^{a+bx})\\
+\left(1+e^{a+bx}\right) y & =  e^{a+bx} \\
+y & =  e^{a+bx} (1-y)\\
+\frac{y}{1-y} & =  e^{a+bx}\\
+\log \left( \frac{y}{1-y} \right) & = a + bx
+\end{split}
+\label{eq:logit}
+\end{equation}
+
+\subsection{Shifting and scaling}
+
+Another way to change or extend functions is to
+shift or scale them.  For example, let's
+start with the simplest
+form of the Michaelis-Menten function, 
+and then see how we can manipulate it
+(Figure~\ref{fig:scaleshift}).
+The function $y=x/(1+x)$ 
+starts at 0, increases to 1 as $x$ gets large,
+and has a half-maximum at $x=1$.
+\begin{itemize}
+\item{We can stretch, or scale, the $x$ axis by dividing
+$x$ by a constant --- this means you have to go
+farther on the $x$ axis to get the same increase
+in $y$.  If we substitute $x/b$ for $x$
+everywhere in the
+function, we get $y=(x/b)/(1+x/b)$.
+Multiplying
+the numerator and denominator by $b$ shows us that
+$y=x/(b+x)$, so $b$ is just the half-maximum, which
+we identified before as the characteristic scale.
+In general a parameter that we multiply or divide
+$x$ by is called a \emph{scale parameter} because
+it changes the horizontal scale of the function.}
+\item{We can stretch or scale the $y$ axis by multiplying
+the whole right-hand side by a constant.
+If we 
+use $a$, we have $y=ax/(b+x)$, which as we have
+seen above moves the asymptote from 1 to $a$.}
+\item{We can shift the whole curve to the right or the left
+by subtracting or adding a constant
+\emph{location parameter} from $x$ throughout;
+subtracting a (positive) constant from $x$ shifts
+the curve to the right. Thus,
+$y=a(x-c)/(b+(x-c))$ hits $y=0$ at $c$ rather than zero.
+(You may want in this case to specify
+that $y=0$ if $y<c$ --- otherwise the function may
+behave badly [try \code{curve(x/(x-1),from=0,to=3)} to
+see what might happen].)}
+\item{We can shift the whole curve up or down
+by adding or subtracting a constant to the right-hand side:
+$y=a(x-c)/(b+(x-c))+d$ would start from $y=d$, rather than zero,
+when $x=c$ (the asymptote also moves up to $a+d$).}
+\end{itemize}
+These recipes can be used with any function.
+For example, \cite{Emlen1996} wanted to describe 
+a relationship between the prothorax
+and the horn length of horned beetles where the smallest beetles
+in his sample had a constant, but non-zero, horn length.
+He added a constant to
+a generalized logistic
+function to shift the curve up from its usual zero baseline.
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op = par(lwd=2,bty="l",las=1,mgp=c(2.5,1,0),cex=1.5)
+tmpf <- function(x) ifelse(x<1,0,
+             1+5*(x-1)/((x-1)+1))
+curve(tmpf,from=1,to=8,xlim=c(0,8),
+      ylim=c(0,6),ylab="",xlab="",axes=FALSE,
+      xaxs="i",yaxs="i")
+text(3.5,3,expression(f(x)==frac(a*(x-c),(b+(x-c)))+d),adj=0)
+axis(side=2,at=c(1,3.5,6),labels=c(expression(d),
+                          expression(d+frac(a,2)),
+                          expression(d+a)))
+axis(side=1,at=c(1,2),labels=c(expression(c),
+                          expression(c+b)))
+segments(2,0,2,3.5,lty=2)
+segments(0,3.5,2,3.5,lty=2)
+box()
+abline(h=1,lty=3)
+abline(v=1,lty=3)
+abline(h=6,lty=3)
+par(op)
+@ 
+\caption{Scaled, shifted Michaelis-Menten function
+$y=a(x-c)/((x-c)+b)+d$.}
+\label{fig:scaleshift}
+\end{figure}
+
+\subsection{Taylor series approximation}
+The \emph{Taylor series} or
+\emph{Taylor approximation} is 
+the single most useful, and used, application of calculus
+for an ecologist. 
+Two particularly useful applications of Taylor approximation
+are understanding the shapes of goodness-of-fit surfaces
+(Chapter~\ref{chap:lik}) and the delta method for estimating errors in estimation
+(Chapter~\ref{chap:opt}).
+
+The Taylor series allows us to 
+approximate a complicated function near
+a point we care about, using a simple
+function --- a polynomial with a few terms, say a
+line or a quadratic curve.  All we have
+to do is figure out the slope (first derivative)
+and curvature (second derivative) at that point.
+Then we can construct a parabola that matches
+the complicated curve in the neighborhood of the
+point we are interested in.
+(In reality the Taylor
+series goes on forever --- we can approximate
+the curve more precisely with a cubic, then a 4th-order
+polynomial, and so forth --- but in practice
+ecologists never go beyond a quadratic expansion.)
+
+Mathematically, the Taylor series says
+that, near a given point $x_0$,
+\begin{equation}
+f(x) \approx f(x_0) + \left. \frac{df}{dx} \right|_{x_0} \cdot (x-x_0)
++ \left. \frac{d^2 f}{dx^2} \right|_{x_0} \cdot \frac{(x-x_0)^2}{2} 
++ \ldots + \left. \frac{d^n f}{dx^n} \right|_{x_0} \cdot
+\frac{(x-x_0)^n}{n!} + \ldots
+\end{equation}
+(the notation $\left. \frac{df}{dx} \right|_{x_0}$ means ``the
+derivative evaluated at the point $x=x_0$'').
+Taylor \emph{approximation} just means dropping terms past the
+second or third.
+
+Figure~\ref{fig:taylor} shows a function
+and the constant, linear, quadratic, and cubic approximations
+(Taylor expansion using 1, 2, or 3 terms).
+The linear approximation is bad but the
+quadratic fit is good very near the
+center point, and the cubic accounts for some
+of the asymmetry in the function.
+In this
+case one more term would match the function exactly,
+since it is actually a 4th-degree polynomial.  
+
+<<echo=FALSE,eval=FALSE>>=
+plot(c(-3,2),c(-15,15),type="n")
+z <- list()
+for (i in 1:8) {
+  z[[i]] <- locator(1)
+  points(z[[i]])
+}
+vals <- matrix(unlist(z),ncol=2,byrow=TRUE)
+vals <- as.data.frame(vals)
+names(vals) <- c("x","y")
+plm <- lm(y~x+I(x^2)+I(x^3)+I(x^4),data=vals)
+xvec <- seq(-3,2,length=100)
+lines(xvec,predict(plm,newdata=data.frame(x=xvec)))
+@ 
+\begin{figure}
+<<echo=FALSE,fig=TRUE,height=8>>=
+op = par(lwd=2,cex=1.5,las=1,bty="l")
+## palette(gray(seq(0,.9,len=8))) ## set colors to gray scales
+a = -0.5; b = -2; c = -0.75; d = 0.333; e = 0.1
+a = -11; b = 0.0046; c = 4.6; d = 0.28; e = -0.36
+a = 2; b = -1.9; c = -5.27; d = -0.119; e = 0.36
+a = -1; b = 3.24; c = 5.23; d = 2.8; e = 0.38
+curve(a+b*x+c*x^2+d*x^3+e*x^4,xlim=c(-3,2),
+     ylim=c(-15,15),lwd=3,ylab="",axes=FALSE)
+axis(side=1)
+axis(side=2,at=seq(-15,5,by=5))
+box()
+## if (!badfonts) {
+ ##  mtext(side=2,at=0,line=2.7,expression(a+b*x+c*x^2+d*x^3+e*x^4),las=0)
+## }
+val <- a
+abline(h=a,lty=2)
+curve(a+b*x,lty=3,add=TRUE)
+curve(a+b*x+c*x^2,lty=4,add=TRUE)
+curve(a+b*x+c*x^2+d*x^3,lty=5,add=TRUE)
+points(0,a,pch=16,lwd=2,col="darkgray")
+par(xpd=NA)
+rect(par("usr")[1],8,par("usr")[2],par("usr")[4],col="white",
+     border=NA)
+legend("topleft",
+       c("f(x)",expression(constant:~~ f(0)),
+         expression(linear:~~f(0)+f*minute(0)*x),
+         expression(quadratic:~~f(0)+f*minute(0)*x+(f*second(0)/2)*x^2),
+         expression(cubic:~~f(0)+f*minute(0)*x+(f*second(0)/2)*x^2+(f*minute*second(0)/6)*x^3)),
+       lty=1:5,lwd=c(3,rep(2,4)),cex=0.75,bty="n")
+par(op)
+@ 
+\caption{Taylor series expansion
+of a 4th-order polynomial.}
+\label{fig:taylor}
+\end{figure}
+
+
+\paragraph{the exponential function}
+The Taylor expansion of the exponential, $e^{rx}$, around $x=0$ is
+$1+r x+(rx)^2/2+ (rx)^3/(2 \cdot 3) \ldots$.
+Remembering this fact rather than working it out every time
+may save you time in the long run --- for example, to understand
+how the Ricker function works for small $x$ we can substitute
+$(1-bx)$ for $e^{-bx}$ (dropping all but the first two terms!)
+to get $y \approx ax - abx^2$: this tells us 
+immediately that the function starts out linear, but
+starts to curve downward right away.
+
+\paragraph{the logistic curve}
+Calculating Taylor approximations is often tedious
+(all those derivatives), but we usually try to do it at some
+special point where a lot of the complexity goes away (such as $x=0$
+for a logistic curve).
+
+The general form of the logistic (p.~\pageref{sec:logistic}) 
+is $e^{a+bx}/(1+e^{a+bx})$,
+but doing the algebra will be simpler if we set $a=0$
+and divide numerator and denominator by $e^{bx}$ to
+get $f(x) = 1/(1+e^{-bx})$.
+Taking the Taylor expansion around $x=0$:
+\begin{itemize}
+\item{$f(0) = 1/2$}
+\item{$f'(x) = \frac{b e^{-bx}}{\left(1+e^{-bx}\right)^2}$
+(writing the formula as $(1+e^{-bx})^{-1}$ and
+using the power rule and the chain rule twice)
+so $f'(0) = (b \cdot 1)/((1+1)^2) = b/4$\footnote{We
+calculate $f'(x)$ and evaluate it at $x=0$.
+We \emph{don't} calculate the derivative of $f(0)$,
+because $f(0)$ is a constant value (1/2 in this case)
+and its derivative is zero.}}
+\item{Using the quotient rule and the chain rule:
+\begin{equation}
+\begin{split}
+f''(0) &  =  \left. \frac{(1+e^{-bx})^2 (-b^2 e^{-bx}) - (be^{-bx})(2 (1+e^{-bx})(-be^{-bx}))}{(1+e^{-bx})^4}\right|_{x=0} \\
+       &  =  \frac{(1+1)^2 (-b^2) - (b)(2 (1+1)(-b))}{(1+1)^4} \\
+       &  =  \frac{ (-4 b^2) +  (4 b^2)}{16} \\
+       &  =   0 
+\end{split}
+\end{equation}}
+\end{itemize}
+
+
+\R\ will actually compute simple derivatives for you (using \code{D}:
+see p.~\pageref{sec:deriv}),
+but it won't simplify them at all.
+If you just need to compute
+the numerical value of the derivative for a particular $b$ and $x$,
+it may be useful, but there are often general answers you'll
+miss by doing it this way (for example, in the above case
+that $f''(0)$ is zero for any value of $b$).
+<<eval=FALSE,echo=FALSE>>=
+d1 = D(expression(1/(1+exp(-b*x))),"t")
+d2 = D(D(expression(1/(1+exp(-b*x))),"t"),"t")
+t = 0
+r = 1
+eval(d1)
+eval(d2) 
+@ 
+
+
+%\begin{figure}
+<<eval=FALSE,echo=FALSE>>=
+op = par(lwd=2,cex=1.5,las=1,bty="l")
+curve(plogis(x),from=-4,to=4,xlab="x",ylab="logistic(x)",axes=FALSE)
+axis(side=1,at=c(-4,0,4))
+axis(side=2,at=c(0,0.5,1))
+abline(h=1/2,lty=2)
+abline(v=0,lty=3)
+abline(a=1/2,b=1/4,lty=3)
+box()
+par(op)
+@ 
+%\caption{Taylor approximation of the logistic function around its midpoint.}
+%\label{fig:logistic}
+%\end{figure}
+
+Stopping to interpret the answer we got from all that tedious
+algebra:
+we find out that the slope of a logistic function around its midpoint
+is $b/2$, and its curvature (second derivative) is zero: that
+means that the midpoint is an \emph{inflection point} (where there
+is no curvature, or where the curve switches from being concave to convex),
+which you might have known already. % (Figure~\ref{fig:logistic})
+It also
+means that near the inflection point, the logistic can be
+closely approximated by a straight line.
+(For $y$ near zero, exponential growth is a good approximation;
+for $y$ near the asymptote, exponential approach to the asymptote
+is a good approximation.)
+
+\section{Bestiary of functions}
+
+The remainder of the chapter describes different families
+of functions that are useful in ecological modeling:
+Table~\ref{tab:functions} gives an overview of their
+qualitative properties.
+This section includes little \R\ code, although the formulas
+should be easy to translate into \R.
+You should skim through this section on the first
+reading to get an idea of what functions are available.
+If you begin to feel bogged down you can skip ahead and
+use the section for reference as needed.
+
+
+\begin{table}
+{\small
+\begin{tabular}{lcp{1.25in}p{1.15in}p{1.5in}}
+\textbf{Function} & \textbf{Range} & \textbf{Left end} & 
+\textbf{Right end} & \textbf{Middle} \\
+\hline
+\multicolumn{5}{l}{\textbf{Polynomials}} \\
+Line & $\{-\infty,\infty\}$ & $y \to \pm\infty$, &
+$y \to \pm \infty$, & monotonic \\
+     &                      & constant slope & constant slope & \\
+Quadratic & $\{-\infty,\infty\}$ & $y \to \pm\infty$, &
+$y \to \pm\infty$, & single  max/min \\
+ & &  accelerating & accelerating & \\
+Cubic & $\{-\infty,\infty\}$ & $y \to \pm\infty$,  &
+$y \to \pm\infty$, & up to 2 max/min \\
+ & &  accelerating & accelerating & \\
+\multicolumn{5}{l}{\textbf{Piecewise polynomials}} \\
+Threshold & $\{-\infty,\infty\}$ & flat &
+flat & breakpoint \\
+Hockey stick & $\{-\infty,\infty\}$ & flat or linear &
+flat or linear & breakpoint \\
+Piecewise linear & $\{-\infty,\infty\}$ & linear &
+linear & breakpoint \\
+\multicolumn{5}{l}{\textbf{Rational}} \\
+Hyperbolic & $\{0,\infty\}$ & $y \to \infty$ & $y \to 0$ & decreasing \\
+           &                & or finite & & \\
+Michaelis-Menten & $\{0,\infty\}$ & $y=0$, linear &
+asymptote & saturating \\
+Holling type~III & $\{0,\infty\}$ & $y=0$, accelerating &
+asymptote & sigmoid \\
+Holling type~IV ($c<0$) & $\{0,\infty\}$ & $y=0$, accelerating &
+asymptote & hump-shaped \\
+\multicolumn{5}{l}{\textbf{Exponential-based}} \\
+Neg. exponential & $\{0,\infty\}$ & $y$ finite & $y \to 0$ &
+decreasing \\
+Monomolecular & $\{0,\infty\}$ & $y=0$, linear & $y \to 0$ &
+saturating \\
+Ricker & $\{0,\infty\}$ & $y=0$, linear & $y \to 0$ & hump-shaped \\
+logistic & $\{0,\infty\}$ & $y$ small, accelerating & asymptote &
+sigmoid  \\
+\multicolumn{5}{l}{\textbf{Power-based}} \\
+Power law & $\{0,\infty\}$ & $y \to 0$ or $\to \infty$ &
+$y \to 0$ or $\to \infty$ & monotonic \\
+von Bertalanffy & \multicolumn{4}{l}{like logistic} \\
+Gompertz & \multicolumn{4}{l}{ditto} \\
+Shepherd & \multicolumn{4}{l}{like Ricker} \\
+Hassell & \multicolumn{4}{l}{ditto} \\
+Non-rectangular hyperbola & \multicolumn{4}{l}{like Michaelis-Menten}
+\end{tabular}
+}
+\caption{Qualitative properties of bestiary functions.}
+\label{tab:functions}
+\end{table}
+
+\subsection{Functions based on polynomials}
+A polynomial is a function of the
+form $y=\sum_{i=0}^n a_i x^i$.
+
+\paragraph{Examples}
+\begin{itemize}
+\item{linear: $f(x)=a+bx$, where $a$ is the intercept (value when
+$x=0$) and $b$ is the slope.  (You know this, right?)}
+\item{quadratic: $f(x)=a+bx+cx^2$.  The simplest nonlinear model.}
+\item{cubics and higher-order polynomials: $f(x) = \sum_i^n a_i x_i$.
+The \emph{order} or \emph{degree} 
+of a polynomial is the highest power that appears in
+it (so e.g. $f(x)=x^5+4x^2+1$ is 5th-order).}
+\end{itemize}
+
+\paragraph{Advantages}
+Polynomials are
+easy to understand.
+They are easy to reduce to simpler functions
+(\emph{nested} functions) by setting some of the parameters to zero.
+High-order polynomials can fit arbitrarily complex data.
+
+\paragraph{Disadvantages}
+On the other hand,
+polynomials are often hard to justify mechanistically (can you
+think of a reason an ecological relationship should
+be a cubic polynomial?).
+They don't level off as
+$x$ goes to $\pm \infty$ --- they always go to -$\infty$ or
+$\infty$ as $x$ gets large.
+Extrapolating polynomials often leads to nonsensically
+large or negative values.
+High-order polynomials can be
+unstable:
+following \citet{Forsythe+1977} %and later made into
+%a MATLAB demo\footnote{
+%\url{http://www.mathworks.com/products/matlab/demos.html?file=/products/demos/shipping/matlab/census.html}}
+you can show that extrapolating a high-order polynomial from a fit to 
+US census data from 1900--2000 predicts a population crash to zero
+around 2015!
+%(Figure~\ref{fig:popcrash})}
+
+%\begin{figure}
+%"Computer Methods for Mathematical Computations",
+% by Forsythe, Malcolm and Moler, published by Prentice-Hall in 1977.
+% G. Forsythe, M. Malcolm, and C. Moler. Computer Methods for
+% Mathematical Computations. Prentice Hall, Inc., 1977.
+% http://www.mathworks.com/products/matlab/demos.html?
+%  file=/products/demos/shipping/matlab/census.html
+<<echo=FALSE,eval=FALSE>>=
+time = seq(1900,2000,by=10)
+pop = c(75.995,91.972,105.711,123.203,131.669,
+     150.697,179.323,203.212,226.505,249.633,281.422)
+plot(time,pop,xlim=c(1900,2020),ylim=c(0,400))
+sct = (time-1950)/50
+orders = c(1:4,8,9)
+polynoms = lapply(orders,
+   function(i) lm(pop~poly(sct,i,raw=TRUE)))
+ptime = 1900:2020
+invisible(mapply(function(m,i) lines(ptime,predict(m,newdata=data.frame(sct=(ptime-1950)/50)),
+             lty=i),polynoms,1:length(orders)))
+             
+pfun <-  function(z) {
+     predict(polynoms[[5]],
+           newdata=data.frame(sct=rep((z-1950)/50,20)))[20]
+}
+u1 = uniroot(pfun, interval=c(1990,2030))$root
+yr = round(u1)
+fracyr = u1 %% 1
+month = floor(fracyr*12)
+t2 = (fracyr-jdate/365)*365*24
+hrs = floor(t2*24)
+mins = (t2-hrs/24)*24*60
+@
+%\caption{The dangers of polynomial fitting: doomsday (according
+%to extrapolation of an 8th-order polynomial fit) arrives on \ldots}
+%\end{figure}
+
+It is sometimes convenient to
+parameterize polynomials differently.
+For example, we could reparameterize
+the quadratic function $y=a_1+a_2 x + a_3 x^2$ as
+$y=a+c(x-b)^2$ (where $a_1=a+cb^2$, $a_2=2cb$, $a_3=c$).
+It's now clear that the curve has its minimum
+at $x=b$ (because $(x-b)^2$ is zero there and
+positive everywhere else), that $y=a$ at the
+minimum, and that $c$ governs how fast the
+curve increases away from its minimum.
+Sometimes polynomials
+can be particularly simple if some of their coefficients
+are zero: $y=bx$ (a line through the origin, or
+\emph{direct proportionality}, for example, or
+$y=cx^2$.  Where a polynomial actually represents proportionality
+or area, rather than being an arbitrary fit to
+data, you can often simplify in this way.
+
+The advantages and disadvantages listed above all concern the
+mathematical and phenomenological properties of polynomials.
+Sometimes linear and quadratic polynomials do actually
+make sense in ecological settings.
+For example, 
+a population or resource that accumulates
+at a constant rate from outside the system
+will grow linearly with time. 
+The rates of
+ecological or physiological processes
+(e.g. metabolic cost or resource availability) that depend on 
+an organism's skin surface or mouth area will
+be a quadratic function of its
+size (e.g. snout-to-vent length or height).
+
+\subsubsection{Piecewise polynomial functions}
+
+You can make polynomials (and other
+functions) more flexible by
+using them as components of \emph{piecewise} functions.
+In this case, different functions apply over different ranges
+of the predictor variable.
+(See p.~\pageref{sec:ifelse} for information on using \R's
+\code{ifelse} function to build piecewise functions.)
+
+\paragraph{Examples}
+\begin{itemize}
+\item{Threshold models: the simplest piecewise function is a
+simple threshold model --- $y=a_1$ if $x$ is less than some threshold
+$T$, and $y=a_2$ if $x$ is greater.
+\cite{HilbornMangel1997}
+use a threshold function in an example
+of the number of eggs a parasitoid lays 
+in a host as a function
+of how many she has left (her ``egg complement''),
+although the original researchers used a logistic
+function instead \citep{RosenheimRosen1991}.}
+\item{The \emph{hockey stick} function
+\citep{BaconWatts1971,BaconWatts1974} is
+a combination of a constant and a linear piece:
+typically either flat and then increasing linearly,
+or linear and then suddenly hitting a plateau. Hockey-stick
+functions have a fairly long history in ecology, at least as
+far back as the 
+definition of the Holling type~I functional response, which is supposed to
+represent foragers like filter feeders that can continually increase
+their uptake rate until they suddenly hit a maximum. Hockey-stick
+models have recently become more popular in fisheries modeling, for
+modeling stock-recruitment curves
+\citep{BarrowmanMyers2000}, and in ecology, for detecting edges
+in landscapes \citep{TomsLesperance2003}%
+\footnote{It is surely only a coincidence that so much significant work on
+hockey-stick functions has been done by Canadians.}.
+Under the name of \emph{self-excitable threshold autoregressive} (SETAR) 
+models, such functions have been used to model density-dependence in
+population dynamic models of lemmings 
+\citep{Framstad+1997}, feral sheep \citep{Grenfell+1998},
+and moose \citep{Post+2002}; in another 
+population dynamic context, \cite{BrannstromSumpter2005} call
+them \emph{ramp} functions.
+}
+\item{Threshold functions are flat (i.e., the slope is zero) on both sides
+of the breakpoint, and hockey sticks are flat
+on one side. More general piecewise linear functions
+have non-zero slope on both sides of the breakpoint $s_1$:
+$$
+y = a_1 + b_1 x
+$$
+for $x<s_1$
+and
+$$
+y = (a_1+ b_1 s_1) + b_2(x-s_1)
+$$
+for $x>s_1$.
+(The extra complications in the formula for $x>s_1$
+ensure that the function is continuous.)
+}
+\item{
+\emph{Cubic splines} are a general-purpose tool for
+fitting curves to data.
+They are \emph{piecewise cubic} functions that join
+together smoothly at transition points called \emph{knots}.  They are
+typically used as purely phenomenological curve-fitting tools, 
+when you want to fit a smooth curve to data but don't particularly
+care about interpreting its ecological meaning \cite{Wood2001,Wood2006}.
+Splines have many of the useful properties of polynomials (adjustable
+complexity or smoothness; simple basic components) without
+their instability.}
+\end{itemize}
+
+\begin{figure}
+%% OLD
+<<echo=FALSE,eval=FALSE>>=
+par(mfrow=c(2,2),mar=c(0,0,0,0),lwd=2,cex=1.5)
+curve(ifelse(x<3,0,3),from=0,to=10,ylim=c(0,8),axes=FALSE,ann=FALSE)
+curve(ifelse(x<5,2,8),add=TRUE,lty=2)
+corner.label("thresholds",adj=0)
+box(col="gray")
+##
+curve(ifelse(x<3,1,1+0.75*(x-3)),from=0,to=10,ylim=c(0,8),axes=FALSE,ann=FALSE)
+curve(ifelse(x<5,x,5),add=TRUE,lty=2)
+corner.label("hockey sticks",adj=0)
+box(col="gray")
+##
+curve(ifelse(x<4,2*x,8-3*(x-4)),from=0,to=10,ylim=c(0,10),axes=FALSE,ann=FALSE)
+curve(ifelse(x<6,0.5*x,3+1.5*(x-6)),add=TRUE,lty=2)
+corner.label("general",adj=0)
+box(col="gray")
+##
+## splines?
+x1 <- 1:6
+y1 <- c(0,2,4,1,2,3)
+s1 <- splinefun(x1,y1)
+curve(s1,axes=FALSE,ann=FALSE,from=0.5,to=6.5)
+points(x1,y1,pch=16)
+y2 <- c(1,1.5,2,2.1,2.2,2.3)
+points(x1,y2,pch=1)
+s2 <- splinefun(x1,y2)
+curve(s2,add=TRUE,lty=2)
+corner.label("splines",adj=0)
+box(col="gray")
+@
+%% NEW
+<<echo=FALSE,fig=TRUE>>=
+par(mfrow=c(2,2),mar=c(0,0,0,0),lwd=2,cex=1.5)
+eqcex=0.9
+curve(ifelse(x<3,0,3),from=1,to=9,ylim=c(-1,5),
+      xlim=c(0,11),axes=FALSE,ann=FALSE,type="s")
+text(0,0,expression(a[1]))
+text(10,3,expression(a[2]))
+segments(3,-0.5,3,3.5,col="gray",lty=2)
+text(3,-1,expression(s[1]))
+corner.label("threshold:",adj=0)
+corner.label(expression(paste(f(x)==a[1]," if ",x<s[1])),adj=0,yoff=0.13,cex=eqcex)
+corner.label(expression(paste(phantom(f(x))==a[2]," if ",x>s[1])),adj=0,yoff=0.21,cex=eqcex)
+box(col="gray")
+##
+##curve(ifelse(x<3,1,1+0.75*(x-3)),from=0,to=10,ylim=c(0,8),axes=FALSE,ann=FALSE)
+curve(ifelse(x<5,x,5),from=0,to=10,xlim=c(-1,12),ylim=c(0,8),axes=FALSE,ann=FALSE)
+corner.label("hockey stick:",adj=0)
+corner.label(expression(paste(f(x)==a*x," if ",x<s[1])),adj=0,yoff=0.13,cex=eqcex)
+corner.label(expression(paste(phantom(f(x))==a*s[1]," if ",x>s[1])),adj=0,yoff=0.21,cex=eqcex)
+segments(5,0.5,5,5.5,col="gray",lty=2)
+segments(c(1,2),c(1,1),c(2,2),c(1,2),col="gray")
+text(2.5,1.5,"a")
+text(5,0,expression(s[1]))
+text(11,5,expression(a*s[1]))
+box(col="gray")
+##
+a=2
+s1=4
+b=0.5
+curve(ifelse(x<s1,a*x,(a*s1)-b*(x-s1)),from=0,to=20,
+      ylim=c(0,12),axes=FALSE,ann=FALSE)
+#curve(ifelse(x<6,0.5*x,3+1.5*(x-6)),add=TRUE,lty=2)
+corner.label("general piecewise linear:",adj=0)
+corner.label(expression(paste(f(x)==a*x," if ",x<s[1])),adj=0,yoff=0.13,cex=eqcex)
+corner.label(expression(paste(phantom(f(x))==a*s[1]-b*(x-s[1])," if ",x>s[1])),
+             adj=0,yoff=0.21,cex=eqcex)
+segments(s1,0.5,s1,9,col="gray",lty=2)
+segments(c(1,2),c(a,a),c(2,2),c(a,2*a),col="gray")
+x1=10
+x2=12
+y1 = a*s1-b*(x1-s1)
+y2 = a*s1-b*(x2-s1)
+segments(c(x1,x1),c(y1,y2),
+         c(x1,x2),c(y2,y2),col="gray")
+text(x1-0.2,(y1+y2)/2,"-b",adj=1)
+text(2.5,3,"a")
+text(4,0,expression(s[1]))
+box(col="gray")
+##
+## splines?
+x1 <- 1:6
+y1 <- c(0,2,4,1,2,3)
+s1 <- splinefun(x1,y1)
+curve(s1,axes=FALSE,ann=FALSE,from=0.5,to=6.5,ylim=c(0,5))
+points(x1,y1,pch=16)
+#y2 <- c(1,1.5,2,2.1,2.2,2.3)
+#points(x1,y2,pch=1)
+#s2 <- splinefun(x1,y2)
+#curve(s2,add=TRUE,lty=2)
+corner.label("splines:",adj=0)
+corner.label("f(x) is complicated",adj=0,yoff=0.13,cex=eqcex)
+box(col="gray")
+@
+\caption{Piecewise polynomial functions:
+the first three (threshold, hockey stick, general piecewise
+linear) are all piecewise linear.  Splines are piecewise cubic;
+the equations are complicated and usually handled by
+software (see \code{?spline} and \code{?smooth.spline}).}
+\label{fig:piecewise}
+\end{figure}
+
+\paragraph{Advantages}
+Piecewise functions make sense if you believe there could be a
+biological switch point.
+For example, in optimal behavior problems
+theory often predicts sharp transitions among different
+behavioral strategies \citep[ch. 4]{HilbornMangel1997}.
+Organisms might decide to switch from growth
+to reproduction, or to migrate between locations, when
+they reach a certain size or when
+resource supply drops below a threshold.
+Phenomenologically,
+using piecewise functions is a simple way to 
+stop functions from dropping below zero or increasing indefinitely
+when such behavior would be unrealistic.
+
+\paragraph{Disadvantages}
+Piecewise functions present some special technical
+challenges for parameter fitting, which probably explains
+why they have only gained attention more recently.
+Using a piecewise function means that the rate of
+change (the derivative) changes suddenly at some point.
+Such a discontinuous change may make sense, for example,
+if the last prey refuge in a reef is filled, but
+transitions in ecological systems usually happen
+more smoothly.
+When thresholds are imposed
+phenomenologically to prevent unrealistic behavior,
+it may be better to go back to the original biological system
+and try to understand what properties of the system would
+actually stop (e.g.) population densities from becoming negative:
+would they hit zero suddenly, or would a gradual approach
+to zero (perhaps represented by an exponential function)
+be more realistic? 
+
+\subsubsection{Rational functions: polynomials in fractions}
+Rational functions are ratios of polynomials,
+$(\sum a_i x^i)/(\sum b_j x^j)$.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+par(mfrow=c(2,2),mar=c(0,0,0,0),lwd=2,cex=1.5,xaxs="i",yaxs="i")
+a=2
+b=1
+curve(a/(b+x),from=0,to=15,ylim=c(0,3),xlim=c(-2,15),axes=FALSE,ann=FALSE)
+corner.label("hyperbolic:",adj=0)
+corner.label(expression(f(x)==frac(a,b+x)),adj=0,yoff=0.17,cex=eqcex)
+text(-1.5,a/b,expression(frac(a,b)),adj=0)
+y1=a/(2*b)
+text(-1.5,y1,expression(frac(a,2*b)),adj=0)
+segments(0.2,y1,3,y1,lty=2,col="gray")
+x1=b
+segments(b,0.25,b,y1+0.25,lty=2,col="gray")
+text(x1,0.1,"b")
+box(col="gray")
+##
+a=1
+b=1
+curve(a*x/(b+x),from=0,to=10,ylim=c(0,b*1.4),
+      xlim=c(0,11),axes=FALSE,ann=FALSE)
+corner.label("Michaelis-Menten:",adj=0)
+corner.label(expression(f(x)==frac(a*x,b+x)),adj=0,yoff=0.17,cex=eqcex)
+text(10.9,a,"a",adj=1)
+segments(0,a,10,a,lty=2,col="gray")
+x1=0.02
+x2=0.4
+y1=a*x1/(b+x1)
+y2=a*x2/(b+x2)
+segments(c(x1,x2),c(y1,y1),c(x2,x2),c(y1,y2),col="gray")
+text(x2+0.04,(y1+y2)/2,expression(frac(a,b)),adj=0,cex=0.7)
+x1=b
+y1=a/2
+segments(0,y1,4,y1,lty=2,col="gray")
+text(4.1,y1,adj=0,expression(frac(a,2)))
+segments(x1,0.15,x1,y1,lty=2,col="gray")
+text(x1+0.1,0.1,"b",adj=0)
+box(col="gray")
+##
+a=1
+b=1
+curve(a*x^2/(b^2+x^2),from=0,to=5.5,ylim=c(0,b*1.4),
+      xlim=c(0,6),axes=FALSE,ann=FALSE)
+corner.label("Holling type III:",adj=0)
+corner.label(expression(f(x)==frac(a*x^2,b^2+x^2)),adj=0,yoff=0.18,cex=eqcex)
+segments(0,a,5.5,a,lty=2,col="gray")
+text(5.9,a,"a",adj=1)
+text(b,0.05,"b")
+segments(b,0.1,b,a/2,lty=2,col="gray")
+segments(0,a/2,b+0.5,a/2,lty=2,col="gray")
+text(b+0.55,a/2,expression(frac(a,2)),adj=0)
+box(col="gray")
+##
+a=1
+b=1
+c=-1.5
+curve(a*x^2/(b+c*x+x^2),from=0,to=5.5,ylim=c(0,3.5),
+      xlim=c(0,6),axes=FALSE,ann=FALSE)
+corner.label("Holling type IV (c<0):",adj=0)
+corner.label(expression(f(x)==frac(a*x^2,b+c*x+x^2)),adj=0,yoff=0.18,cex=eqcex)
+segments(0,a,5.5,a,lty=2,col="gray")
+text(5.9,a,"a",adj=1)
+segments(-2*b/c,0.9,-2*b/c,2.8,col="gray",lty=2)
+text(-2*b/c,0.35,expression(frac(-2*b,c)))
+## text(b,0.05,"b")
+## segments(b,0.1,b,a/2,lty=2,col="gray")
+## segments(0,a/2,b+0.5,a/2,lty=2,col="gray")
+## text(b+0.55,a/2,expression(frac(a,2)),adj=0)
+box(col="gray")
+@
+\caption{Rational functions.}
+\label{fig:rational}
+\end{figure}
+
+\paragraph{Examples}
+\begin{itemize}
+\item{The simplest rational function is the \emph{hyperbolic} function,
+$a/x$; this is often used (e.g.) in models of plant competition, to
+fit seed production as a function of plant density.  A mechanistic
+explanation might be that if resources per unit area are constant, the
+area available to a plant for resource exploitation might be
+proportional to 1/density, which would translate (assuming uptake, allocation etc.
+all stay the same) into a hyperbolically decreasing amount of
+resource available for seed production.  A better-behaved variant of
+the hyperbolic function is $a/(b+x)$, which doesn't go to infinity
+when $x=0$ \citep{PacalaSilander1987,PacalaSilander1990}.}
+\item{The next most complicated, and probably the most famous,
+rational function
+is the \emph{Michaelis-Menten} function: $f(x)=ax/(b+x)$.
+Michaelis and Menten introduced it in the context of enzyme
+kinetics: it is also known, by other names,
+in resource competition theory (as the Monod function),
+predator-prey dynamics (Holling type~II functional response),
+and fisheries biology (Beverton-Holt model).
+It starts at 0 when $x=0$ and
+approaches an asymptote at $a$ as $x$ gets large.
+The only major caveat with this
+function is that it takes surprisingly long to approach its asymptote:
+$x/(1+x)$, which is halfway to its asymptote when $x=1$, still
+reaches 90\% of its asymptote when $x=9$.
+The Michaelis-Menten function can be parameterized in terms of any
+two of the asymptote, half-maximum, initial slope,
+or their inverses.
+
+The mechanism behind the Michaelis-Menten function in biochemistry and
+ecology (Holling type~II) is similar; as substrate (or prey) become
+more common, enzymes (or predators) have to take a larger and larger
+fraction of their time handling rather than searching for new items.
+In fisheries, the Beverton-Holt stock-recruitment 
+function comes from
+assuming that over the course of the season the mortality rate of
+young-of-the-year is a linear function of their density
+\citep{QuinnDeriso1999}.  }
+\item{We can go one more step, going from a linear to a
+quadratic function in the denominator,
+and define a function sometimes known as the
+\emph{Holling type~III} functional response: $f(x)=ax^2/(b^2+x^2)$.  This
+function is \emph{sigmoid}, or S-shaped.
+The asymptote is at $a$; its
+shape is quadratic
+near the origin, starting from zero with slope zero 
+and curvature $a/b^2$;
+and its half-maximum is at $x=b$.
+It can occur mechanistically
+in predator-prey systems
+because of predator switching from rare to common prey,
+predator aggregation, and spatial and other forms of heterogeneity
+\citep{Morris1997}.
+}
+\item{Some ecologists have extended this family still
+further to the \emph{Holling type IV} functional response:
+$f(x)=ax^2/(b+cx+x^2)$.
+\citet{Turchin2003} derives this function (which he
+calls a ``mechanistic sigmoidal functional response'')
+by assuming that the predator attack rate in the Holling type~II
+functional response is itself an increasing, Michaelis-Menten 
+function of prey density -- that is, predators prefer to
+pursue more abundant prey.  In this case, $c>0$.
+If $c<0$, then the Holling type~IV function is \emph{unimodal}
+or ``hump-shaped'', with a maximum at intermediate prey
+density.
+Ecologists have used this version of the Holling type~IV
+phenomenologically to describe situations
+where predator interference or induced prey defenses 
+lead to decreased predator success at high predator density
+\citep{Holt1983,Collings1997,Wilmshust+1999,Chen2004}.
+Whether $c$ is negative or positive,
+the Holling type~IV reaches an asymptote at $a$ as
+$x\to\infty$.
+If $c<0$, then it has a maximum that occurs
+at $x=-2b/c$.
+}
+\item{More complicated rational functions are
+potentially useful but rarely used in ecology.
+The (unnamed) function $y=(a+bx)/(1+cx)$ has been used
+to describe species-area curves \citep{Flather1996,Tjorve2003}.}
+\end{itemize}
+
+\paragraph{Advantages}
+Like polynomials, rational functions are very flexible
+(you can always add more terms in the numerator
+or denominator) and simple to compute;
+unlike polynomials, they can 
+reach finite asymptotes at the ends of their range.
+In many cases, rational functions
+make mechanistic sense, arising naturally from
+simple models of biological processes such as competition
+or predation.
+
+\paragraph{Disadvantages}
+
+Rational functions can be complicated to analyze
+because the quotient rule makes their derivatives complicated.
+Like the Michaelis-Menten function
+they approach their asymptotes very slowly, which 
+makes estimating the asymptote difficult --- although this 
+problem really says more about
+the difficulty of getting enough data rather than
+about the appropriateness of rational functions as models
+for ecological systems.
+Section~\ref{sec:power} shows how to make rational functions
+even more flexible by raising some of their terms to a power,
+at the cost of making them even harder to analyze.
+
+\subsection{Functions based on exponential functions}
+
+\subsubsection{Simple exponentials}
+The simplest examples 
+of functions based on exponentials are the exponential growth
+($a e^{bx}$) or decay ($a e^{-bx}$) and saturating exponential
+growth (\emph{monomolecular}, $a (1-e^{-bx})$).  The monomolecular
+function (so named because it represents the buildup over
+time of the product of a single-molecule
+chemical reaction) is also
+\begin{itemize}
+\item{the \emph{catalytic curve} in 
+infectious disease epidemiology, where it represents the
+change over time in the fraction of a cohort that has been exposed to disease
+\citep{andersonmay1991};}
+\item{the simplest form of the
+\emph{von Bertalanffy} growth curve in
+organismal biology and fisheries, where it arises
+from the competing effects of changes in catabolic
+and metabolic rates with changes in size
+\citep{Essington+2001};}
+\item{the \emph{Skellam model} in population ecology,
+giving the number of offspring in the next
+year as a function of the adult population size this year
+when competition has a particularly simple form
+\citep{Skellam1951,BrannstromSumpter2005}.}
+\end{itemize}
+These functions have two parameters,
+the multiplier $a$ which expresses the starting
+or final size depending on the function,
+and the exponential rate $b$ or ``$e$-folding time'' $1/b$
+(the time it takes to reach $e$ times the initial value,
+or the initial value divided by $e$, depending whether
+$b$ is positive or negative).  
+The $e$-folding time can be expressed as a half-life
+or doubling time ($\ln(2)/b$) as well.  Such
+exponential functions arise naturally
+from any compounding process where 
+the population loses or gains a constant proportion
+per unit time; one example is \emph{Beers' Law} for the decrease in light
+availability with depth in a vegetation canopy \citep{Teh2006}.
+
+The differences in shape between an exponential-based function and its
+rational-function analogue (e.g. the monomolecular curve and the
+Michaelis-Menten function) are usually subtle. Unless you have a lot
+of data you're unlikely to be able to distinguish from the data which
+fits better, and will instead have to choose on the basis of which one
+makes more sense mechanistically, or possibly which is more convenient
+to compute or analyze (Figure~\ref{fig:exponential}).
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op <- par(mfrow=c(2,2),mar=c(0,0,0,0),lwd=2,cex=1.5,xaxs="i",yaxs="i")
+a=1
+b=1
+curve(a*exp(-b*x),from=0,to=3,ylim=c(0,1.3),axes=FALSE,ann=FALSE,
+      xlim=c(-0.5,3))
+corner.label("negative exponential:",adj=0)
+corner.label(expression(paste(f(x)==a*e^{-b*x})),adj=0,yoff=0.13,cex=eqcex)
+text(-0.3,1,adj=1,"a")
+segments(-0.25,a*exp(-1),1.4,a*exp(-1),col="gray",lty=2)
+text(-0.3,a*exp(-1),adj=1,expression(frac(a,e)))
+segments(1/b,0.26,1/b,a*exp(-1),col="gray",lty=2)
+text(1/b,0.15,expression(frac(1,b)))
+box(col="gray")
+##
+a=1
+b=1
+xmax=7
+curve(a*(1-exp(-b*x)),from=0,to=xmax,ylim=c(0,1.5),axes=FALSE,ann=FALSE)
+curve(a*x/(b+x),from=0,to=xmax,add=TRUE,col="gray")
+text(xmax*0.8,0.75,"M-M",col="gray")
+corner.label("monomolecular:",adj=0)
+corner.label(expression(f(x)==a*(1-e^{-b*x})),
+             adj=0,yoff=0.13,cex=eqcex)
+segments(0.3,a,10,a,col="gray",lty=2)
+text(0,a,adj=0,"a")
+x1=0.05
+x2=0.3
+y1=a*(1-exp(-b*x1))
+y2=a*(1-exp(-b*x2))
+segments(c(x1,x2),c(y1,y1),
+         c(x2,x2),c(y1,y2),col="gray")
+text(x2+0.1,(y1+y2)/2,adj=0,expression(a*b))
+box(col="gray")
+##
+a=1
+b=1
+curve(a*x*exp(-b*x),from=0,to=6,ylim=c(0,0.5),axes=FALSE,ann=FALSE)
+corner.label("Ricker:",adj=0)
+corner.label(expression(f(x)==a*x*e^{-b*x}),
+             adj=0,yoff=0.13,cex=eqcex)
+x1=0.01
+x2=0.2
+y1=a*x1*exp(-b*x1)
+y2=a*x2*exp(-b*x2)
+segments(c(x1,x2),c(y1,y1),
+         c(x2,x2),c(y1,y2),col="gray")
+text(x2+0.1,(y1+y2)/2,adj=0,expression(a))
+y1 = a/b*exp(-1)
+segments(1/b,0.1,1/b,y1,col="gray",lty=2)
+text(1/b,0.05,expression(frac(1,b)))
+segments(0,y1,1/b+1,y1,col="gray",lty=2)
+text(1/b+1+0.1,y1,adj=0,expression(frac(a,b)*e^{-1}))
+box(col="gray")
+##
+a=-5
+b=1
+curve(plogis(a+b*x),from=0,to=10,ylim=c(0,1.2),axes=FALSE,ann=FALSE)
+corner.label("logistic:",adj=0)
+corner.label(expression(f(x)==frac(e^{a+b*x},1+e^{a+b*x})),
+             adj=0,yoff=0.17,cex=eqcex)
+x1=-a-0.5
+x2=-a+0.5
+y1=plogis(a+b*x1)
+y2=plogis(a+b*x2)
+segments(c(x1,x2),c(y1,y1),
+         c(x2,x2),c(y1,y2),col="gray")
+text(x2+0.1,(y1+y2)/2,adj=0,expression(frac(b,4)))
+segments(-a/b,0.25,-a/b,0.5,col="gray",lty=2)
+text(-a/b-0.2,0.11,expression(-frac(a,b)),adj=0.5)
+segments(-a/b-1,0.5,-a/b,0.5,col="gray",lty=2)
+text(-a/b-1.2,0.5,adj=1,expression(frac(1,2)))
+segments(10,1,7,1,col="gray",lty=2)
+text(6.9,1,adj=1,1)
+box(col="gray")
+@
+\caption{Exponential-based functions.  
+``M-M'' in the monomolecular figure is
+the Michaelis-Menten function with the
+same asymptote and initial slope.}
+\label{fig:exponential}
+\end{figure}
+
+\subsubsection{Combinations of exponentials with other functions}
+\paragraph{Ricker function}
+The Ricker function,
+$ax \exp(-bx)$,
+is a common model for density-dependent population growth; if
+\emph{per capita} fecundity decreases exponentially with density, then
+overall population growth will follow the Ricker function.
+It starts off growing linearly with slope $a$ and has its maximum
+at $x=1/r$; it's  similar in shape to the generalized
+Michaelis-Menten function ($RN/(1+(aN)^b)$).  It is
+used very widely as a phenomenological model for ecological
+variables that start at zero, increase to a peak, and
+decrease gradually back to zero.
+
+Several authors \citep{Hassell1975,Royama1992,BrannstromSumpter2005}
+have derived Ricker equations for
+the dependence of offspring number on density, assuming
+that adults compete with each other to reduce fecundity;
+Quinn and Deriso (1999, p. 89) derive the
+Ricker equation in a fisheries context,
+assuming that young-of-year compete with each other
+and increase mortality (e.g. via cannibalism).
+%% Suppose each member of the spawning
+%% stock (total size $S$) produces $f$ young fish but
+%% also increases the  mortality rate
+%% of young fish, e.g. because of cannibalism, so
+%% that the \emph{per capita} mortality rate is $a_2+b_2 S$.
+%% If young fish have to survive for time $T$ before they reach reproductive maturity,
+%% then the number of recruits in the next generation
+%% follows a Ricker function of the previous size
+%% of the spawning stock: $R=fe^{-a_2T} \cdot S e^{-b_2 TS}$.
+%% The $fe^{-a_2T}$ term is just our old parameter $a$,
+%% and $b_2 T$ is our parameter $b$; we don't bother
+%% keeping the individual terms $f$, $a_2$, $b_2$ and $T$
+%% separate, even though they have important ecological meanings, because we 
+%% can't estimate them separately from data.
+
+%\begin{center}
+%\includegraphics[width=2in,angle=270]{ricker}
+%\end{center}
+\paragraph{Logistic function}
+\label{sec:logistic}
+There are two widely used parameterizations of the logistic function.
+The first,
+\begin{equation}
+y=\frac{e^{a+bx}}{1+e^{a+bx}}
+\end{equation}
+(or equivalently $y=1/(1+e^{-(a+bx)})$)
+comes from a statistical or phenomenological framework.
+The function goes from 0 at $-\infty$ to 1 at $+\infty$.
+The location parameter $a$
+shifts the curve left or right:
+the half-maximum ($y=0.5$),
+which is also the inflection point, occurs at $x=-a/b$ when
+the term in the exponent is 0.  The 
+scale parameter $b$
+controls the steepness of the curve%
+\footnote{If we reparameterized the function as
+$\exp(b(x-c))/(1+\exp(b(x-c)))$,
+the half-maximum would be at $c$.
+Since $b$ is still the steepness
+parameter, we could then shift
+and steepen the curve independently.}.
+
+The second parameterization comes from
+population ecology:
+\begin{equation}
+n(t) = \frac{K}{1+\left(\frac{K}{n_0}-1 \right) e^{-rt}}
+\label{eq:log-fun}
+\end{equation}
+where $K$ is the carrying capacity, $n_0$ the value at $t=0$, and $r$
+the initial \emph{per capita} growth rate.  
+(The statistical parameterization is less flexible, with only two
+parameters: it has $K=1$, $n_0=e^a/(1+e^a)$, and
+$r=b$.)
+
+The logistic is popular because it's a simple sigmoid
+function (although its rational analogue the Holling type~III
+functional response is also simple) and because it's
+the solution to one of the simplest population-dynamic models, the
+\emph{logistic equation}:
+\begin{equation}
+\frac{dn}{dt} = r n \left(1-\frac{n}{K}\right),
+\label{eq:log-eq}
+\end{equation}
+which says that \emph{per capita} growth rate ($(dn/dt)/n$)
+decreases linearly from
+a maximum of $r$ when $n$ is much less than $K$ to zero when $n=K$.
+Getting from the logistic equation (\ref{eq:log-eq}) to
+the logistic function (\ref{eq:log-fun}) involves solving the
+differential equation by integrating by parts, which is tedious but
+straightforward (see any calculus book, e.g. \cite{Adler2004}).
+
+In \R\ you can write out the logistic function yourself,
+using the \code{exp} function, as \code{exp(x)/(1+exp(x))},
+or you can also use the \code{plogis} function.
+The \emph{hyperbolic tangent} (\code{tanh}) function is another form of the
+logistic.  Its range extends from -1 as $x \to -\infty$ to 1 as $x \to \infty$
+instead of from 0 to 1.
+
+\paragraph{Gompertz function}
+
+The \emph{Gompertz} function, $f(x)=e^{-ae^{-bx}}$,
+is an alternative to the logistic function. 
+Similar to the logistic, it is accelerating
+at $x=0$ and exponentially approaches 1 as $x$ gets
+large, but it is asymmetric --- the inflection point
+or change in curvature occurs $1/e \approx 1/3$ of
+the way up to the asymptote, rather than halfway up.
+In this parameterization the inflection point occurs
+at $x=0$; you may want to shift the curve 
+$c$ units to the right by using $f(x)=e^{-ae^{b(x-c)}}$.
+If we derive the curves from models of organismal
+or population growth, the logistic assumes that growth decreases
+linearly with size or density while the Gompertz assumes
+that growth decreases exponentially.
+%%  inflection point
+%% dy/dx = -a*b*e^bx*y
+%% d2y/dx2 = -a*b*(b e^bx*y + e^bx*
+
+\subsection{Functions involving power laws}
+\label{sec:power}
+So far the polynomials involved in our rational functions
+have been simple linear or quadratic functions.
+Ecological modelers sometimes introduce an
+arbitrary (fractional) power as a
+parameter ($x^b$) instead of having all powers as fixed
+integer values (e.g. $x$, $x^2$ $x^3$); 
+using power laws in this way is often a phenomenological
+way to vary the shape of a curve, although these
+functions can also be derived mechanistically.
+
+Here are some categories of power-law functions.
+\begin{itemize}
+\item{Simple power laws $f(x)=ax^b$ (for non-integer $b$; otherwise
+the function is just a polynomial: Figure~\ref{fig:power}a) 
+often describe allometric
+growth (e.g. reproductive
+biomass as a function of diameter at breast height \citep{Niklas1993},
+or mass as a function of tarsus length in birds);
+or quantities related to metabolic rates \citep{Etienne+2006c};
+or properties of landscapes
+with fractal geometry \citep{Halley+2004};
+or species-area curves \citep{Tjorve2003}.}
+\item{The generalized form of the von Bertalanffy growth
+curve, $f(x) = a (1 - \exp(-k(a-d) t))^{1/(1-d)}$,
+(Figure~\ref{fig:power}b)
+allows for energy assimilation to change as a function
+of mass (assimilation = $\mbox{mass}^d$).  The parameter
+$d$ is often taken to be 2/3, assuming that energy assimilation
+is proportional to length$^2$ and mass is proportional to
+length$^3$ \citep{QuinnDeriso1999}.}
+\item{A generalized form of the
+Michaelis-Menten function, $f(x)=ax/(b+x^c)$
+(Figure~\ref{fig:power}c), 
+describes 
+ecological competition \citep{MaynardSmithSlatkin1973,BrannstromSumpter2005}. 
+This model reduces to the standard Michaelis-Menten curve when $c=1$; $0<c<1$
+corresponds to ``contest'' (undercompensating) competition, while
+$c>1$ corresponds to ``scramble'' (overcompensating) competition (the
+function has an intermediate maximum for finite densities if $c>1$).
+In fisheries, this model is called the \emph{Shepherd
+function}.
+\cite{QuinnDeriso1999} show how the Shepherd function
+emerges as a generalization of the Beverton-Holt
+function when the density-dependent mortality coefficient
+is related to the initial size of the cohort.}
+\item{A related function,
+$f(x)=ax/(b+x)^c$,
+is known in ecology
+as the \emph{Hassell} competition function
+\citep{Hassell1975,BrannstromSumpter2005};
+it is similar 
+to the Shepherd/Maynard-Smith/Slatkin model in allowing Michaelis-Menten ($c=1$),
+undercompensating ($c<1$) or
+overcompensating ($c>1$) dynamics.}
+\item{\cite{Persson+1998} used a generalized Ricker equation,
+$y= A(\frac{x}{x_0} \exp(1-\frac{x}{x_0}))^\alpha$, to describe
+the dependence of attack rate $y$ on predator body mass $x$
+(Figure~\ref{fig:frog} shows the same curve, but as a function
+of \emph{prey} body mass).
+In fisheries, Ludwig and Walters proposed this function
+as a stock-recruitment curve \citep{QuinnDeriso1999}.
+\cite{Bellows1981} suggested a slightly
+different form of the generalized Ricker,
+$y=x  \exp(r(1-(a/x)^\alpha))$ (note the power is inside
+the exponent instead of outside), to
+model density-dependent population growth.}
+\item{\cite{Emlen1996} used a generalized form of the
+logistic, $y = a + b/(1+c \exp(-dx^e))$
+extended both to allow a non-zero intercept
+(via the $a$ parameter, discussed above under ``Scaling and shifting'')
+and also to allow more flexibility in the shape
+of the curve via the power exponent $e$.
+}
+\item{The \emph{non-rectangular hyperbola} 
+(Figure~\ref{fig:power}, lower right),
+based on first principles of
+plant physiology, describes
+the photosynthetic rate $P$ as a function of light
+availability $I$:
+\newcommand{\pmax}{p_{\text{\small max}}}
+$$
+P(I)=\frac{1}{2\theta}\left(\alpha I + \pmax - \sqrt{(\alpha I + \pmax)^2 - 4 \theta \alpha I \pmax} \right),
+$$
+where $\alpha$ is photosynthetic efficiency (and initial
+slope); $\pmax$ is the maximum photosynthetic rate (asymptote);
+and $\theta$ is a sharpness parameter.  In the limit as
+$\theta \to 0$, the function becomes a Michaelis-Menten
+function:
+in the limit as $\theta \to 1$, it becomes piecewise linear
+\citep[a hockey stick:][]{Thornley2002}.
+}
+\end{itemize}
+
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op <- par(mfrow=c(2,2),mar=c(0,0,0,0),lwd=2,cex=1.5,xaxs="i",yaxs="i")
+a=1
+b=2.5
+curve(a*x^b,from=0,to=3,ylim=c(0,20),axes=FALSE,ann=FALSE)
+a2=10
+b2=0.5
+curve(a2*x^b2,from=0,to=3,add=TRUE,lty=2)
+a3=2
+b3=-1
+curve(a3*x^b3,from=0,to=3,add=TRUE,lty=3)
+corner.label("power laws:",adj=0)
+corner.label(expression(f(x)==a*x^b),
+             adj=0,yoff=0.13,cex=eqcex)
+text(1.95,15,expression(paste(0<b,""<1)),adj=1)
+text(2.3,7.1,expression(b>1),adj=0)
+text(2,2.4, expression(b<0))
+box(col="gray")
+##
+a <- 1
+k <- 1
+d <- 2/3
+xmax=15
+curve(a*(1 - exp(-k*(a-d)*x))^(1/(1-d)),from=0,to=xmax,ylim=c(0,1.3),
+      ann=FALSE,axes=FALSE)
+corner.label("von Bertalanffy:",adj=0,yoff=0.06)
+corner.label(expression(f(x)==a*(1-e^{-k*(a-d)*x})^(1/(1-d))),adj=0,yoff=0.145,cex=eqcex)
+segments(xmax-5,a,xmax,a,lty=2,col="gray")
+text(xmax-5.5,a,adj=1,"a")
+box(col="gray")
+## Shepherd, Hassell
+##
+curve(x/(1+x)^1.8,from=0,to=3,ylim=c(0,0.45),axes=FALSE,ann=FALSE,lty=2)
+curve(0.6*x/(1+x^1.8),add=TRUE,lty=1)
+curve(0.8*x*exp(-x),add=TRUE,col="gray")
+text(2,0.13,"Ricker",col="gray",adj=0)
+corner.label("Shepherd, Hassell:",adj=0)
+corner.label(expression(list(f(x)==frac(a*x,b+x^c),f(x)==frac(a*x,(b+x)^c))),adj=0,yoff=0.17,cex=eqcex)
+text(2.8,0.3,"H")
+text(2.8,0.2,"S")
+box(col="gray")
+##
+xi <- 0.9
+alpha <- 1
+pmax <- 20
+curve(1/(2*xi)*(alpha*x+pmax-sqrt((alpha*x+pmax)^2-4*xi*alpha*x*pmax)),from=0,to=200,ylim=c(0,25),
+      ann=FALSE,axes=FALSE)
+curve(20*x/(x+10),add=TRUE,col="gray")
+corner.label("non-rectangular\nhyperbola:",adj=0,yoff=0.09)
+text(154,17.7,"M-M",col="gray")
+box(col="gray")
+@
+\caption{Power-based functions. 
+The lower left panel shows the Ricker function
+for comparison with the Shepherd
+and Hassell functions.
+The lower right shows the Michaelis-Menten
+function for comparison with the 
+non-rectangular hyperbola.}
+\label{fig:power}
+\end{figure}
+
+\paragraph{Advantages}
+Functions incorporating power laws are
+flexible, especially since the power
+parameter is usually added to
+an existing model that already allows for
+changes in location, scale, and curvature.
+In many mechanistically derived 
+power-law functions the value
+of the exponent comes from intrinsic geometric
+or allometric properties of the system and
+hence does not have to be estimated from data.
+
+\paragraph{Disadvantages}
+
+Many different 
+mechanisms can lead to power-law behavior \citep{Mitzenmacher2003}.  
+It can be tempting but is
+often misguided to reason backward from an observed pattern to infer
+something about the meaning of a particular estimated parameter.
+%Unless you have strong evidence that the mechanisms driving the
+%pattern are the same as those incorporated in your model, this
+%practice can get you in trouble.  
+
+Despite the apparent simplicity of the formulas, estimating exponents
+from data can be numerically challenging --- leading to poorly
+constrained or unstable estimates.  The exponent of the non-rectangular
+hyperbola, for example, is notoriously difficult to estimate from
+reasonable-size data sets \citep{Thornley2002}.  (We will see another
+example when we try to fit the Shepherd model to data in Chapter 5.)
+%% cite: 
+
+\subsection{Other possibilities}
+
+Of course, there is no way I can enumerate all the functions
+used even within traditional population ecology, let alone
+fisheries, forestry, ecosystem, and physiological ecology.
+\citet[pp. 90-96]{Haefner1996} gives an alternative list
+of function types, focusing on functions used in physiological
+and ecosystem ecology, while \citet[Table 4.1, p. 81]{Turchin2003} presents
+a variety of predator functional response models.
+Some other occasionally useful categories are:
+\begin{itemize}
+\item{\emph{curves based on other simple mathematical functions}:
+for example, trigonometric functions
+like sines and cosines (useful for fitting
+diurnal or seasonal patterns), and 
+functions based on logarithms.}
+\item{\emph{generalized or ``portmanteau'' functions}:
+these are complex, highly flexible functions that
+reduce to various
+simpler functions for particular parameter values.  For example, the 
+four-parameter Richards growth model
+\begin{equation}
+y = \frac{k_1}{\left(1+\left(\frac{k_1}{k_2}-1 \right) e^{-k_3 k_4 x} \right)^{1/k_4}}
+\end{equation}
+ includes the monomolecular, Gompertz,
+von Bertalanffy, and logistic equation as special cases
+\citep{Haefner1996,Damgaard+2002}. \cite{Schnute1981} defines
+a still more generalized growth model.}
+\item{\emph{Functions not in closed form}:
+sometimes it's possible to define the dynamics of a population,
+but not to find an analytical formula 
+(what mathematicians would call a ``closed-form solution'')
+that describes the resulting population density.
+\begin{itemize}
+\item{The \emph{theta-logistic} or \emph{generalized logistic} model
+\citep{Nelder1961,Richards1959,Thomas+1980,Sibly+2005}
+generalizes the logistic equation by adding a power ($\theta$)
+to the logistic growth equation given above (\ref{eq:log-eq}):
+\begin{equation}
+\frac{dn}{dt} = r n \left(1-\left(\frac{n}{K}\right)^\theta \right).
+\label{eq:tlog-eq}
+\end{equation}
+When $\theta=1$ this equation reduces to the logistic equation,
+but when $\theta \neq 1$ there is no closed-form solution 
+for $n(t)$ --- i.e., no solution we can
+write down in mathematical notation.
+You can use the \texttt{odesolve} library
+in \R\ to solve the differential equation numerically
+and get a value for a particular set of parameters.
+%(Figure~\ref{fig:thetalogistic}).
+%\begin{figure}
+<<eval=FALSE,echo=FALSE>>=
+library(odesolve)
+tlfun = function(parms) { lsoda(y=0.1,times=seq(0,10,by=0.1),parms=parms,
+       func=function(t,y,parms) { r=parms[1]; K=parms[2]; theta=parms[3]; 
+                         list(r*y*(1-(y/K)^theta),NULL) }) }
+x1 = tlfun(c(r=1,K=1,theta=1))
+x2 = tlfun(c(r=1,K=1,theta=2))
+x3 = tlfun(c(r=1,K=1,theta=0.5))
+matplot(x1[,1],cbind(x1[,2],x2[,2],x3[,2]),lty=1:3,col=1,type="l",
+    xlab="Time",ylab="Pop. density")
+text(c(2.25,3.38,5.5),c(0.8,0.84,0.75),
+     c(expression(theta==2),expression(theta==1),expression(theta==0.5)))
+@ 
+%\caption{Theta-logistic function}
+%\label{fig:thetalogistic}
+%\end{figure}
+}
+\item{the \emph{Rogers random-predator equation}
+\citep{Rogers1972,Juliano1993}
+describes the numbers of prey eaten by predators,
+or the numbers of prey remaining after a certain
+amount of time in situations where
+the prey population becomes depleted.
+Like the
+theta-logistic, the Rogers equation has no closed-form
+solution, but it can be written in terms of a
+mathematical function called the \emph{Lambert W function}
+\citep{Corless+1996}.
+(See \code{?lambertW} in the \code{emdbook} package.)
+}
+\end{itemize}
+}
+\end{itemize}
+
+<<echo=FALSE>>=
+## Richards curve:
+richards <- function(x,a,k,delta,gamma) {
+  if (delta==1) {
+    k*exp(-exp(-k*(x-gamma)))
+  } else {
+    a*(1+(delta-1)*exp(-k*(x-gamma)))^(1/(1-delta))
+  }
+}
+@ 
+
+
+\section{Conclusion}
+
+The first part of this
+chapter has shown you (or reminded you of) some basic tools for
+understanding the mathematical functions used in ecological
+modeling --- slopes, critical points, derivatives, and limits %
+ --- and how to use them to figure out
+the basic properties of functions you come across in your work.
+The second part of the chapter briefly reviewed some
+common functions.  You will certainly run across
+others, but the tools from the first part should help you
+figure out how they work.
+
+\newpage
+\section{\R\ supplement}
+
+\subsection{Plotting functions in various ways}
+
+Using \code{curve}:
+
+Plot a Michaelis-Menten curve:
+<<>>=
+curve(2*x/(1+x))
+@
+
+You do need to specify the parameters:
+if you haven't defined \code{a} and \code{b}
+previously \code{curve(a*x/(b+x))} will give
+you an error.  But if you're going to use
+a function a lot it can be helpful to define
+a function:
+
+<<>>=
+micmen <- function(x,a=2,b=1) {
+  a*x/(b+x)
+}
+@ 
+
+Now plot several curves (being more specific
+about the desired $x$ and $y$ ranges;
+changing colors; and adding a horizontal
+line (\code{abline(h=...)}) to show the
+asymptote).
+<<>>=
+curve(micmen(x),from=0,to=8,ylim=c(0,10))
+curve(micmen(x,b=3),add=TRUE,col=2)
+curve(micmen(x,a=8),add=TRUE,col=3)
+abline(h=8)
+@ 
+
+Sometimes you may want to 
+do things more 
+manually.  Use \code{seq}
+to define $x$ values:
+<<>>=
+xvec <- seq(0,10,by=0.1)
+@
+
+Then use vectorization (\code{yvec=micmen(xvec)})
+or \code{sapply} (\code{yvec=sapply(xvec,micmen)})
+or a \code{for} loop 
+(\verb+for i in (1:length(xvec)) { yvec[i]=micmen(xvec[i])}+)
+to calculate the $y$ values.
+Use \code{plot(xvec,yvec,...)},
+\code{lines(xvec,yvec,...)}, etc. (with options you learned 
+in Chapter 2) to produce the graphics.
+
+\subsection{Piecewise functions using \code{ifelse}}
+\label{sec:ifelse}
+The \code{ifelse} function picks one of two
+numbers (or values from one of
+two vectors) depending on a logical condition.  For example,
+a simple threshold function:
+<<>>=
+curve(ifelse(x<5,1,2),from=0,to=10)
+@ 
+or a piecewise linear function:
+<<>>=
+curve(ifelse(x<5,1+x,6-3*(x-5)),from=0,to=10)
+@ 
+You can also nest \code{ifelse} functions
+to get more than one switching point:
+<<>>=
+curve(ifelse(x<5,1+x,
+             ifelse(x<8,
+                    6-3*(x-5),
+                    -3+2*(x-8))),from=0,to=10)
+@ 
+
+\subsection{Derivatives}
+\label{sec:deriv}
+You can use \code{D} or \code{deriv}
+to calculate derivatives (although \R\ will
+not simplify the results at all):
+\code{D} gives you a relatively simple
+answer, while \code{deriv} gives you a function
+that will compute the function and its
+derivative for specified
+values of $x$
+(you need to use \code{attr(...,"grad")}
+to retrieve the derivative --- see below).
+To use either of these functions,
+you need to use \code{expression} to
+stop \R\ from trying to interpret the
+formula.
+
+<<>>=
+D(expression(log(x)),"x")
+D(expression(x^2),"x")
+logist <- expression(exp(x)/(1+exp(x)))
+dfun <- deriv(logist,"x",function.arg=TRUE)
+xvec <- seq(-4,4,length=40)
+y <- dfun(xvec)
+plot(xvec,y)
+lines(xvec,attr(y,"grad"))
+@ 
+
+Use \code{eval} to fill in parameter values:
+<<>>=
+d1 <- D(expression(a*x/(b+x)),"x")
+d1
+eval(d1,list(a=2,b=1,x=3))
+@ 
+
+% \todo{What else do we need to know? More on arguments,
+% default arguments, etc.?}

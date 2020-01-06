@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" prefix="content: http://purl.org/rss/1.0/modules/content/  dc: http://purl.org/dc/terms/  foaf: http://xmlns.com/foaf/0.1/  og: http://ogp.me/ns#  rdfs: http://www.w3.org/2000/01/rdf-schema#  schema: http://schema.org/  sioc: http://rdfs.org/sioc/ns#  sioct: http://rdfs.org/sioc/types#  skos: http://www.w3.org/2004/02/skos/core#  xsd: http://www.w3.org/2001/XMLSchema# ">
+  <meta charset="utf-8" />
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-46401670-1"></script>
+<script>window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments)};gtag("js", new Date());gtag("config", "UA-46401670-1", {"groups":"default","anonymize_ip":true});gtag("config", "UA-46401670-1", {"custom_map":{"metric1":"video_played","metric2":"subjects","metric3":"scroll_depth","metric4":"newsletter_signup","metric5":"search_open","metric6":"book_detail_cover","metric7":"book_detail_look_inside","metric8":"book_detail_edition","metric9":"book_detail_isbn","metric10":"book_detail_add_to_cart","metric11":"book_detail_tab","metric12":"book_detail_cart","metric14":"book_detail_shipping_country","metric15":"book_detail_ebook_link","metric16":"ideas_add_book_to_cart","metric17":"event_add_to_calendar","metric18":"event_add_edition_to_cart"}});gtag("event", "custom", {"video_played":1,"subjects":1,"scroll_depth":1,"newsletter_signup":1,"search_open":1,"book_detail_cover":1,"book_detail_look_inside":1,"book_detail_edition":1,"book_detail_isbn":1,"book_detail_add_to_cart":1,"book_detail_tab":1,"book_detail_cart":1,"book_detail_shipping_country":1,"book_detail_ebook_link":1,"ideas_add_book_to_cart":1,"event_add_to_calendar":1,"event_add_edition_to_cart":1});</script>
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Ecological Models and Data in R" />
+<meta property="og:type" content="book" />
+<meta name="twitter:site" content="@PrincetonUPress" />
+<meta property="og:url" content="https://press.princeton.edu/books/hardcover/9780691125220/ecological-models-and-data-in-r" />
+<meta property="og:title" content="Ecological Models and Data in R" />
+<meta name="twitter:url" content="https://press.princeton.edu/books/hardcover/9780691125220/ecological-models-and-data-in-r" />
+<meta name="twitter:image" content="https://pup-assets.imgix.net/onix/images/9780691125220.jpg?fit=fill&amp;fill=solid&amp;fill-color=ffffff&amp;w=1120&amp;h=600" />
+<meta name="twitter:image:width" content="1120" />
+<meta name="twitter:image:alt" content="Cover of Ecological Models and Data in R" />
+<meta name="twitter:image:height" content="600" />
+<meta property="og:image" content="https://pup-assets.imgix.net/onix/images/9780691125220.jpg?fit=fill&amp;fill=solid&amp;fill-color=ffffff&amp;w=1200&amp;h=630" />
+<meta property="og:image:type" content="image/jpeg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Cover of Ecological Models and Data in R" />
+<meta property="book:isbn" content="9780691125220" />
+<meta property="book:release_date" content="Mon, 07/21/2008 - 12:00" />
+<meta property="book:tag" content="Ecology" />
+<meta property="book:tag" content="Computational Science &amp; Modeling" />
+<meta property="book:tag" content="Ecology" />
+<meta name="Generator" content="Drupal 8 (https://www.drupal.org)" />
+<meta name="MobileOptimized" content="width" />
+<meta name="HandheldFriendly" content="true" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>div#sliding-popup, div#sliding-popup .eu-cookie-withdraw-banner, .eu-cookie-withdraw-tab {background: #0779bf} div#sliding-popup.eu-cookie-withdraw-wrapper { background: transparent; } #sliding-popup h1, #sliding-popup h2, #sliding-popup h3, #sliding-popup p, #sliding-popup label, #sliding-popup div, .eu-cookie-compliance-more-button, .eu-cookie-compliance-secondary-button, .eu-cookie-withdraw-tab { color: #ffffff;} .eu-cookie-withdraw-tab { border-color: #ffffff;}</style>
+<script>var ct_check_js_val = '5935999c3269ebb42a38acfabe943034';</script>
+<link rel="alternate" hreflang="en" href="https://press.princeton.edu/books/hardcover/9780691125220/ecological-models-and-data-in-r" />
+<link rel="shortcut icon" href="/themes/custom/themekit/favicon.ico" type="image/png" />
+<link rel="canonical" href="https://press.princeton.edu/books/hardcover/9780691125220/ecological-models-and-data-in-r" />
+<link rel="shortlink" href="https://press.princeton.edu/node/21913" />
+<link rel="revision" href="https://press.princeton.edu/books/hardcover/9780691125220/ecological-models-and-data-in-r" />
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge"><script type="text/javascript">(window.NREUM||(NREUM={})).loader_config={licenseKey:"dfc88c0895",applicationID:"354317902"};window.NREUM||(NREUM={}),__nr_require=function(n,e,t){function r(t){if(!e[t]){var i=e[t]={exports:{}};n[t][0].call(i.exports,function(e){var i=n[t][1][e];return r(i||e)},i,i.exports)}return e[t].exports}if("function"==typeof __nr_require)return __nr_require;for(var i=0;i<t.length;i++)r(t[i]);return r}({1:[function(n,e,t){function r(){}function i(n,e,t){return function(){return o(n,[u.now()].concat(f(arguments)),e?null:this,t),e?void 0:this}}var o=n("handle"),a=n(4),f=n(5),c=n("ee").get("tracer"),u=n("loader"),s=NREUM;"undefined"==typeof window.newrelic&&(newrelic=s);var p=["setPageViewName","setCustomAttribute","setErrorHandler","finished","addToTrace","inlineHit","addRelease"],d="api-",l=d+"ixn-";a(p,function(n,e){s[e]=i(d+e,!0,"api")}),s.addPageAction=i(d+"addPageAction",!0),s.setCurrentRouteName=i(d+"routeName",!0),e.exports=newrelic,s.interaction=function(){return(new r).get()};var m=r.prototype={createTracer:function(n,e){var t={},r=this,i="function"==typeof e;return o(l+"tracer",[u.now(),n,t],r),function(){if(c.emit((i?"":"no-")+"fn-start",[u.now(),r,i],t),i)try{return e.apply(this,arguments)}catch(n){throw c.emit("fn-err",[arguments,this,n],t),n}finally{c.emit("fn-end",[u.now()],t)}}}};a("actionText,setName,setAttribute,save,ignore,onEnd,getContext,end,get".split(","),function(n,e){m[e]=i(l+e)}),newrelic.noticeError=function(n,e){"string"==typeof n&&(n=new Error(n)),o("err",[n,u.now(),!1,e])}},{}],2:[function(n,e,t){function r(n,e){var t=n.getEntries();t.forEach(function(n){"first-paint"===n.name?a("timing",["fp",Math.floor(n.startTime)]):"first-contentful-paint"===n.name&&a("timing",["fcp",Math.floor(n.startTime)])})}function i(n){if(n instanceof c&&!s){var e,t=Math.round(n.timeStamp);e=t>1e12?Date.now()-t:f.now()-t,s=!0,a("timing",["fi",t,{type:n.type,fid:e}])}}if(!("init"in NREUM&&"page_view_timing"in NREUM.init&&"enabled"in NREUM.init.page_view_timing&&NREUM.init.page_view_timing.enabled===!1)){var o,a=n("handle"),f=n("loader"),c=NREUM.o.EV;if("PerformanceObserver"in window&&"function"==typeof window.PerformanceObserver){o=new PerformanceObserver(r);try{o.observe({entryTypes:["paint"]})}catch(u){}}if("addEventListener"in document){var s=!1,p=["click","keydown","mousedown","pointerdown","touchstart"];p.forEach(function(n){document.addEventListener(n,i,!1)})}}},{}],3:[function(n,e,t){function r(n,e){if(!i)return!1;if(n!==i)return!1;if(!e)return!0;if(!o)return!1;for(var t=o.split("."),r=e.split("."),a=0;a<r.length;a++)if(r[a]!==t[a])return!1;return!0}var i=null,o=null,a=/Version\/(\S+)\s+Safari/;if(navigator.userAgent){var f=navigator.userAgent,c=f.match(a);c&&f.indexOf("Chrome")===-1&&f.indexOf("Chromium")===-1&&(i="Safari",o=c[1])}e.exports={agent:i,version:o,match:r}},{}],4:[function(n,e,t){function r(n,e){var t=[],r="",o=0;for(r in n)i.call(n,r)&&(t[o]=e(r,n[r]),o+=1);return t}var i=Object.prototype.hasOwnProperty;e.exports=r},{}],5:[function(n,e,t){function r(n,e,t){e||(e=0),"undefined"==typeof t&&(t=n?n.length:0);for(var r=-1,i=t-e||0,o=Array(i<0?0:i);++r<i;)o[r]=n[e+r];return o}e.exports=r},{}],6:[function(n,e,t){e.exports={exists:"undefined"!=typeof window.performance&&window.performance.timing&&"undefined"!=typeof window.performance.timing.navigationStart}},{}],ee:[function(n,e,t){function r(){}function i(n){function e(n){return n&&n instanceof r?n:n?c(n,f,o):o()}function t(t,r,i,o){if(!d.aborted||o){n&&n(t,r,i);for(var a=e(i),f=v(t),c=f.length,u=0;u<c;u++)f[u].apply(a,r);var p=s[y[t]];return p&&p.push([b,t,r,a]),a}}function l(n,e){h[n]=v(n).concat(e)}function m(n,e){var t=h[n];if(t)for(var r=0;r<t.length;r++)t[r]===e&&t.splice(r,1)}function v(n){return h[n]||[]}function g(n){return p[n]=p[n]||i(t)}function w(n,e){u(n,function(n,t){e=e||"feature",y[t]=e,e in s||(s[e]=[])})}var h={},y={},b={on:l,addEventListener:l,removeEventListener:m,emit:t,get:g,listeners:v,context:e,buffer:w,abort:a,aborted:!1};return b}function o(){return new r}function a(){(s.api||s.feature)&&(d.aborted=!0,s=d.backlog={})}var f="nr@context",c=n("gos"),u=n(4),s={},p={},d=e.exports=i();d.backlog=s},{}],gos:[function(n,e,t){function r(n,e,t){if(i.call(n,e))return n[e];var r=t();if(Object.defineProperty&&Object.keys)try{return Object.defineProperty(n,e,{value:r,writable:!0,enumerable:!1}),r}catch(o){}return n[e]=r,r}var i=Object.prototype.hasOwnProperty;e.exports=r},{}],handle:[function(n,e,t){function r(n,e,t,r){i.buffer([n],r),i.emit(n,e,t)}var i=n("ee").get("handle");e.exports=r,r.ee=i},{}],id:[function(n,e,t){function r(n){var e=typeof n;return!n||"object"!==e&&"function"!==e?-1:n===window?0:a(n,o,function(){return i++})}var i=1,o="nr@id",a=n("gos");e.exports=r},{}],loader:[function(n,e,t){function r(){if(!x++){var n=E.info=NREUM.info,e=l.getElementsByTagName("script")[0];if(setTimeout(s.abort,3e4),!(n&&n.licenseKey&&n.applicationID&&e))return s.abort();u(y,function(e,t){n[e]||(n[e]=t)}),c("mark",["onload",a()+E.offset],null,"api");var t=l.createElement("script");t.src="https://"+n.agent,e.parentNode.insertBefore(t,e)}}function i(){"complete"===l.readyState&&o()}function o(){c("mark",["domContent",a()+E.offset],null,"api")}function a(){return O.exists&&performance.now?Math.round(performance.now()):(f=Math.max((new Date).getTime(),f))-E.offset}var f=(new Date).getTime(),c=n("handle"),u=n(4),s=n("ee"),p=n(3),d=window,l=d.document,m="addEventListener",v="attachEvent",g=d.XMLHttpRequest,w=g&&g.prototype;NREUM.o={ST:setTimeout,SI:d.setImmediate,CT:clearTimeout,XHR:g,REQ:d.Request,EV:d.Event,PR:d.Promise,MO:d.MutationObserver};var h=""+location,y={beacon:"bam.nr-data.net",errorBeacon:"bam.nr-data.net",agent:"js-agent.newrelic.com/nr-1158.min.js"},b=g&&w&&w[m]&&!/CriOS/.test(navigator.userAgent),E=e.exports={offset:f,now:a,origin:h,features:{},xhrWrappable:b,userAgent:p};n(1),n(2),l[m]?(l[m]("DOMContentLoaded",o,!1),d[m]("load",r,!1)):(l[v]("onreadystatechange",i),d[v]("onload",r)),c("mark",["firstbyte",f],null,"api");var x=0,O=n(6)},{}],"wrap-function":[function(n,e,t){function r(n){return!(n&&n instanceof Function&&n.apply&&!n[a])}var i=n("ee"),o=n(5),a="nr@original",f=Object.prototype.hasOwnProperty,c=!1;e.exports=function(n,e){function t(n,e,t,i){function nrWrapper(){var r,a,f,c;try{a=this,r=o(arguments),f="function"==typeof t?t(r,a):t||{}}catch(u){d([u,"",[r,a,i],f])}s(e+"start",[r,a,i],f);try{return c=n.apply(a,r)}catch(p){throw s(e+"err",[r,a,p],f),p}finally{s(e+"end",[r,a,c],f)}}return r(n)?n:(e||(e=""),nrWrapper[a]=n,p(n,nrWrapper),nrWrapper)}function u(n,e,i,o){i||(i="");var a,f,c,u="-"===i.charAt(0);for(c=0;c<e.length;c++)f=e[c],a=n[f],r(a)||(n[f]=t(a,u?f+i:i,o,f))}function s(t,r,i){if(!c||e){var o=c;c=!0;try{n.emit(t,r,i,e)}catch(a){d([a,t,r,i])}c=o}}function p(n,e){if(Object.defineProperty&&Object.keys)try{var t=Object.keys(n);return t.forEach(function(t){Object.defineProperty(e,t,{get:function(){return n[t]},set:function(e){return n[t]=e,e}})}),e}catch(r){d([r])}for(var i in n)f.call(n,i)&&(e[i]=n[i]);return e}function d(e){try{n.emit("internal-error",e)}catch(t){}}return n||(n=i),t.inPlace=u,t.flag=a,t}},{}]},{},["loader"]);</script>
+    <meta name="format-detection" content="telephone=no">
+
+              <meta name="translated_url" content="">
+      
+    <title>Ecological Models and Data in R | Princeton University Press</title>
+    <link rel="stylesheet" media="all" href="/sites/default/files/css/css_pnDIFv-xWcqp8kLxZE7rj_pkyJcY7g4vTLYmtNMdekI.css?q3gyar" />
+<link rel="stylesheet" media="all" href="/sites/default/files/css/css_JsaS0hRNP2LAi5qSWEWAiA77bp9GMY7WcrL3QLydKoU.css?q3gyar" />
+
+      
+<!--[if lte IE 8]>
+<script src="/sites/default/files/js/js_VtafjXmRvoUgAzqzYTA3Wrjkx9wcWhjP0G4ZnnqRamA.js"></script>
+<![endif]-->
+<script src="/sites/default/files/js/js_Ya0p4v_3Z1JnmqRkL_1ysXkhB7NRhzgbfhFIR_uTALU.js"></script>
+
+      <link rel="apple-touch-icon" sizes="180x180" href="/themes/custom/themekit/apple-touch-icon.png?v=gAelwKMR7J">
+      <link rel="icon" type="image/png" sizes="32x32" href="/themes/custom/themekit/favicon-32x32.png?v=gAelwKMR7J">
+      <link rel="icon" type="image/png" sizes="16x16" href="/themes/custom/themekit/favicon-16x16.png?v=gAelwKMR7J">
+      <link rel="manifest" href="/themes/custom/themekit/site.webmanifest?v=gAelwKMR7J">
+      <link rel="mask-icon" href="/themes/custom/themekit/safari-pinned-tab.svg?v=gAelwKMR7J" color="#ff9326">
+      <link rel="shortcut icon" href="/themes/custom/themekit/favicon.ico?v=gAelwKMR7J">
+      <meta name="apple-mobile-web-app-title" content="Princeton University Press">
+      <meta name="application-name" content="Princeton University Press">
+      <meta name="msapplication-TileColor" content="#ffffff">
+      <meta name="msapplication-config" content="/themes/custom/themekit/browserconfig.xml?v=gAelwKMR7J">
+      <meta name="theme-color" content="#ffffff">
+  </head>
+  <body class="path-node page-node-type-book">
+      <div id="a17">
+    <header class="g-header" data-behavior="header">
+      <div class="g-header__content">
+              <div class="region region-header">
+        
+<a href="#content" class="skip-nav f-landing">Skip Nav</a>
+<nav class="g-header__nav-primary">
+        
+        <ul class="g-header__nav-items f-nav">
+                <li class="g-header__nav-item">
+        <a href="/books" title="Browse Books" data-drupal-link-system-path="books">Books</a>
+              </li>
+                <li class="g-header__nav-item">
+        <a href="/resources" data-drupal-link-system-path="node/6">Resources</a>
+              </li>
+                <li class="g-header__nav-item">
+        <a href="/about" data-drupal-link-system-path="node/578">About</a>
+              </li>
+                <li class="g-header__nav-item">
+        <a href="/ideas" data-drupal-link-system-path="ideas">Ideas</a>
+              </li>
+        </ul>
+  
+
+
+  </nav>
+<nav class="g-header__nav-secondary">
+  <ul class="g-header__nav-items f-nav">
+    <li class="g-header__nav-item g-header__nav-item--menu"><button  data-behavior="menuToggle" aria-label="Open menu">Menu</button></li>
+    <li class="g-header__nav-item g-header__nav-item--subjects"><button data-behavior="subjectsOpen subjects" aria-label="Open subjects" data-subjects-modal="/subjects"><svg class="icon--subject" aria-hidden="true"><use xlink:href="#icon--subject"></use></svg>Subjects</button></li>
+    <li class="g-header__nav-item g-header__nav-item--search"><button data-behavior="searchOpen" aria-label="Open search"><svg class="icon--search" aria-label="Search site"><use xlink:href="#icon--search"></use></svg></button></li>
+    <li class="g-header__nav-item g-header__nav-item--cart"><a href="https://cart.press.princeton.edu/cart" data-cart><svg class="icon--cart" aria-label="Shopping cart"><use xlink:href="#icon--cart"></use></svg></a></li>
+  </ul>
+</nav>
+<div id="block-themekit-branding" class="block block-system block-system-branding-block">
+  
+    
+  <a href="/" class="g-header__logo" title="Home" rel="home">
+  <svg aria-label="Princeton University Press">
+    <use xlink:href="#icon--logo--xs"></use>
+    <use xlink:href="#icon--logo--m"></use>
+    <use xlink:href="#icon--logo--xl"></use>
+    <use xlink:href="#icon--logo--xxl"></use>
+  </svg>
+</a>
+</div>
+
+    </div>
+
+      </div>
+    </header>
+
+      
+        <div class="dialog-off-canvas-main-canvas" data-off-canvas-main-canvas>
+    
+
+<main id="content" role="main">
+  
+  
+
+  
+  
+      
+
+
+    <template id="template-buy">
+        
+<div class="o-buy-book">
+  <aside class="o-buy-book__col o-buy-book__col--img">
+    <div class="o-buy-book__img">
+      <div class="o-buy-book__img-center">
+                                      <span class="o-buy-book__img-spacer" style="padding-bottom: 141%;"></span>
+          <img src="https://pup-assets.imgix.net/onix/images/9780691125220.jpg?w=640" width="640" sizes="(min-width: 1520px) 552px, (min-width: 1300px) calc((((100vw - 440px) / 10) * 4) + 120px), (min-width: 990px) calc((((100vw - 350px) / 10) * 4) + 90px), (min-width: 650px) calc((((100vw - 290px) / 8) * 4) + 90px), (min-width: 414px) calc((((100vw - 160px) / 6) * 12) + 220px),  calc((((100vw - 140px) / 6) * 6) + 100px)" alt="Ecological Models and Data in R">
+              </div>
+    </div>
+  </aside>
+  <div class="o-buy-book__col o-buy-book__col--form">
+    <form action="/add-to-cart" method="get" class="o-form" data-behavior="buyBookShipping" id="bookForm">
+            <h4 class="o-buy-book__title f-h4">Ecological Models and Data in R</h4>
+      <p class="o-buy-book__editors f-secondary"><a href='/our-authors/bolker-benjamin-m'>Benjamin M. Bolker</a></p>
+      <div class="o-buy-book__editions">
+                            <label class="o-buy-book__edition" for="Hardcover_">
+                        <input type="radio" id="Hardcover_" checked name="type" value="Hardcover_" />
+                            <span class="o-buy-book__editionInfo">
+              <span class="f-landing">Hardcover</span>
+              <span class="f-secondary">ISBN: 9780691125220</span>
+            </span>
+            <span class="o-buy-book__editionPrice">
+              <span class="f-landing">$65/£54</span>
+            </span>
+          </label>
+                                          </div>
+                                    <div class="o-buy-book__shipping form-field o-buy-book__shipping--active" data-shipping="Hardcover_">
+              <label for="shipping" class="f-secondary">Shipping to:</label>
+              <span class="o-buy-book__select form-select">
+                <svg class="icon--carrot--down" aria-hidden="true"><use xlink:href="#icon--carrot--down"></use></svg>
+                <select id="shipping" name="shipping">
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >United States</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Canada</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >United Kingdom</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Afghanistan</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Aland Islands</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Albania</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Algeria</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >American Samoa</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Andorra</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Angola</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Anguilla</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Antarctica</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Antigua And Barbuda</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Argentina</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Armenia</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Aruba</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Australia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Austria</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Azerbaijan</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Bahamas</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Bahrain</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Bangladesh</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Barbados</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Belarus</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Belgium</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Belize</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Benin</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Bermuda</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Bhutan</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Bolivia</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Bonaire, Sint Eustatius and Saba</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Bosnia And Herzegovina</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Botswana</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Bouvet Island</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Brazil</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >British Indian Ocean Territory</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Brunei Darussalam</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Bulgaria</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Burkina Faso</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Burundi</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Cabo Verde</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Cambodia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Cameroon</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Cayman Islands</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Central African Republic</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Chad</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Chile</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >China</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Christmas Island</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Cocos (Keeling) Islands</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Colombia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Comoros</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Congo</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Congo, Democratic Republic</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Cook Islands</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Costa Rica</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Cote D&#039;Ivoire</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Croatia</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Cuba</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Curaçao </option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Cyprus</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Czech Republic</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Denmark</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Djibouti</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Dominica</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Dominican Republic</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Ecuador</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Egypt</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >El Salvador</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Equatorial Guinea</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Eritrea</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Estonia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Ethiopia</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Falkland Islands (Malvinas)</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Faroe Islands</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Fiji</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Finland</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >France</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >French Guiana</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >French Polynesia</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >French Southern Territories</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Gabon</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Gambia</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Georgia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Germany</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Ghana</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Gibraltar</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Greece</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Greenland</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Grenada</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Guadeloupe</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Guam</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Guatemala</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Guernsey</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Guinea</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Guinea-Bissau</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Guyana</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Haiti</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Heard Island &amp; Mcdonald Islands</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Holy See (Vatican City State)</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Honduras</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Hong Kong</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Hungary</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Iceland</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >India</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Indonesia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Iran, Islamic Republic Of</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Iraq</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Ireland</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Isle Of Man</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Israel</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Italy</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Jamaica</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Japan</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Jersey</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Jordan</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Kazakhstan</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Kenya</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Kiribati</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Korea</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Korea People&#039; Republic Of</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Kuwait</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Kyrgyzstan</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Lao People&#039;s Democratic Republic</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Latvia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Lebanon</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Lesotho</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Liberia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Libyan Arab Jamahiriya</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Liechtenstein </option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Lithuania</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Luxembourg</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Macao</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Macedonia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Madagascar</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Malawi</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Malaysia</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Maldives</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Mali</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Malta</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Marshall Islands</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Martinique</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Mauritania</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Mauritius</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Mayotte</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Mexico</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Micronesia, Federated States Of</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Moldova</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Monaco</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Mongolia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Montenegro</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Montserrat</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Morocco</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Mozambique</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Myanmar</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Namibia</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Nauru</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Nepal</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Netherlands</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >New Caledonia</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >New Zealand</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Nicaragua</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Niger</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Nigeria</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Niue</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Norfolk Island</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Northern Mariana Islands</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Norway</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Oman</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Pakistan</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Palau</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Palestinian Territory, Occupied</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Panama</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Papua New Guinea</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Paraguay</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Peru</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Philippines</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Pitcairn</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Poland</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Portugal</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Puerto Rico</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Qatar</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Reunion</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Romania</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Russian Federation</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Rwanda</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Saint Barthelemy</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Saint Helena</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Saint Kitts And Nevis</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Saint Lucia</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Saint Martin</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Saint Pierre And Miquelon</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Saint Vincent And Grenadines</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Samoa</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >San Marino</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Sao Tome And Principe</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Saudi Arabia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Senegal</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Serbia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Seychelles</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Sierra Leone</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Singapore</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Sint Maarten (Dutch part) </option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Slovakia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Slovenia</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Solomon Islands</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Somalia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >South Africa</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >South Georgia And Sandwich Isl.</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >South Sudan</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Spain</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Sri Lanka</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Sudan</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Suriname</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Svalbard And Jan Mayen</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Swaziland</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Sweden</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Switzerland</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Syrian Arab Republic</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Taiwan</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Tajikistan</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Tanzania</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Thailand</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Timor-Leste</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Togo</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Tokelau</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Tonga</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Trinidad And Tobago</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Tunisia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Turkey</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Turkmenistan</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Turks And Caicos Islands</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Tuvalu</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Uganda</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Ukraine</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >United Arab Emirates</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >United States Outlying Islands</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Uruguay</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Uzbekistan</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Vanuatu</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Venezuela</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Viet Nam</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Virgin Islands, British</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Virgin Islands, U.S.</option>
+                                      <option value="https://ingramcartav.supadu.com/cart/buy/9780691125220?client_id=26" >Wallis And Futuna</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Western Sahara</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Yemen</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Zambia</option>
+                                      <option value="http://customer.wileyeurope.com/CGI-BIN/lansaweb?procfun+shopcart+shcfn01+funcparms+parmisbn(a0130):9780691125220+parmqty(p0050):1+parmurl(l0560):http://press.princeton.edu/isbn" >Zimbabwe</option>
+                                  </select>
+              </span>
+            </div>
+                                            
+  
+<a class="btn f-button btn--primary o-buy-book__buy-button btn--cta btn--icon" href="#" target="_self" >
+  <svg class="icon--cart" aria-hidden="true"><use xlink:href="#icon--cart"></use></svg>  <span>Add to Cart</span>  <svg class="icon--carrot--right" aria-hidden="true"><use xlink:href="#icon--carrot--right"></use></svg></a>
+
+    
+      <dl class="o-buy-book__external">
+                <dt>
+          <h5 class="f-h5">ebooks</h5>
+        </dt>
+        <dd>
+          <p class="f-landing">Our ebooks editions are available from these online vendors:</p>
+          <ul>
+                                                      
+                                      <li><a href="https://www.amazon.com/dp/B005KLQY6I/?tag=princetonuniv-20" target="_blank" rel="noopener noreferrer" class="f-secondary"><span>Amazon Kindle Store</span><svg class="icon--carrot--right--12px" aria-hidden="true"><use xlink:href="#icon--carrot--right--12px" /></svg></a></li>
+                                      <li><a href="https://play.google.com/store/books/details?id=LtoSZmGzVs4C" target="_blank" rel="noopener noreferrer" class="f-secondary"><span>Google Play eBook Store</span><svg class="icon--carrot--right--12px" aria-hidden="true"><use xlink:href="#icon--carrot--right--12px" /></svg></a></li>
+                                      <li><a href="https://www.kobo.com/ebook/ecological-models-and-data-in-r" target="_blank" rel="noopener noreferrer" class="f-secondary"><span>Rakuten Kobo eBook Store</span><svg class="icon--carrot--right--12px" aria-hidden="true"><use xlink:href="#icon--carrot--right--12px" /></svg></a></li>
+                                      <li><a href="https://itunes.apple.com/book/isbn9781400840908" target="_blank" rel="noopener noreferrer" class="f-secondary"><span>Apple iBooks Store</span><svg class="icon--carrot--right--12px" aria-hidden="true"><use xlink:href="#icon--carrot--right--12px" /></svg></a></li>
+                                      <li><a href="http://search.barnesandnoble.com/booksearch/isbninquiry.asp?EAN=9781400840908" target="_blank" rel="noopener noreferrer" class="f-secondary"><span>Barnes &amp; Noble Nook Store</span><svg class="icon--carrot--right--12px" aria-hidden="true"><use xlink:href="#icon--carrot--right--12px" /></svg></a></li>
+                                          
+          </ul>
+          <p class="f-landing">Many of our ebooks are available through library electronic resources including these platforms:</p>
+          <ul>
+            <li><a href="http://www.jstor.org/action/showPublisher?publisherCode=princetonup" target="_blank" rel="noopener noreferrer" class="f-secondary"><span>Books at JSTOR</span><svg class="icon--carrot--right--12px" aria-hidden="true"><use xlink:href="#icon--carrot--right--12px" /></svg></a></li>
+            <li><a href="http://www.ebscohost.com/ebooks/academic" target="_blank" rel="noopener noreferrer" class="f-secondary"><span>EBSCO Ebooks</span><svg class="icon--carrot--right--12px" aria-hidden="true"><use xlink:href="#icon--carrot--right--12px" /></svg></a></li>
+            <li><a href="http://www.ebrary.com/corp/academic.jsp" target="_blank" rel="noopener noreferrer" class="f-secondary"><span>Ebrary</span><svg class="icon--carrot--right--12px" aria-hidden="true"><use xlink:href="#icon--carrot--right--12px" /></svg></a></li>
+            <li><a href="http://lib.myilibrary.com/browse.aspx" target="_blank" rel="noopener noreferrer" class="f-secondary"><span>MyiLibrary</span><svg class="icon--carrot--right--12px" aria-hidden="true"><use xlink:href="#icon--carrot--right--12px" /></svg></a></li>
+            <li><a href="http://www.public.j.eblib.com/EBLWeb/choice/" target="_blank" rel="noopener noreferrer" class="f-secondary"><span>Ebook Library</span><svg class="icon--carrot--right--12px" aria-hidden="true"><use xlink:href="#icon--carrot--right--12px" /></svg></a></li>
+          </ul>
+        </dd>
+        
+                        </dl>
+    </form>
+  </div>
+</div>
+    </template>
+
+
+<article role="article" about="/books/hardcover/9780691125220/ecological-models-and-data-in-r" class="node node--type-book node--view-mode-full o-book">
+    <header class="o-book__titles">
+        <p class="o-book__category f-secondary">
+            <a href="/subjects/biology">Biology</a>
+        </p>
+        <h1 class="o-book__title f-h4">
+            Ecological Models and Data in R        </h1>
+    </header>
+
+    <div class="o-book__meta">
+        <ul class="o-book__authors f-landing">
+            <li>
+                <a href ="/taxonomy/term/19609">Benjamin M. Bolker</a>
+            </li>
+        </ul>
+
+        
+            </div>
+    <div class="o-book__cover">
+            <div class="m-book-cover">
+                              <span class="m-book-cover__spacer" style="padding-bottom: 141%;"></span>
+        <img src="https://pup-assets.imgix.net/onix/images/9780691125220.jpg?w=640"  width="640" sizes="(min-width: 1520px) 552px, (min-width: 1300px) calc((((100vw - 440px) / 10) * 4) + 120px), (min-width: 990px) calc((((100vw - 350px) / 10) * 4) + 90px), (min-width: 650px) calc((((100vw - 290px) / 8) * 4) + 90px), (min-width: 414px) calc((((100vw - 160px) / 6) * 12) + 220px),  calc((((100vw - 140px) / 6) * 6) + 100px)" alt="">
+          </div>
+    <ul class="m-book-cover__actions">
+                </ul>
+    </div>
+    <div class="o-book__editions">
+        <div class="o-book__smallCover">
+                <div class="m-book-cover">
+                              <span class="m-book-cover__spacer" style="padding-bottom: 141%;"></span>
+        <img src="https://pup-assets.imgix.net/onix/images/9780691125220.jpg?w=640"  width="640" sizes="(min-width: 1520px) 552px, (min-width: 1300px) calc((((100vw - 440px) / 10) * 4) + 120px), (min-width: 990px) calc((((100vw - 350px) / 10) * 4) + 90px), (min-width: 650px) calc((((100vw - 290px) / 8) * 4) + 90px), (min-width: 414px) calc((((100vw - 160px) / 6) * 12) + 220px),  calc((((100vw - 140px) / 6) * 6) + 100px)" alt="">
+          </div>
+    <ul class="m-book-cover__actions">
+                </ul>
+        </div>
+        <div class="m-editions">            <a href="/books/hardcover/9780691125220/ecological-models-and-data-in-r">
+      <h3 id="Hardcover_874572266" class="m-editions__trigger" aria-expanded="true">
+        <span class="m-editions__trigger-title f-link">
+                      Hardcover
+                  </span>
+        <span class="m-editions__trigger-icon">
+            <svg class="icon--plus" aria-hidden="true"><use xlink:href="#icon--plus" /></svg>
+            <svg class="icon--minus" aria-hidden="true"><use xlink:href="#icon--minus" /></svg>
+        </span>
+      </h3>
+    </a>
+    <div id="panel_Hardcover_874572266" class="m-editions__panel" aria-labelledby="Hardcover_874572266" aria-hidden="false">
+      <div class="m-editions__panel-content">
+        
+<div class="m-edition-info" data-behavior="editionShowMore">
+  <dl class="m-edition-info__attrs f-secondary">
+                            <dt class="">Price:</dt>
+            <dd class="">$65.00 / £54.00</dd>
+                                                    <dt class="">ISBN:</dt>
+          <dd class="">
+              <button class="copyISBN f-secondary" data-behavior="copyISBN" data-isbn="  9780691125220
+">  9780691125220
+<svg class="icon--copy" aria-hidden="true" data-behavior="tooltip" data-tooltip="Copy ISBN"><use xlink:href="#icon--copy" /></svg></button>
+
+                      </dd>
+                                      <dt class="">Published:</dt>
+            <dd class="">07/21/2008</dd>
+                                                  <dt class="">Copyright:</dt>
+            <dd class="">  2008
+</dd>
+                                                  <dt class="">Pages:</dt>
+            <dd class="">  408
+</dd>
+                                                  <dt class="">Size:</dt>
+            <dd class="">7 x 10 in.</dd>
+                                              </dl>
+  </div>
+      </div>
+    </div>
+          <a href="/books/ebook/9781400840908/ecological-models-and-data-in-r">
+      <h3 id="eBook_874572266" class="m-editions__trigger" aria-expanded="false">
+        <span class="m-editions__trigger-title f-link">
+                      ebook
+                  </span>
+        <span class="m-editions__trigger-icon">
+            <svg class="icon--plus" aria-hidden="true"><use xlink:href="#icon--plus" /></svg>
+            <svg class="icon--minus" aria-hidden="true"><use xlink:href="#icon--minus" /></svg>
+        </span>
+      </h3>
+    </a>
+    <div id="panel_eBook_874572266" class="m-editions__panel" aria-labelledby="eBook_874572266" aria-hidden="true">
+      <div class="m-editions__panel-content">
+        
+<div class="m-edition-info" data-behavior="editionShowMore">
+  <dl class="m-edition-info__attrs f-secondary">
+                            <dt class="">Price:</dt>
+            <dd class="">$65.00 / £54.00</dd>
+                                                    <dt class="">ISBN:</dt>
+          <dd class="">
+              <button class="copyISBN f-secondary" data-behavior="copyISBN" data-isbn="  9780691125220
+">  9780691125220
+<svg class="icon--copy" aria-hidden="true" data-behavior="tooltip" data-tooltip="Copy ISBN"><use xlink:href="#icon--copy" /></svg></button>
+
+                      </dd>
+                                      <dt class="">Published:</dt>
+            <dd class="">07/21/2008</dd>
+                                                  <dt class="">Copyright:</dt>
+            <dd class="">  2008
+</dd>
+                                                  <dt class="">Pages:</dt>
+            <dd class="">  408
+</dd>
+                                                  <dt class="">Size:</dt>
+            <dd class="">7 x 10 in.</dd>
+                                              </dl>
+  </div>
+      </div>
+    </div>
+  </div>
+
+                    
+  
+<a class="btn f-button btn--primary o-book__buy-button btn--cta btn--icon" href="#buy" data-behavior="buyBook buyBookAutoOpen" >
+  <svg class="icon--cart" aria-hidden="true"><use xlink:href="#icon--cart"></use></svg>  <span>Buy This</span>  <svg class="icon--carrot--right" aria-hidden="true"><use xlink:href="#icon--carrot--right"></use></svg></a>
+        
+        <ul class="o-book__cta-list">
+                                                    <li class="o-book__cta-list-item f-secondary">
+                    <a href="https://pup-assets.imgix.net/onix/images/9780691125220.jpg" download="https://pup-assets.imgix.net/onix/images/9780691125220.jpg" target="_blank">Download Cover</a>
+                </li>
+                    </ul>
+    </div>
+    <div class="o-book__share">
+        <div class="m-sharer m-sharer--horizontal" data-behavior="sharer sharerTrigger">
+  <button class="m-sharer__trigger" id="sharer_trigger" aria-expanded="false" data-sharer-trigger>
+    <span class="m-sharer__label m-sharer__label--secondary">Share</span>
+    <svg class="icon--external" aria-label="Show sharing options">
+      <use xlink:href="#icon--external"></use>
+    </svg>
+  </button>
+  <ul class="m-sharer__links" aria-labelledby="sharer_trigger" aria-hidden="true" data-sharer-links>
+    <li><a href="#" data-sharePageLinks="facebook" tabindex="-1" data-behavior="tooltip" data-tooltip="Share via Facebook"><svg class="icon--facebook" aria-label="Share via facebook"><use xlink:href="#icon--facebook"></use></svg></a></li>
+    <li><a href="#" data-sharePageLinks="twitter" tabindex="-1" data-behavior="tooltip" data-tooltip="Share via Twitter"><svg class="icon--twitter" aria-label="Share via twitter"><use xlink:href="#icon--twitter"></use></svg></a></li>
+    <li><a href="#" data-sharePageLinks="email" tabindex="-1" data-behavior="tooltip" data-tooltip="Share via email"><svg class="icon--email" aria-label="Share via email"><use xlink:href="#icon--email"></use></svg></a></li>
+    <li class="m-sharer__close">
+      <button class="m-sharer__closeBtn" data-sharer-closer>
+        <svg aria-hidden="true" class="icon--close"><use xlink:href="#icon--close" /></svg>
+      </button>
+    </li>
+  </ul>
+</div>
+    </div>
+
+    <nav class="o-book__nav" data-behavior="tabNav">
+        <div class="o-book__nav-scroller">
+            <ul>
+                <li class="s-active">
+                    <a href="#overview" id="overview_trigger" class="f-secondary" aria-expanded="true">Overview</a>
+                </li>
+                                                    <li>
+                        <a href="#authors" id="authors_trigger" class="f-secondary" aria-expanded="false">Author(s)</a>
+                    </li>
+                                                    <li>
+                        <a href="#reviews" id="reviews_trigger" class="f-secondary" aria-expanded="false">Reviews
+                            <sup>6</sup>
+                        </a>
+                    </li>
+                                            </ul>
+        </div>
+    </nav>
+
+    <div class="o-book__body" id="body" data-body-tabs="data-body-tabs">
+        <div id="overview" class="o-book__body-tab o-blocks s-active" aria-labelledby="overview_trigger" aria-hidden="false" data-body-tab="data-body-tab">
+            
+            
+    <p><i>Ecological Models and Data in R</i> is the first truly practical introduction to modern statistical methods for ecology. In step-by-step detail, the book teaches ecology graduate students and researchers everything they need to know in order to use maximum likelihood, information-theoretic, and Bayesian techniques to analyze their own data using the programming language R. Drawing on extensive experience teaching these techniques to graduate students in ecology, Benjamin Bolker shows how to choose among and construct statistical models for data, estimate their parameters and confidence limits, and interpret the results. The book also covers statistical frameworks, the philosophy of statistical modeling, and critical mathematical functions and probability distributions. It requires no programming background&thinsp;&#8212;&thinsp;only basic calculus and&nbsp;statistics.</p><p> <ul><br> <li>Practical, beginner-friendly introduction to modern statistical techniques for ecology using the programming language&nbsp;R </li><br> <li>Step-by-step instructions for fitting models to messy, real-world&nbsp;data </li><br> <li>Balanced view of different statistical&nbsp;approaches </li><br> <li>Wide coverage of techniques&thinsp;&#8212;&thinsp;from simple (distribution fitting) to complex (state-space&nbsp;modeling) </li><br> <li>Techniques for data manipulation and graphical&nbsp;display </li><br> <li>Companion Web site with data and R code for all&nbsp;examples</li><br> </ul></p>
+    
+
+            
+                    </div>
+        <div id="authors" class="o-book__body-tab o-blocks" aria-labelledby="authors_trigger" aria-hidden="true" data-body-tab="data-body-tab">
+            <div class="m-authors">
+                                    <div class="m-author-row__blurb m-author-row">
+                        <div class="m-author-row__bio"><b>Benjamin M. Bolker</b> is a theoretical ecologist in the departments of Mathematics & Statistics and Biology at McMaster University.</div>
+                    </div>
+                                <div>
+                                            
+                                    </div>
+            </div>
+        </div>
+                    <div id="reviews" class="o-book__body-tab o-blocks o-blocks--reviews" aria-labelledby="reviews_trigger" aria-hidden="true" data-body-tab="data-body-tab">
+                                    <p>"Bolker's book is a must-buy for anyone wanting to fit data to models and go beyond hypothesis testing, but it is certainly not an 'introductory' text in the sense of 'simple'. This book is a tour de force for anyone who studied ecology for his or her interest of nature's working. But it is the one single book that can propel the statistical novice to the cutting edge of statistical ecology—albeit with blood, sweat and tears."<b>—Carsten F. Dormann, <i>Basic and Applied Ecology</i></b></p>
+                                    <p>"[A] must for natural scientists and for statisticians who are interested in ecological applications. . . . Numerous enlightening footnotes, meaningful graphics and direct speech are evidence of substantial classroom experience of the author. . . . The book addresses students and researchers who have or have had some basic knowledge in ecology, mathematics and statistics. Delivering many examples and profound details on numerical aspects of maximum likelihood estimation, the book may also give a red line for a course in computational statistics."<b>—Martin Schlather, <i>Biometrical Journal</i></b></p>
+                                    <p>"[T]his book succeeds both in explaining how to analyze many types of ecological data, and in clearly describing the theoretical background behind some common analyses and approaches. I expect to refer to it often."<b>—Lynda D. Prior, <i>Austral Ecology</i></b></p>
+                                                    <p>"This user-friendly introduction to likelihood and Bayesian statistical methods for ecology students is set apart by its emphasis on implementation in R. This alone will make it more useful than previous books. In contrast to other texts, Bolker's book explains how to fit models to data in enough detail that even students with little programming experience will be able to follow along. I expect this to become an exceedingly popular textbook."—Stephan B. Munch, Stony Brook University</p>
+                                    <p>"Benjamin Bolker is a pioneer in helping ecology students make the leap from a casual understanding of modern statistical methods to a hands-on application of these tools to their own precious data sets. This book shows the lessons learned from teaching this material to several cohorts of graduate students. No other book I've read gives such a good feel for the compromises scientists have to make in searching for good statistical models."—Brian Inouye, Florida State University</p>
+                                    <p>"I have no doubt that this book will become a fixture on many ecologists' bookshelves (it certainly will be on mine). With a presentation that is gentle and encouraging rather than jargon-filled and intimidating, it empowers ecologists to develop their own statistical procedures. I strongly recommend it."—Timothy Essington, University of Washington</p>
+                            </div>
+                </div>
+</article>
+
+
+<aside>
+    
+<header class="m-section-header m-section-header--f-h4 ">
+  <h3 class="m-section-header__title f-h4">
+          Related Books
+      </h3>
+    </header>
+
+                    <ul class="o-grid-listing  o-grid-listing--gridlines-rows o-grid-listing--gridlines-not-first-row o-grid-listing--reveal o-grid-listing--2-col@xsmall o-grid-listing--3-col@small o-grid-listing--4-col@medium o-grid-listing--5-col@large o-grid-listing--5-col@xlarge o-grid-listing--5-col@xxlarge">
+        
+                    <div class="m-book-listing " data-intersection-observe>
+    <a href="https://press.princeton.edu/books/hardcover/9780691190822/agent-based-and-individual-based-modeling" class="m-book-listing__link m-book-listing__link--hover">
+      <span class="m-book-listing__meta">
+      <strong class="m-book-listing__title f-h7"><span class="f-hovered">Agent-Based and Individual-Based Modeling</span></strong><br>
+    </span>
+    <span class="m-book-listing__img">
+                                    <img src="https://pup-assets.imgix.net/onix/images/9780691190822.jpg?w=640" alt="Agent-Based and Individual-Based Modeling">
+          </span>
+    </a>
+    
+            <em class="m-book-listing__author">
+            <span class="f-secondary"><a href='/our-authors/railsback-steven-f'>Steven F. Railsback</a> and <a href='/our-authors/grimm-volker'>Volker Grimm</a></span>
+        </em>
+    
+    </div>
+                    <div class="m-book-listing " data-intersection-observe>
+    <a href="https://press.princeton.edu/books/paperback/9780691182353/time-in-ecology" class="m-book-listing__link m-book-listing__link--hover">
+      <span class="m-book-listing__meta">
+      <strong class="m-book-listing__title f-h7"><span class="f-hovered">Time in Ecology</span></strong><br>
+    </span>
+    <span class="m-book-listing__img">
+                                    <img src="https://pup-assets.imgix.net/onix/images/9780691182353.jpg?w=640" alt="Time in Ecology">
+          </span>
+    </a>
+    
+            <em class="m-book-listing__author">
+            <span class="f-secondary"><a href='/our-authors/post-eric'>Eric Post</a></span>
+        </em>
+    
+    </div>
+                    <div class="m-book-listing " data-intersection-observe>
+    <a href="https://press.princeton.edu/books/paperback/9780691182827/the-new-ecology" class="m-book-listing__link m-book-listing__link--hover">
+      <span class="m-book-listing__meta">
+      <strong class="m-book-listing__title f-h7"><span class="f-hovered">The New Ecology</span></strong><br>
+    </span>
+    <span class="m-book-listing__img">
+                                    <img src="https://pup-assets.imgix.net/onix/images/9780691182827.jpg?w=640" alt="The New Ecology">
+          </span>
+    </a>
+    
+            <em class="m-book-listing__author">
+            <span class="f-secondary"><a href='/our-authors/schmitz-oswald-j'>Oswald J. Schmitz</a></span>
+        </em>
+    
+    </div>
+                    <div class="m-book-listing " data-intersection-observe>
+    <a href="https://press.princeton.edu/books/hardcover/9780691049168/metacommunity-ecology-volume-59" class="m-book-listing__link m-book-listing__link--hover">
+      <span class="m-book-listing__meta">
+      <strong class="m-book-listing__title f-h7"><span class="f-hovered">Metacommunity Ecology, Volume 59</span></strong><br>
+    </span>
+    <span class="m-book-listing__img">
+                                    <img src="https://pup-assets.imgix.net/onix/images/9780691049168.jpg?w=640" alt="Metacommunity Ecology, Volume 59">
+          </span>
+    </a>
+    
+            <em class="m-book-listing__author">
+            <span class="f-secondary"><a href='/our-authors/leibold-mathew-a'>Mathew A. Leibold</a> and <a href='/our-authors/chase-jonathan-m'>Jonathan M. Chase</a></span>
+        </em>
+    
+    </div>
+                    <div class="m-book-listing " data-intersection-observe>
+    <a href="https://press.princeton.edu/books/hardcover/9780691088778/evolutionary-community-ecology-volume-58" class="m-book-listing__link m-book-listing__link--hover">
+      <span class="m-book-listing__meta">
+      <strong class="m-book-listing__title f-h7"><span class="f-hovered">Evolutionary Community Ecology, Volume 58</span></strong><br>
+    </span>
+    <span class="m-book-listing__img">
+                                    <img src="https://pup-assets.imgix.net/onix/images/9780691088778.jpg?w=640" alt="Evolutionary Community Ecology, Volume 58">
+          </span>
+    </a>
+    
+            <em class="m-book-listing__author">
+            <span class="f-secondary"><a href='/our-authors/mcpeek-mark-a'>Mark A. McPeek</a></span>
+        </em>
+    
+    </div>
+            </ul>
+</aside>
+
+<div id="block-webform" class="block block-webform block-webform-block">
+  
+    
+      <aside class="g-newsletter">
+  <div class="g-newsletter__container">
+    <h2 class="g-newsletter__title hide--xsmall f-h6">Sign Up for Newsletter Updates</h2>
+    <h2 class="g-newsletter__title hide--above-xsmall f-h6">Subscribe to Our Newsletter</h2>
+
+    <form class="webform-submission-form webform-submission-add-form webform-submission-newsletter-persistent-form webform-submission-newsletter-persistent-add-form webform-submission-newsletter-persistent-node-21913-form webform-submission-newsletter-persistent-node-21913-add-form js-webform-details-toggle webform-details-toggle" data-drupal-selector="webform-submission-newsletter-persistent-node-21913-add-form" action="/books/hardcover/9780691125220/ecological-models-and-data-in-r" method="post" id="webform-submission-newsletter-persistent-node-21913-add-form" accept-charset="UTF-8">
+      
+      
+<div class="js-form-item form-item js-form-type-email form-type-email js-form-item-email form-item-email form-field">
+            <label for="edit-email" class="f-secondary"><span class="">Email</span></label>
+                <input data-drupal-selector="edit-email" type="email" id="edit-email" name="email" value="" size="60" maxlength="254" placeholder="Your email" class="form-email" />
+
+                  </div>
+
+    <div data-drupal-selector="edit-actions" class="form-actions webform-actions js-form-wrapper form-wrapper form-field__wrapper" id="edit-actions"><input class="webform-button--submit button button--primary js-form-submit form-submit btn f-button btn--secondary" data-drupal-selector="edit-actions-submit" type="submit" id="edit-actions-submit" name="op" value="Subscribe" />
+
+</div>
+<input autocomplete="off" data-drupal-selector="form-qgvfcubalhjqof9gbsraaiug9lf-anofklbjkmvhj-o" type="hidden" name="form_build_id" value="form-QGVFCubaLhjqOF9gbsraAiUg9Lf_AnOfKLBjKmvHj_o" />
+<input data-drupal-selector="edit-webform-submission-newsletter-persistent-node-21913-add-form" type="hidden" name="form_id" value="webform_submission_newsletter_persistent_node_21913_add_form" />
+
+
+      
+    </form>
+  </div>
+</aside>
+
+  </div>
+
+
+</main>
+
+
+  </div>
+
+      
+
+      <footer class="g-footer">
+  <p class="g-footer__top f-secondary">
+    
+  
+<a class="icon-action f-secondary icon-action--small icon-action--w-label" href="#a17" >
+      <svg class="icon--carrot--up--12px" aria-hidden="true"><use xlink:href="#icon--carrot--up--12px"></use></svg>
+    <span class="icon-action__label">Top</span>
+  </a>
+  </p>
+  <div class="g-footer__cols">
+    <div class="g-footer__col g-footer__col-logo">
+      <a href="/" class="g-footer__logo">
+        <svg class="icon--logo--xxl" aria-label="Princeton University Press">
+          <use xlink:href="#icon--logo--xxl"></use>
+        </svg>
+      </a>
+    </div>
+    <div class="g-footer__col g-footer__col--region">
+      <h3 class="f-link">United States</h3>
+      <p class="f-link">
+        <a href="https://www.google.com/maps/place/Princeton+University+Press/@40.3499119,-74.655744,17z/data=!4m13!1m7!3m6!1s0x89c3e6c2ef72c013:0xbdc47d7a5755491c!2s41+William+St,+Princeton,+NJ+08540,+USA!3b1!8m2!3d40.3499078!4d-74.6535553!3m4!1s0x89c3e6c2ef72c013:0xd211cb79dbb80879!8m2!3d40.3498879!4d-74.6536503" target="_blank">
+        41 William Steet <br>
+        Princeton, New Jersey 08540 <br>
+        United States </a> <br>
+        <a href="tel:+16092584900">Phone: +1 609 258 4900</a> <br>
+        <a class="g-footer__map" href="https://www.google.com/maps/place/Princeton+University+Press/@40.3499119,-74.655744,17z/data=!4m13!1m7!3m6!1s0x89c3e6c2ef72c013:0xbdc47d7a5755491c!2s41+William+St,+Princeton,+NJ+08540,+USA!3b1!8m2!3d40.3499078!4d-74.6535553!3m4!1s0x89c3e6c2ef72c013:0xd211cb79dbb80879!8m2!3d40.3498879!4d-74.6536503" target="_blank">
+          <svg class="icon--map"><use xlink:href="#icon--map"></use></svg>Directions
+        </a>
+      </p>
+    </div>
+    <div class="g-footer__col g-footer__col--region">
+      <h3 class="f-link">Europe</h3>
+      <p class="f-link">
+        <a href="https://www.google.com/maps/place/Princeton+University+Press/@51.8467859,-1.353057,17z/data=!4m13!1m7!3m6!1s0x4876d0019b5cc101:0x95c6a698a39de12c!2s6+Oxford+St,+Woodstock+OX20+1TR!3b1!8m2!3d51.8467859!4d-1.353057!3m4!1s0x4876d1c97f45a52f:0xb3e0a1a248325f98!8m2!3d51.8467859!4d-1.353057?hl=en" target="_blank">
+        6 Oxford Street, Woodstock <br>
+        Oxfordshire, OX20 1TR <br>
+        United Kingdom </a> <br>
+        <a href="tel:+441993814500">Phone: +44 1993 814500</a> <br>
+        <a class="g-footer__map" href="https://www.google.com/maps/place/Princeton+University+Press/@51.8467859,-1.353057,17z/data=!4m13!1m7!3m6!1s0x4876d0019b5cc101:0x95c6a698a39de12c!2s6+Oxford+St,+Woodstock+OX20+1TR!3b1!8m2!3d51.8467859!4d-1.353057!3m4!1s0x4876d1c97f45a52f:0xb3e0a1a248325f98!8m2!3d51.8467859!4d-1.353057?hl=en" target="_blank">
+          <svg class="icon--map"><use xlink:href="#icon--map"></use></svg>Directions
+        </a>
+      </p>
+    </div>
+    <div class="g-footer__col g-footer__col--region">
+      <h3 class="f-link">China</h3>
+      <p class="f-link">
+        <a href="https://www.google.com/maps/place/Jiang+Tai+Lu,+Chaoyang+Qu,+Beijing+Shi,+China,+100096/@39.97192,116.4902768,17z/data=!3m1!4b1!4m5!3m4!1s0x35f1abc172c1bc9b:0xa6422075fa4968e8!8m2!3d39.97192!4d116.4924708?hl=en" target="_blank">
+        Princeton Asia (Beijing) Consulting Co., Ltd. <br>
+        Unit 2702, NUO Centre <br>
+        2A Jiangtai Road, Chaoyang District <br>
+        Beijing 100016, P.R. China </a> <br>
+        <a href="tel:+860185478802">Phone: +86 10 8457 8802</a> <br>
+        <a class="g-footer__map" href="https://www.google.com/maps/place/Nuojin+Office+Building,+Chaoyang+Qu,+Beijing+Shi,+China/@39.97717,116.4792516,17z/data=!3m1!4b1!4m5!3m4!1s0x35f1abb0f9ebe293:0x36159b916bfab6ec!8m2!3d39.97717!4d116.4814403" target="_blank">
+          <svg class="icon--map"><use xlink:href="#icon--map"></use></svg>Directions
+        </a>
+      </p>
+    </div>
+  </div>
+  <div class="g-footer__cols">
+    <nav class="g-footer__col">
+      <h3 class="f-link">Browse</h3>
+      <ul class="f-link">
+                              <li><a href="/books" class="f-secondary">Books</a></li>
+                                                                            <li><a href="/resources" class="f-secondary">Resources</a></li>
+                                        <li><a href="/ideas" class="f-secondary">Ideas</a></li>
+                                        <li><a href="/about" class="f-secondary">About</a></li>
+                                        <li><a href="/our-authors" class="f-secondary">Authors</a></li>
+                        </ul>
+    </nav>
+    <div class="g-footer__col">
+      <h3 class="f-link">Contact</h3>
+      <ul class="f-link">
+                              <li><a href="/contact-us" class="f-secondary">Contact Us</a></li>
+                                        <li><a href="/careers" class="f-secondary">Careers</a></li>
+                                        <li><a href="/exam-desk-copies" class="f-secondary">Exam &amp; Desk Copies</a></li>
+                                                          <li><a href="/permissions" class="f-secondary">Rights &amp; Permissions</a></li>
+                                          </ul>
+    </div>
+    <div class="g-footer__col g-footer__col--social">
+      <h3 class="f-link">Follow</h3>
+      <ul class="f-link">
+                  <li class="f-link__facebook"><a href="http://www.facebook.com/pages/Princeton-University-Press/96124072223" target="_blank"><svg class="icon--facebook"><use xlink:href="#icon--facebook"></use></svg>Facebook</a></li>
+                  <li class="f-link__twitter"><a href="http://twitter.com/PrincetonUPress" target="_blank"><svg class="icon--twitter"><use xlink:href="#icon--twitter"></use></svg>Twitter</a></li>
+                  <li class="f-link__instagram"><a href="https://www.instagram.com/princetonupress/" target="_blank"><svg class="icon--instagram"><use xlink:href="#icon--instagram"></use></svg>Instagram</a></li>
+                  <li class="f-link__vimeo"><a href="https://vimeo.com/princetonuniversitypress" target="_blank"><svg class="icon--vimeo"><use xlink:href="#icon--vimeo"></use></svg>Vimeo</a></li>
+                  <li class="f-link__youtube"><a href="http://www.youtube.com/user/PUPress" target="_blank"><svg class="icon--youtube"><use xlink:href="#icon--youtube"></use></svg>YouTube</a></li>
+                  <li class="f-link__wechat"><a href="weixin://dl/chat?PrincetonUP_CHINA" target="_blank"><svg class="icon--wechat"><use xlink:href="#icon--wechat"></use></svg>WeChat</a></li>
+              </ul>
+    </div>
+  </div>
+  <div class="g-footer__legals">
+    <small class="f-secondary">&copy; 2019 Princeton University Press.&nbsp;</small>
+    <small class="f-secondary">All Rights Reserved</small>
+    <a href="/privacy-policy" class="f-secondary">Privacy Policy</a>
+    <div class="g-footer__credit">
+      <a href="https://area17.com/?utm_source=press.princeton.edu&amp;utm_medium=referral&amp;utm_campaign=footer-credit-2018" target="_blank" class="f-secondary">Site by AREA 17</a>
+      <a href="/colophon" class="f-secondary">Colophon</a>
+    </div>
+  </div>
+</footer>
+  </div>
+
+      <!-- Alert bar -->
+        <div class="region region-footer">
+    
+        
+  
+  </div>
+
+    <div id="mask" class="g-mask" data-behavior="mask"></div>
+
+    <div id="book-quote" class="g-book g-book--quote" aria-hidden="true">
+  <img sizes="200px" alt="">
+</div>
+  <div id="book-detail" class="g-book g-book--detail" aria-hidden="true">
+  <img sizes="200px" alt="">
+</div>
+  <nav id="menu" class="g-menu" data-behavior="menu">
+    <div class="g-menu__container">
+        <aside class="m-search-bar m-search-bar--searchMobile"><form action="/search" method="get"
+  accept-charset="UTF-8" novalidate><fieldset>
+      <label for="searchMobile" class="f-secondary">Search for</label>
+      <input type="search" id="searchMobile" placeholder="Title, author, subject, ISBN..." name="search" autocomplete="off">
+      <button type="submit"><svg class="icon--search" aria-label="Submit Search"><use xlink:href="#icon--search"></use></svg></button>
+    </fieldset>
+  </form>
+</aside>
+        <ul class="g-menu__links g-menu__links--primary">
+                            <li>
+                                            <button class="f-nav" data-menu-subnav-trigger="data-menu-subnav-trigger">Books
+                            <svg class="icon--carrot--right" aria-hidden="true">
+                                <use xlink:href="#icon--carrot--right"></use>
+                            </svg>
+                        </button>
+                        <ul class="g-menu__links">
+                                                                                                <li>
+                                        <a href="/books" class="f-secondary">All Books</a>
+                                    </li>
+                                                                                                                                <li>
+                                        <a href="/textbooks" class="f-secondary">Textbooks</a>
+                                    </li>
+                                                                                                                                <li>
+                                        <a href="/collected-works" class="f-secondary">Collected Works</a>
+                                    </li>
+                                                                                                                                <li>
+                                        <a href="/collections" class="f-secondary">Collections</a>
+                                    </li>
+                                                                                                                                <li>
+                                        <a href="/series" class="f-secondary">Series</a>
+                                    </li>
+                                                                                                                                <li>
+                                        <a href="/catalogs" class="f-secondary">Catalogs</a>
+                                    </li>
+                                                                                                                                <li>
+                                        <a href="/about-common-reading" class="f-secondary">Common Reading</a>
+                                    </li>
+                                                                                                                </ul>
+                                    </li>
+                            <li>
+                                            <a href="/resources" class="f-nav">Resources</a>
+                                    </li>
+                            <li>
+                                            <button class="f-nav" data-menu-subnav-trigger="data-menu-subnav-trigger">About
+                            <svg class="icon--carrot--right" aria-hidden="true">
+                                <use xlink:href="#icon--carrot--right"></use>
+                            </svg>
+                        </button>
+                        <ul class="g-menu__links">
+                                                                                                <li>
+                                        <a href="/about" class="f-secondary">Overview</a>
+                                    </li>
+                                                                                                                                <li>
+                                        <a href="/about/offices" class="f-secondary">Offices</a>
+                                    </li>
+                                                                                                                                <li>
+                                        <a href="/our-people" class="f-secondary">People</a>
+                                    </li>
+                                                                                                                                <li>
+                                        <a href="/our-authors" class="f-secondary">Authors</a>
+                                    </li>
+                                                                                                                                <li>
+                                        <a href="/about/history" class="f-secondary">History</a>
+                                    </li>
+                                                                                                                                <li>
+                                        <a href="/partnerships" class="f-secondary">Partnerships</a>
+                                    </li>
+                                                                                                                                <li>
+                                        <a href="/awards" class="f-secondary">Awards</a>
+                                    </li>
+                                                                                                                                <li>
+                                        <a href="/events" class="f-secondary">Events</a>
+                                    </li>
+                                                                                                                                                                                                    <li>
+                                            <a href="/careers" class="f-secondary">Careers</a>
+                                        </li>
+                                                                                                                                                <li>
+                                            <a href="/contact-us" class="f-secondary">Contact Us</a>
+                                        </li>
+                                                                                                                                                                                            </ul>
+                                    </li>
+                            <li>
+                                            <a href="/ideas" class="f-nav">Ideas</a>
+                                    </li>
+                            <li>
+                                            <button class="f-nav" data-behavior="subjectMenu" aria-label="Open subjects" data-menu-subnav-trigger="data-menu-subnav-trigger" data-subjects-modal="/subjects">Subjects
+                            <svg class="icon--carrot--right" aria-hidden="true">
+                                <use xlink:href="#icon--carrot--right"></use>
+                            </svg>
+                        </button>
+                        <ul class="g-menu__links s-subjects-loading" data-subjects-menu="data-subjects-menu"></ul>
+                                    </li>
+                    </ul>
+    </div>
+    <button class="g-menu__subnav-back f-nav" aria-hidden="true" aria-label="Back to menu" data-menu-back="data-menu-back">
+        <svg class="icon--carrot--left" aria-hidden="true">
+            <use xlink:href="#icon--carrot--left"></use>
+        </svg>Back</button>
+</nav>
+
+    <!-- todo : replace action and autosuggest with real endpoint -->
+  <div id="search" class="g-search" data-behavior="search searchQuery">
+  <div class="g-search__container">
+    <form action="/search" data-search-autosuggest="/dist/images/demo-search.json" data-search-all-label="See All Search Results" data-search-error="No results found." class="g-search__form" accept-charset="UTF-8" novalidate>
+      <input type="search" id="searchModal" placeholder="Search all books by title, author, subject, ISBN..." name="keys" autocomplete="off">
+      <button type="submit"><svg class="icon--search" aria-label="Submit Search"><use xlink:href="#icon--search"></use></svg></button>
+    </form>
+
+    <div class="g-search__results">
+      <div search-results></div>
+    </div>
+    <div class="g-search__viewAll" search-all></div>
+  </div>
+  <div class="g-search__header">
+    <button class="g-search__close" data-behavior="searchClose">
+      <svg class="icon--close" aria-label="Close search">
+        <use xlink:href="#icon--close"></use>
+      </svg>
+    </button>
+  </div>
+  <svg class="g-search__p icon--p" aria-hidden="true">
+    <use xlink:href="#icon--p"></use>
+  </svg>
+</div>
+
+  <script id="template--search-book" type="text/mustache">
+    <div>
+      <div class="g-search__category"><span class="f-secondary">Books</span></div>
+      {{#items}}
+      <div class="g-search__result g-search__result--book">
+        <a href="{{slug}}" class="g-search__bookCover">
+          <img src="{{img}}" onerror="this.src='{{imgError}}'" alt="{{{title}}}">
+        </a>
+        <span class="g-search__bookTitle">
+          <span class="g-search__title"><a href="{{slug}}" class="f-h6">{{{title}}}</a></span>
+          <span class="g-search__author f-secondary">{{{author}}}</span>
+        </span>
+      </div>
+      {{/items}}
+    </div>
+  </script>
+
+  <script id="template--search-author" type="text/mustache">
+    <div>
+      <div class="g-search__category"><span class="f-secondary">Authors</span></div>
+      {{#items}}
+      <div class="g-search__result g-search__result--link">
+        <span class="f-h6"><a href="{{slug}}">{{{title}}}</a></span>
+      </div>
+      {{/items}}
+    </div>
+  </script>
+
+  <script id="template--search-collection" type="text/mustache">
+    <div>
+      <div class="g-search__category"><span class="f-secondary">Collections</span></div>
+      {{#items}}
+      <div class="g-search__result g-search__result--link">
+        <span class="f-h6"><a href="{{slug}}">{{{title}}}</a></span>
+      </div>
+      {{/items}}
+    </div>
+  </script>
+
+  <script id="template--search-collected-works" type="text/mustache">
+    <div>
+      <div class="g-search__category"><span class="f-secondary">Collected Works</span></div>
+      {{#items}}
+      <div class="g-search__result g-search__result--link">
+        <span class="f-h6"><a href="{{slug}}">{{{title}}}</a></span>
+      </div>
+      {{/items}}
+    </div>
+  </script>
+
+  <script id="template--search-idea" type="text/mustache">
+    <div>
+      <div class="g-search__category"><span class="f-secondary">Ideas</span></div>
+      {{#items}}
+      <div class="g-search__result g-search__result--link">
+        <span class="f-h6"><a href="{{slug}}">{{{title}}}</a></span>
+      </div>
+      {{/items}}
+    </div>
+  </script>
+
+  <div id="modal" class="g-modal">
+  <div class="g-modal__container">
+    <div class="g-modal__content" data-modal-content>
+    </div>
+    <button class="g-modal__close" data-modal-close>
+      <svg aria-hidden="true" class="icon--close"><use xlink:href="#icon--close" /></svg>
+    </button>
+  </div>
+</div>
+  
+  <!-- Loader -->
+  <span class="g-ajax-loader">
+      <svg class="g-ajax-loader__svg" viewBox="25 25 50 50">
+        <circle cx="50" cy="50" r="20" fill="none" stroke-width="2" stroke-miterlimit="10"/>
+      </svg>
+    </span>
+
+  <script type="application/json" data-drupal-selector="drupal-settings-json">{"path":{"baseUrl":"\/","scriptPath":null,"pathPrefix":"","currentPath":"node\/21913","currentPathIsAdmin":false,"isFront":false,"currentLanguage":"en"},"pluralDelimiter":"\u0003","google_analytics":{"account":"UA-46401670-1","trackOutbound":true,"trackMailto":true,"trackDownload":true,"trackDownloadExtensions":"7z|aac|arc|arj|asf|asx|avi|bin|csv|doc(x|m)?|dot(x|m)?|exe|flv|gif|gz|gzip|hqx|jar|jpe?g|js|mp(2|3|4|e?g)|mov(ie)?|msi|msp|pdf|phps|png|ppt(x|m)?|pot(x|m)?|pps(x|m)?|ppam|sld(x|m)?|thmx|qtm?|ra(m|r)?|sea|sit|tar|tgz|torrent|txt|wav|wma|wmv|wpd|xls(x|m|b)?|xlt(x|m)|xlam|xml|z|zip"},"data":{"extlink":{"extTarget":true,"extTargetNoOverride":false,"extNofollow":false,"extFollowNoOverride":false,"extClass":"0","extLabel":"(link is external)","extImgClass":false,"extSubdomains":true,"extExclude":"(cart\\.press\\.princeton\\.edu\\\/cart)(customer\\.wileyeurope\\.com)(ingramcartav\\.supadu\\.com\\\/cart)","extInclude":"(assets\\.press\\.princeton\\.edu)","extCssExclude":"","extCssExplicit":"","extAlert":false,"extAlertText":"This link will take you to an external web site. We are not responsible for their content.","mailtoClass":"mailto","mailtoLabel":"(link sends email)"}},"eu_cookie_compliance":{"popup_enabled":true,"popup_agreed_enabled":false,"popup_hide_agreed":false,"popup_clicking_confirmation":false,"popup_scrolling_confirmation":false,"popup_html_info":"\u003Cdiv class=\u0022m-alert-bar m-alert-bar--cookies\u0022\u003E\n  \u003Cdiv class=\u0022m-alert-bar__content f-secondary--tight\u0022\u003E\n    \u003Cspan\u003E\u003Cp\u003EWe use cookies on this site to enhance your user experience. By clicking the Accept button, you agree to us doing so.\u003C\/p\u003E\n\u003C\/span\u003E\n    \u003Cspan id=\u0022popup-buttons\u0022\u003E\n              \u003Cbutton type=\u0022button\u0022 class=\u0022btn btn--secondary f-button decline-button\u0022\u003E\n          No, thanks\n        \u003C\/button\u003E\n            \u003Cbutton type=\u0022button\u0022 class=\u0022btn btn--secondary f-button agree-button\u0022\u003E\n        Accept\n      \u003C\/button\u003E\n    \u003C\/span\u003E\n  \u003Cdiv\u003E\n\u003C\/div\u003E","use_mobile_message":false,"mobile_popup_html_info":"\u003Cdiv class=\u0022m-alert-bar m-alert-bar--cookies\u0022\u003E\n  \u003Cdiv class=\u0022m-alert-bar__content f-secondary--tight\u0022\u003E\n    \u003Cspan\u003E\u003C\/span\u003E\n    \u003Cspan id=\u0022popup-buttons\u0022\u003E\n              \u003Cbutton type=\u0022button\u0022 class=\u0022btn btn--secondary f-button decline-button\u0022\u003E\n          No, thanks\n        \u003C\/button\u003E\n            \u003Cbutton type=\u0022button\u0022 class=\u0022btn btn--secondary f-button agree-button\u0022\u003E\n        Accept\n      \u003C\/button\u003E\n    \u003C\/span\u003E\n  \u003Cdiv\u003E\n\u003C\/div\u003E","mobile_breakpoint":768,"popup_html_agreed":false,"popup_use_bare_css":false,"popup_height":"auto","popup_width":"100%","popup_delay":1000,"popup_link":"\/privacy-policy","popup_link_new_window":true,"popup_position":false,"fixed_top_position":true,"popup_language":"en","store_consent":false,"better_support_for_screen_readers":false,"cookie_name":"","reload_page":false,"domain":"","domain_all_sites":false,"popup_eu_only_js":false,"cookie_lifetime":100,"cookie_session":0,"disagree_do_not_show_popup":false,"method":"opt_in","whitelisted_cookies":"use-wiley-cart","withdraw_markup":"\u003Cbutton type=\u0022button\u0022 class=\u0022eu-cookie-withdraw-tab\u0022\u003EPrivacy settings\u003C\/button\u003E\n\u003Cdiv class=\u0022eu-cookie-withdraw-banner\u0022\u003E\n  \u003Cdiv class=\u0022popup-content info eu-cookie-compliance-content\u0022\u003E\n    \u003Cdiv id=\u0022popup-text\u0022 class=\u0022eu-cookie-compliance-message\u0022\u003E\n      \u003Cp\u003EWe use cookies on this site to enhance your user experience. You have given your consent for us to set cookies.\u003C\/p\u003E\n\n    \u003C\/div\u003E\n    \u003Cdiv id=\u0022popup-buttons\u0022 class=\u0022eu-cookie-compliance-buttons\u0022\u003E\n      \u003Cbutton type=\u0022button\u0022 class=\u0022eu-cookie-withdraw-button\u0022\u003EWithdraw consent\u003C\/button\u003E\n    \u003C\/div\u003E\n  \u003C\/div\u003E\n\u003C\/div\u003E","withdraw_enabled":false,"withdraw_button_on_info_popup":false,"cookie_categories":[],"enable_save_preferences_button":true,"fix_first_cookie_category":true,"select_all_categories_by_default":false},"ajaxTrustedUrl":{"form_action_p_pvdeGsVG5zNF_XLGPTvYSKCf43t8qZYSwcfZl2uzM":true},"user":{"uid":0,"permissionsHash":"c1d09c90d735b5b43213c8aa94472d9aa74d96ca84b13f096bf984cf52776fb2"}}</script>
+<script src="/sites/default/files/js/js_1x41IMIo2VUKkcEevhQDc-3oc7RtIQbc85Rks1Atj-E.js"></script>
+
+
+  <script>
+      /**
+       * @file
+       * Attaches several event listener to a web page.
+       */
+
+      (function ($, Drupal, drupalSettings) {
+
+          /* eslint max-nested-callbacks: ["error", 4] */
+
+          'use strict';
+
+          Drupal.google_analytics = {};
+
+          $(document).ready(function () {
+
+              // Attach mousedown, keyup, touchstart events to document only and catch
+              // clicks on all elements.
+              $(document.body).on('mousedown', function (event) {
+                 // console.group('Running Google Analytics for Drupal.');
+                  if($(event.target).is('button') && $(event.target).attr('data-behavior') == "subjectsOpen subjects") {
+                      gtag('event', 'Subjects', {
+                          event_category: 'Subjects',
+                          event_action: 'click'
+                      });
+                  }
+                  if(event.target.closest('.embed-video__play') ) {
+                    //  console.log("video played");
+                      gtag('event', 'Video', {
+                          event_category: 'Videos',
+                          event_action: 'play',
+                          event_label: book_title,
+
+                      });
+                  }
+
+                  if(event.target.closest('.webform-button--submit') ) {
+                     // console.log("newsletter-submit");
+                      gtag('event', 'Newsletter', {
+                          event_category: 'Newsletter',
+                          event_action: 'signup',
+                          event_label: window.location.pathname
+
+                      });
+                  }
+                  if(event.target.closest('.g-header__nav-item--search')) {
+                     // console.log('search open');
+                      gtag('event','Search Open', {
+                          event_category: 'Search',
+                          event_action: 'open'
+
+                      })
+                  }
+                  if(event.target.closest('.o-book__cta-list-item')) {
+                     // console.log('download cover click');
+                      gtag('event','Download Cover', {
+                          event_category: 'Book detail',
+                          event_action: 'download',
+                          event_label: 'Cover'
+
+                      })
+                  }
+
+
+                  if(event.target.closest('.m-book-cover__actions')) {
+                      //console.log('look inside');
+                      gtag('event','Look Inside', {
+                          event_category: 'Book detail',
+                          event_action: 'click',
+                          event_label: 'Look inside'
+                      })
+                  }
+                  if(event.target.closest('.m-editions__trigger')) {
+                      var edition_type = $(event.target).attr('id').slice(0,$(event.target).attr('id').indexOf('_'));
+                     // console.log(edition_type)
+                      gtag('event','Edition', {
+                          event_category: 'Book detail',
+                          event_action: 'click',
+                          event_label: edition_type
+                      })
+                  }
+                  if(event.target.closest('.copyISBN')) {
+                     // console.log('copy isbn');
+                      gtag('event','Copy Isbn', {
+                          event_category: 'Book detail',
+                          event_action: 'copy',
+                          event_label: 'ISBN'
+                      })
+                  }
+
+
+                  if(event.target.closest('.o-book__buy-button')) {
+                     // console.log('buy this');
+                      gtag('event','Buy This', {
+                          event_category: 'Book detail',
+                          event_action: 'add to cart',
+                          event_label: window.location.pathname
+                      })
+                  }
+
+
+
+                  if(event.target.closest('.o-book__nav-scroller')) {
+                      var tab = $(event.target).attr('href');
+                     // console.log('book tab: ' + tab);
+                      gtag('event','Book Tab', {
+                          event_category: 'Book detail',
+                          event_action: 'click',
+                          event_label: tab
+                      })
+                  }
+
+
+                  if(event.target.closest('.o-look-inside__buy-button')) {
+                      var book_title = $(event.target).closest('.o-look-inside').find('.f-h7' ).html();
+                      gtag('event','Look Inside Buy', {
+                          event_category: 'look inside',
+                          event_action: 'add to cart',
+                          event_label: book_title,
+                      })
+                  }
+
+                  if(event.target.closest('.o-look-inside__close')) {
+                     // console.log('look inside close')
+                      gtag('event','Look Inside Close', {
+                          event_category: 'look inside',
+                          event_action: 'close'
+                      })
+                  }
+
+                  if(event.target.closest('.o-buy-book__editions')) {
+                      var type = $('input[name=type]:checked', '#bookForm').val();
+                      if(type == "Hardcover_") {
+                          type = "Paperback_";
+                      } else if (type == "Paperback_") {
+                          type = "Hardcover_";
+                      }
+                      //console.log('radio edition clicked: ' + type);
+                       gtag('event','ToggleFormat', {
+                           event_category: 'Purchase Flow',
+                           event_action: 'click',
+                           event_label: type
+                       })
+                  }
+
+                  if(event.target.closest('.o-buy-book__buy-button')) {
+                      //console.log('buy button');
+                      gtag('event','Buy Button', {
+                          event_category: 'Purchase Flow',
+                          event_action: 'click'
+                      })
+                  }
+
+                  if(event.target.closest('.o-buy-book__external')) {
+                     // console.log( 'external buy link');
+                      gtag('event','externalbuy', {
+                          event_category: 'Purchase Flow',
+                          event_action: 'click',
+                          event_label: $(event.target).closest('.f-secondary').attr('href')
+                      })
+                  }
+
+
+                  if(event.target.closest('.g-modal__close')) {
+                      //console.log( 'buy modal closed');
+                      gtag('event','externalbuy', {
+                          event_category: 'Purchase Flow',
+                          event_action: 'close'
+                      })
+                  }
+
+
+
+                  if(event.target.closest('.m-book-detail__link')) {
+                     // console.log( 'sidebar buy');
+                      gtag('event','sidebar buy', {
+                          event_category: 'Sidebar',
+                          event_action: 'add to cart',
+                          event_label: $(event.target).closest('.m-book-detail__buy-button').attr('href')
+                      })
+                  }
+
+
+
+                  if(event.target.closest('#panel_date-time')) {
+                      //console.log("add to cal");
+                      gtag('event','addtocal', {
+                          event_category: 'Event',
+                          event_action: 'click',
+                          event_label: 'Calendar'
+                      })
+                  }
+
+                  if(event.target.closest('#panel_address')) {
+                    //  console.log("event external");
+                      gtag('event','external-link', {
+                          event_category: 'Event',
+                          event_action: 'click',
+                          event_label: 'External Link'
+                      })
+                  }
+
+
+
+                  if(event.target.closest('.m-sharer__links')) {
+                      gtag('event','event share', {
+                          event_category: 'Event',
+                          event_action: 'share',
+                          event_label: $(event.target).attr('data-sharepagelinks')
+
+                      })
+                  }
+
+
+              });
+
+
+          });
+
+
+
+      })(jQuery, Drupal, drupalSettings);
+
+  </script>
+  <script>
+  if( typeof Drupal !== 'undefined') {
+    // Customize default Drupal loader
+    Drupal.theme.ajaxProgressIndicatorFullscreen = function () {
+      return '<div class="ajax-progress ajax-progress-fullscreen"><span class="g-ajax-loader"><svg class="g-ajax-loader__svg" viewBox="25 25 50 50"><circle cx="50" cy="50" r="20" fill="none" stroke-width="2" stroke-miterlimit="10"/></svg></span><div class="g-mask"></div></div>';
+    };
+  }
+  </script>
+<script type="text/javascript">window.NREUM||(NREUM={});NREUM.info={"beacon":"bam.nr-data.net","licenseKey":"dfc88c0895","applicationID":"354317902","transactionName":"NQNaMREHW0MFARZeWQxJeQYXD1peSxIDUFM9BVkGCwM=","queueTime":0,"applicationTime":25,"atts":"GURZR1kdSE0=","errorBeacon":"bam.nr-data.net","agent":""}</script></body>
+</html>
+

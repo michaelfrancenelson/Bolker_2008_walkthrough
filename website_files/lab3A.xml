@@ -1,0 +1,1007 @@
+<?xml version="1.0"?>
+<!DOCTYPE html    PUBLIC "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN"
+           "http://www.w3.org/Math/DTD/mathml2/xhtml-math11-f.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="GENERATOR" content="TtM 3.70" />
+ <style type="text/css">
+ div.p { margin-top: 7pt; }
+ span.roman {font-family: serif; font-style: normal; font-weight: normal;} 
+</style>
+ 
+
+
+<title> Lab 3: solutions </title>
+</head>
+<body>
+ 
+<h1 align="center">Lab 3: solutions </h1>
+
+<h3 align="center">&#169; 2005 Ben Bolker </h3>
+
+<div class="p"><!----></div>
+ <b>Exercise 1*</b>: 
+
+<div class="p"><!----></div>
+
+<ul>
+<li>Quadratic: easiest to construct in the
+form (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>y</mi><mo>=</mo><mo>-</mo><mo stretchy="false">(</mo><mi>x</mi><mo>-</mo><mi>a</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo>+</mo><mi>b</mi></mrow></math>), where 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi></mrow></math> is the location
+of the maximum and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi></mrow></math> is the height.
+(Negative sign in front of the quadratic term
+to make it curve downward.)
+Thus 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo>=</mo><mn>5</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mn>1</mn></mrow></math>.
+<div class="p"><!----></div>
+</li>
+
+<li>Ricker: if 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>y</mi><mo>=</mo>
+<msup><mrow><mi>axe</mi></mrow><mrow><mo>-</mo><mi>bx</mi></mrow>
+</msup>
+</mrow></math>, then
+(as discussed in the chapter) the location
+of the maximum is at 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi><mo>=</mo><mn>1</mn><mo stretchy="false">/</mo><mi>b</mi></mrow></math> and the height
+is at 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mi>be</mi><mo stretchy="false">)</mo></mrow></math>.  Thus 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mn>0</mn><mo>.</mo><mn>2</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo>=</mo><mn>0</mn><mo>.</mo><mn>2</mn><mo>*</mo><mi>e</mi></mrow></math>.
+<div class="p"><!----></div>
+</li>
+
+<li>Triangle: let's say for example
+that the first segment is a line with
+intercept zero and slope 1/5, and the second
+segment has equation 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo>-</mo><mn>1</mn><mo>*</mo><mo stretchy="false">(</mo><mi>x</mi><mo>-</mo><mn>5</mn><mo stretchy="false">)</mo><mo>+</mo><mn>1</mn></mrow></math>.
+<div class="p"><!----></div>
+</li>
+</ul>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;curve(-(x&nbsp;-&nbsp;5)^2&nbsp;+&nbsp;1,&nbsp;from&nbsp;=&nbsp;0,&nbsp;to&nbsp;=&nbsp;10,&nbsp;ylim&nbsp;=&nbsp;c(0,&nbsp;1.1),&nbsp;ylab&nbsp;=&nbsp;"")
+&#62;&nbsp;curve(0.2&nbsp;*&nbsp;exp(1)&nbsp;*&nbsp;x&nbsp;*&nbsp;exp(-0.2&nbsp;*&nbsp;x),&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;lty&nbsp;=&nbsp;2)
+&#62;&nbsp;curve(ifelse(x&nbsp;&lt;&nbsp;5,&nbsp;x/5,&nbsp;-(x&nbsp;-&nbsp;5)&nbsp;+&nbsp;1),&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;lty&nbsp;=&nbsp;3)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab3A-001.png" alt="lab3A-001.png" />
+
+<div class="p"><!----></div>
+What else did you try? (Sinusoid, Gaussian
+(
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo>
+<msup><mrow><mi>x</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">)</mo></mrow></math>), ?)
+
+<div class="p"><!----></div>
+<b>Exercise 2*</b>: 
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow><mi>n</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>=</mo>
+<mfrac><mrow><mi>K</mi></mrow>
+<mrow><mn>1</mn><mo>+</mo><mrow><mo>(</mo>
+<mfrac><mrow><mi>K</mi></mrow>
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow>
+</mfrac>
+<mo>-</mo><mn>1</mn><mo>)</mo></mrow><mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>r</mi><mi>t</mi><mo stretchy="false">)</mo></mrow>
+</mfrac>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+
+<div class="p"><!----></div>
+Since 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo> &lt;&lt; </mo><mn>1</mn></mrow></math> (close to zero, or much less than 1),
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>K</mi><mo stretchy="false">/</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo>-</mo><mn>1</mn><mo>&ap;</mo><mi>K</mi><mo stretchy="false">/</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow></math>. So:
+
+<div class="p"><!----></div>
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow><mi>n</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>&ap;</mo>
+<mfrac><mrow><mi>K</mi></mrow>
+<mrow><mn>1</mn><mo>+</mo>
+<mfrac><mrow><mi>K</mi></mrow>
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow>
+</mfrac>
+<mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>r</mi><mi>t</mi><mo stretchy="false">)</mo></mrow>
+</mfrac>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+
+<div class="p"><!----></div>
+Provided 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>t</mi></mrow></math> isn't too big, 
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>K</mi><mo stretchy="false">/</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>rt</mi><mo stretchy="false">)</mo></mrow></math> is also a lot larger than 1,
+so
+
+<div class="p"><!----></div>
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow><mi>n</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>&ap;</mo>
+<mfrac><mrow><mi>K</mi></mrow>
+<mrow>
+<mfrac><mrow><mi>K</mi></mrow>
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow>
+</mfrac>
+<mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>r</mi><mi>t</mi><mo stretchy="false">)</mo></mrow>
+</mfrac>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+
+<div class="p"><!----></div>
+Now multiply top and bottom by 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mi>K</mi><mi>exp</mi><mo stretchy="false">(</mo><mi>rt</mi><mo stretchy="false">)</mo></mrow></math>
+to get the answer.
+
+<div class="p"><!----></div>
+<b>Exercise 3*</b>: 
+When 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mn>1</mn></mrow></math>, the Shepherd function
+reduces to 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>RN</mi><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi><mo stretchy="false">)</mo></mrow></math>, which is a form
+of the M-M.
+You should try not to be confused by the fact
+that earlier in class we used the form
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>ax</mi><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mi>b</mi><mo>+</mo><mi>x</mi><mo stretchy="false">)</mo></mrow></math> (asymptote=
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi></mrow></math>, half-maximum=
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi></mrow></math>);
+this is just a different <em>parameterization</em>
+of the function.  To be formal about it, we could
+multiply the numerator and denominator of 
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>RN</mi><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi><mo stretchy="false">)</mo></mrow></math> by 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mn>1</mn><mo stretchy="false">/</mo><mi>a</mi></mrow></math> to get our
+equation in the form 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo stretchy="false">(</mo><mi>R</mi><mo stretchy="false">/</mo><mi>a</mi><mo stretchy="false">)</mo><mi>N</mi><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mo stretchy="false">(</mo><mn>1</mn><mo stretchy="false">/</mo><mi>a</mi><mo stretchy="false">)</mo><mo>+</mo><mi>N</mi><mo stretchy="false">)</mo></mrow></math>,
+which matches what we had before with 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo>=</mo><mi>R</mi><mo stretchy="false">/</mo><mi>a</mi></mrow></math>,
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mn>1</mn><mo stretchy="false">/</mo><mi>a</mi></mrow></math>.
+
+<div class="p"><!----></div>
+<b>Near 0:</b>
+we can do this either by evaluating the derivative
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>S</mi><mo>'</mo><mo stretchy="false">(</mo><mi>N</mi><mo stretchy="false">)</mo></mrow></math> at 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi><mo>=</mo><mn>0</mn></mrow></math> (which gives 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>R</mi></mrow></math> - see below) or by taking the limit
+of the whole function 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>S</mi><mo stretchy="false">(</mo><mi>N</mi><mo stretchy="false">)</mo></mrow></math> as 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi><mo>&rarr;</mo><mn>0</mn></mrow></math>, which gives
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>RN</mi></mrow></math> (because the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>aN</mi></mrow></math>
+term in the denominator becomes small relative to 1),
+which is a line through the origin with slope 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>R</mi></mrow></math>.
+
+<div class="p"><!----></div>
+<b>For large 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi></mrow></math>:</b>
+if 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mn>1</mn></mrow></math>, we know already that this is Michaelis-Menten,
+and in this parameterization the asymptote is 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>R</mi><mo stretchy="false">/</mo><mi>a</mi></mrow></math> (in the limit,
+the 1 in the denominator becomes irrelevant and the function becomes
+approximately 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<mfrac><mrow><mi>RN</mi></mrow>
+<mrow><mi>aN</mi></mrow>
+</mfrac>
+<mo>=</mo>
+<mfrac><mrow><mi>R</mi></mrow>
+<mrow><mi>a</mi></mrow>
+</mfrac>
+</mrow></math>).  If 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi></mrow></math> is not 1 (we'll
+assume it's greater than 0) we can
+start the same way (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mn>1</mn><mo>+</mo><mi>aN</mi><mo>&ap;</mo><mi>aN</mi></mrow></math>), but now we have 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>RN</mi><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mi>b</mi></mrow>
+</msup>
+</mrow></math>.
+Write this as 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<mfrac><mrow><mi>R</mi></mrow>
+<mrow>
+<msup><mrow><mi>a</mi></mrow><mrow><mi>b</mi></mrow>
+</msup>
+</mrow>
+</mfrac>
+
+<msup><mrow><mi>N</mi></mrow><mrow><mo stretchy="false">(</mo></mrow>
+</msup>
+<mn>1</mn><mo>-</mo><mi>b</mi><mo stretchy="false">)</mo></mrow></math>.  If 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>&gt;</mo><mn>1</mn></mrow></math>,
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi></mrow></math> is raised to a negative
+power and the function goes to zero as 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi><mo>&rarr;</mo><mi>&infin;</mi></mrow></math>.  If 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>&lt;</mo><mn>1</mn></mrow></math>,
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi></mrow></math> is raised to a positive power and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>R</mi><mo stretchy="false">(</mo><mi>N</mi><mo stretchy="false">)</mo></mrow></math> approaches infinity
+as 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi><mo>&rarr;</mo><mi>&infin;</mi></mrow></math>
+(it never levels off).
+
+<div class="p"><!----></div>
+If 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mn>0</mn></mrow></math> then the function is just a straight line (no asymptote),
+with slope 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>R</mi><mo stretchy="false">/</mo><mn>2</mn></mrow></math>.
+
+<div class="p"><!----></div>
+We don't really need to calculate the slope (we can figure out
+logically that it must be negative but decreasing in magnitude for
+large 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>&gt;</mo><mn>1</mn></mrow></math>; positive and decreasing to 0 when 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mn>1</mn></mrow></math>; and
+positive and decreasing, but never reaching 0, when 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>&gt;</mo><mn>1</mn></mrow></math>.  Nevertheless,
+for thoroughness (writing this as a product and using the
+product, power, and chain rules):
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow>
+<mtable align="right" width="80%">
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mrow><mo>(</mo><mi>RN</mi><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mo>-</mo><mi>b</mi></mrow>
+</msup>
+<mo>)</mo></mrow><mo>'</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mi>R</mi><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mo>-</mo><mi>b</mi></mrow>
+</msup>
+<mo>+</mo><mi>RN</mi><mo>&middot;</mo><mo>-</mo><mi>b</mi><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mo stretchy="false">(</mo><mo>-</mo><mi>b</mi><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo></mrow>
+</msup>
+<mi>a</mi></mrow>
+</mtd><mtd columnalign="right">&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;<mo stretchy="false">(</mo><mn>1</mn><mo stretchy="false">)</mo></mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mi>R</mi><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mo>-</mo><mi>b</mi></mrow>
+</msup>
+<mo>-</mo><mi>abRN</mi><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mo stretchy="false">(</mo><mo>-</mo><mi>b</mi><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo></mrow>
+</msup>
+</mrow>
+</mtd><mtd columnalign="right">&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;<mo stretchy="false">(</mo><mn>2</mn><mo stretchy="false">)</mo></mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mi>R</mi><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mo>-</mo><mi>b</mi><mo>-</mo><mn>1</mn></mrow>
+</msup>
+<mo stretchy="false">(</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi><mo stretchy="false">)</mo><mo>-</mo><mi>abN</mi><mo stretchy="false">)</mo></mrow>
+</mtd><mtd columnalign="right">&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;<mo stretchy="false">(</mo><mn>3</mn><mo stretchy="false">)</mo></mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mi>R</mi><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mo>-</mo><mi>b</mi><mo>-</mo><mn>1</mn></mrow>
+</msup>
+<mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>b</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow>
+</mtd><mtd columnalign="right">&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;<mo stretchy="false">(</mo><mn>4</mn><mo stretchy="false">)</mo></mtd></mtr>
+</mtable>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+
+<div class="p"><!----></div>
+You could also do this by the quotient rule.
+The derivative of the numerator is 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>R</mi></mrow></math> (easy); the
+derivative of the denominator is 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>&middot;</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mi>b</mi><mo>-</mo><mn>1</mn></mrow>
+</msup>
+<mo>&middot;</mo><mi>a</mi><mo>=</mo><mi>ab</mi><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mi>b</mi><mo>-</mo><mn>1</mn></mrow>
+</msup>
+</mrow></math> (power rule/chain rule).
+
+<div class="p"><!----></div>
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow>
+<mtable align="right" width="80%">
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>S</mi><mo stretchy="false">(</mo><mi>N</mi><mo stretchy="false">)</mo><mo>'</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow>
+<mfrac><mrow><mi>g</mi><mo stretchy="false">(</mo><mi>N</mi><mo stretchy="false">)</mo><mi>f</mi><mo>'</mo><mo stretchy="false">(</mo><mi>N</mi><mo stretchy="false">)</mo><mo>-</mo><mi>f</mi><mo stretchy="false">(</mo><mi>N</mi><mo stretchy="false">)</mo><mi>g</mi><mo>'</mo><mo stretchy="false">(</mo><mi>N</mi><mo stretchy="false">)</mo></mrow>
+<mrow>
+<msup><mrow><mo>(</mo><mi>g</mi><mo stretchy="false">(</mo><mi>N</mi><mo stretchy="false">)</mo><mo>)</mo></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</mfrac>
+</mrow>
+</mtd><mtd columnalign="right">&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;<mo stretchy="false">(</mo><mn>5</mn><mo stretchy="false">)</mo></mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow>
+<mfrac><mrow><mi>R</mi><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mi>b</mi></mrow>
+</msup>
+<mo>-</mo><mi>RN</mi><mrow><mo>(</mo><mi>ab</mi><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mi>b</mi><mo>-</mo><mn>1</mn></mrow>
+</msup>
+<mo>)</mo></mrow></mrow>
+<mrow>
+<msup><mrow><mo>(</mo><mn>1</mn><mo>+</mo><mi>aN</mi><mo>)</mo></mrow><mrow><mn>2</mn><mi>b</mi></mrow>
+</msup>
+</mrow>
+</mfrac>
+</mrow>
+</mtd><mtd columnalign="right">&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;<mo stretchy="false">(</mo><mn>6</mn><mo stretchy="false">)</mo></mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow>
+<mfrac><mrow><mi>R</mi><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mi>b</mi><mo>-</mo><mn>1</mn></mrow>
+</msup>
+<mrow><mo>(</mo><mn>1</mn><mo>+</mo><mi>aN</mi><mo>-</mo><mi>abN</mi><mo>)</mo></mrow></mrow>
+<mrow>
+<msup><mrow><mo>(</mo><mn>1</mn><mo>+</mo><mi>aN</mi><mo>)</mo></mrow><mrow><mn>2</mn><mi>b</mi></mrow>
+</msup>
+</mrow>
+</mfrac>
+</mrow>
+</mtd><mtd columnalign="right">&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;<mo stretchy="false">(</mo><mn>7</mn><mo stretchy="false">)</mo></mtd></mtr>
+</mtable>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+
+<div class="p"><!----></div>
+You can also do this with R (using <tt>D()</tt>),
+but it won't simplify the expression for you:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;dS&nbsp;=&nbsp;D(expression(R&nbsp;*&nbsp;N/(1&nbsp;+&nbsp;a&nbsp;*&nbsp;N)^b),&nbsp;"N")
+&#62;&nbsp;dS
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+R/(1&nbsp;+&nbsp;a&nbsp;*&nbsp;N)^b&nbsp;-&nbsp;R&nbsp;*&nbsp;N&nbsp;*&nbsp;((1&nbsp;+&nbsp;a&nbsp;*&nbsp;N)^(b&nbsp;-&nbsp;1)&nbsp;*&nbsp;(b&nbsp;*&nbsp;a))/((1&nbsp;+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;a&nbsp;*&nbsp;N)^b)^2
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+If you want to know the value for a particular 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi></mrow></math>, 
+and parameter values,
+use <tt>eval()</tt> to <b>eval</b>uate the expression:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;eval(dS,&nbsp;list(a&nbsp;=&nbsp;1,&nbsp;b&nbsp;=&nbsp;2,&nbsp;R&nbsp;=&nbsp;2,&nbsp;N&nbsp;=&nbsp;2.5))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;-0.06997085
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+A function to evaluate the Shepherd (with
+default values 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>R</mi><mo>=</mo><mn>1</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo>=</mo><mn>1</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mn>1</mn></mrow></math>):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;shep&nbsp;=&nbsp;function(x,&nbsp;R&nbsp;=&nbsp;1,&nbsp;a&nbsp;=&nbsp;1,&nbsp;b&nbsp;=&nbsp;1)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;R&nbsp;*&nbsp;x/(1&nbsp;+&nbsp;a&nbsp;*&nbsp;x)^b
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Plotting:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;curve(shep(x,&nbsp;b&nbsp;=&nbsp;0),&nbsp;xlim&nbsp;=&nbsp;c(0,&nbsp;10),&nbsp;bty&nbsp;=&nbsp;"l")
+&#62;&nbsp;curve(shep(x,&nbsp;b&nbsp;=&nbsp;0.5),&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;col&nbsp;=&nbsp;2)
+&#62;&nbsp;curve(shep(x,&nbsp;b&nbsp;=&nbsp;1),&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;col&nbsp;=&nbsp;3)
+&#62;&nbsp;curve(shep(x,&nbsp;b&nbsp;=&nbsp;1.5),&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;col&nbsp;=&nbsp;4)
+&#62;&nbsp;abline(a&nbsp;=&nbsp;0,&nbsp;b&nbsp;=&nbsp;1,&nbsp;lty&nbsp;=&nbsp;3,&nbsp;col&nbsp;=&nbsp;5)
+&#62;&nbsp;abline(h&nbsp;=&nbsp;1,&nbsp;col&nbsp;=&nbsp;6,&nbsp;lty&nbsp;=&nbsp;3)
+&#62;&nbsp;legend(0,&nbsp;10,&nbsp;c("b=0",&nbsp;"b=0.5",&nbsp;"b=1",&nbsp;"b=1.5",&nbsp;"initial&nbsp;slope",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"asymptote"),&nbsp;lty&nbsp;=&nbsp;rep(c(1,&nbsp;3),&nbsp;c(4,&nbsp;2)),&nbsp;col&nbsp;=&nbsp;1:6)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab3A-005.png" alt="lab3A-005.png" />
+
+<div class="p"><!----></div>
+<b>extra credit:</b> use the expression above for
+the derivative, and look just at the numerator.
+When does 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi><mo>-</mo><mi>abN</mi><mo stretchy="false">)</mo><mo>=</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>a</mi><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>b</mi><mo stretchy="false">)</mo><mi>N</mi><mo stretchy="false">)</mo><mo>=</mo><mn>0</mn></mrow></math>?  If 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>&le;</mo><mn>1</mn></mrow></math>
+the whole expression must always be positive (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo>&ge;</mo><mn>0</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi><mo>&ge;</mo><mn>0</mn></mrow></math>).
+If 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>&gt;</mo><mn>1</mn></mrow></math> then we can solve for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi></mrow></math>:
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow>
+<mtable align="right" width="80%">
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mn>1</mn><mo>+</mo><mi>a</mi><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>b</mi><mo stretchy="false">)</mo><mi>N</mi></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mn>0</mn></mrow>
+</mtd><mtd columnalign="right">&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;<mo stretchy="false">(</mo><mn>8</mn><mo stretchy="false">)</mo></mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>a</mi><mo stretchy="false">(</mo><mi>b</mi><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo><mi>N</mi></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mn>1</mn></mrow>
+</mtd><mtd columnalign="right">&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;<mo stretchy="false">(</mo><mn>9</mn><mo stretchy="false">)</mo></mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>N</mi><mo>=</mo><mn>1</mn><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">(</mo><mi>b</mi><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow>
+</mtd><mtd columnalign="right">&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;<mo stretchy="false">(</mo><mn>10</mn><mo stretchy="false">)</mo></mtd></mtr>
+</mtable>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+When 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi><mo>=</mo><mn>1</mn><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">(</mo><mi>b</mi><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow></math>, the value of the function is
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>R</mi><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mi>a</mi><mo>&middot;</mo><mo stretchy="false">(</mo><mi>b</mi><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo><mo>&middot;</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mn>1</mn><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mi>b</mi><mo>-</mo><mn>1</mn>
+<msup><mrow><mo stretchy="false">))</mo></mrow><mrow><mi>b</mi></mrow>
+</msup>
+<mo stretchy="false">)</mo></mrow></math> (for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mn>2</mn></mrow></math>
+this simplifies to 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>R</mi><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>4</mn><mi>a</mi><mo stretchy="false">)</mo></mrow></math>).
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;a&nbsp;=&nbsp;1
+&#62;&nbsp;b&nbsp;=&nbsp;2
+&#62;&nbsp;R&nbsp;=&nbsp;1
+&#62;&nbsp;curve(shep(x,&nbsp;R,&nbsp;a,&nbsp;b),&nbsp;bty&nbsp;=&nbsp;"l",&nbsp;ylim&nbsp;=&nbsp;c(0,&nbsp;0.3),&nbsp;from&nbsp;=&nbsp;0,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;to&nbsp;=&nbsp;5)
+&#62;&nbsp;abline(v&nbsp;=&nbsp;1/(a&nbsp;*&nbsp;(b&nbsp;-&nbsp;1)),&nbsp;lty&nbsp;=&nbsp;2)
+&#62;&nbsp;abline(h&nbsp;=&nbsp;R/(a&nbsp;*&nbsp;(b&nbsp;-&nbsp;1)&nbsp;*&nbsp;(1&nbsp;+&nbsp;1/(b&nbsp;-&nbsp;1))^b),&nbsp;lty&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab3A-006.png" alt="lab3A-006.png" />
+
+<div class="p"><!----></div>
+There's actually another answer that we've missed by
+focusing on the numerator.
+As 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi><mo>&rarr;</mo><mi>&infin;</mi></mrow></math>, the
+limit of the derivative is
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow>
+<mfrac><mrow><mi>R</mi><mo stretchy="false">(</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mi>b</mi><mo>-</mo><mn>1</mn></mrow>
+</msup>
+<mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>b</mi><mo stretchy="false">)</mo><mi>N</mi><mo stretchy="false">)</mo></mrow>
+<mrow><mo stretchy="false">(</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mn>2</mn><mi>b</mi></mrow>
+</msup>
+</mrow>
+</mfrac>
+<mo>=</mo>
+<mfrac><mrow><mi>R</mi><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>b</mi><mo stretchy="false">)</mo></mrow>
+<mrow><mo stretchy="false">(</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mi>b</mi></mrow>
+</msup>
+</mrow>
+</mfrac>
+<mo>;</mo></mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>R</mi><mo>&gt;</mo><mn>0</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>b</mi><mo stretchy="false">)</mo><mo>&lt;</mo><mn>0</mn></mrow></math> for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>&gt;</mo><mn>1</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>aN</mi><mo>&gt;</mo><mn>0</mn></mrow></math>, so the
+whole thing is negative and decreasing in magnitude
+toward zero.
+
+<div class="p"><!----></div>
+<b>Exercise  4*</b>:
+Holling type&nbsp;III functional response, standard parameterization:
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>f</mi><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo>
+<msup><mrow><mi>ax</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo>
+<msup><mrow><mi>bx</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">)</mo></mrow></math>.
+
+<div class="p"><!----></div>
+Asymptote: as 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi><mo>&rarr;</mo><mi>&infin;</mi></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow><mi>bx</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo>+</mo><mn>1</mn><mo>&ap;</mo>
+<msup><mrow><mi>bx</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow></math> and
+the function approaches 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo stretchy="false">/</mo><mi>b</mi></mrow></math>.
+
+<div class="p"><!----></div>
+Half-maximum:
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow>
+<mtable align="right" width="80%">
+<mtr><mtd columnalign="right" columnspan="1"><mrow>
+<msup><mrow><mi>ax</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo>
+<msup><mrow><mi>bx</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">)</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">/</mo><mi>b</mi><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mn>2</mn></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow>
+<msup><mrow><mi>ax</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">/</mo><mi>b</mi><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mn>2</mn><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo>
+<msup><mrow><mi>bx</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">)</mo></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow>
+<msup><mrow><mi>ax</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">/</mo><mi>b</mi><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mn>2</mn><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo>
+<msup><mrow><mi>bx</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">)</mo></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mo stretchy="false">(</mo><mi>a</mi><mo>-</mo><mi>a</mi><mo stretchy="false">/</mo><mn>2</mn><mo stretchy="false">)</mo>
+<msup><mrow><mi>x</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">/</mo><mi>b</mi><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mn>2</mn></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow>
+<msup><mrow><mi>x</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo stretchy="false">(</mo><mn>2</mn><mo stretchy="false">/</mo><mi>a</mi><mo stretchy="false">)</mo><mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">/</mo><mi>b</mi><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mn>2</mn><mo>=</mo><mn>1</mn><mo stretchy="false">/</mo><mi>b</mi></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>x</mi></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><msqrt><mrow><mn>1</mn><mo stretchy="false">/</mo><mi>b</mi></mrow></msqrt></mrow>
+</mtd></mtr>
+</mtable>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+
+<div class="p"><!----></div>
+So, if we have asymptote 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>A</mi><mo>=</mo><mi>a</mi><mo stretchy="false">/</mo><mi>b</mi></mrow></math>
+and half-max 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>H</mi><mo>=</mo><msqrt><mrow><mn>1</mn><mo stretchy="false">/</mo><mi>b</mi></mrow></msqrt></mrow></math>,
+then 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mn>1</mn><mo stretchy="false">/</mo>
+<msup><mrow><mi>H</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo>=</mo><mi>Ab</mi><mo>=</mo><mi>A</mi><mo stretchy="false">/</mo>
+<msup><mrow><mi>H</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow></math>.
+
+<div class="p"><!----></div>
+So 
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow><mi>f</mi><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo>
+<mfrac><mrow><mo stretchy="false">(</mo><mi>A</mi><mo stretchy="false">/</mo>
+<msup><mrow><mi>H</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">)</mo>
+<msup><mrow><mi>x</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+<mrow><mn>1</mn><mo>+</mo>
+<msup><mrow><mi>x</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">/</mo>
+<msup><mrow><mi>H</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</mfrac>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+which might be more simply written as
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>A</mi><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">/</mo><mi>H</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">/</mo><mi>H</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">)</mo></mrow></math>.
+
+<div class="p"><!----></div>
+Check with a plot:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;holling3&nbsp;=&nbsp;function(x,&nbsp;A&nbsp;=&nbsp;1,&nbsp;H&nbsp;=&nbsp;1)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A&nbsp;*&nbsp;(x/H)^2/(1&nbsp;+&nbsp;(x/H)^2)
++&nbsp;}
+&#62;&nbsp;curve(holling3(x,&nbsp;A&nbsp;=&nbsp;2,&nbsp;H&nbsp;=&nbsp;3),&nbsp;from&nbsp;=&nbsp;0,&nbsp;to&nbsp;=&nbsp;20,&nbsp;ylim&nbsp;=&nbsp;c(0,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1))
+&#62;&nbsp;abline(h&nbsp;=&nbsp;c(1,&nbsp;2),&nbsp;lty&nbsp;=&nbsp;2)
+&#62;&nbsp;abline(v&nbsp;=&nbsp;3,&nbsp;lty&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab3A-007.png" alt="lab3A-007.png" />
+
+<div class="p"><!----></div>
+<b>Exercise  5*</b>:
+
+<div class="p"><!----></div>
+Population-dynamic:
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow><mi>n</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>=</mo>
+<mfrac><mrow><mi>K</mi></mrow>
+<mrow><mn>1</mn><mo>+</mo><mrow><mo>(</mo>
+<mfrac><mrow><mi>K</mi></mrow>
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow>
+</mfrac>
+<mo>-</mo><mn>1</mn><mo>)</mo></mrow><mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>r</mi><mi>t</mi><mo stretchy="false">)</mo></mrow>
+</mfrac>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+Asymptote 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>K</mi></mrow></math>, initial exponential slope 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>r</mi></mrow></math>,
+value at 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>t</mi><mo>=</mo><mn>0</mn></mrow></math> 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow></math>,
+derivative at 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>t</mi><mo>=</mo><mn>0</mn></mrow></math> 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>r</mi><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mi>K</mi><mo stretchy="false">)</mo></mrow></math>.
+
+<div class="p"><!----></div>
+Statistical:
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow><mi>f</mi><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo>
+<mfrac><mrow>
+<msup><mrow><mi>e</mi></mrow><mrow><mi>a</mi><mo>+</mo><mi>bx</mi></mrow>
+</msup>
+</mrow>
+<mrow><mn>1</mn><mo>+</mo>
+<msup><mrow><mi>e</mi></mrow><mrow><mi>a</mi><mo>+</mo><mi>bx</mi></mrow>
+</msup>
+</mrow>
+</mfrac>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+Asymptote 1, value at 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi><mo>=</mo><mn>0</mn></mrow></math> 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>exp</mi><mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>exp</mi><mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow></math>.
+
+<div class="p"><!----></div>
+The easiest way to figure this out is first to set
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>K</mi><mo>=</mo><mn>1</mn></mrow></math> and multiply the population-dynamic version by
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>exp</mi><mo stretchy="false">(</mo><mi>rt</mi><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mi>exp</mi><mo stretchy="false">(</mo><mi>rt</mi><mo stretchy="false">)</mo></mrow></math>:
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow><mi>n</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>=</mo>
+<mfrac><mrow><mi>exp</mi><mo stretchy="false">(</mo><mi>rt</mi><mo stretchy="false">)</mo></mrow>
+<mrow><mi>exp</mi><mo stretchy="false">(</mo><mi>rt</mi><mo stretchy="false">)</mo><mo>+</mo><mrow><mo>(</mo>
+<mfrac><mrow><mn>1</mn></mrow>
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow>
+</mfrac>
+<mo>-</mo><mn>1</mn><mo>)</mo></mrow></mrow>
+</mfrac>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+and multiply the statistical version by
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>a</mi><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>a</mi><mo stretchy="false">)</mo></mrow></math>:
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow><mi>f</mi><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo>
+<mfrac><mrow><mi>exp</mi><mo stretchy="false">(</mo><mi>bx</mi><mo stretchy="false">)</mo></mrow>
+<mrow><mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>a</mi><mo stretchy="false">)</mo><mo>+</mo><mi>exp</mi><mo stretchy="false">(</mo><mi>bx</mi><mo stretchy="false">)</mo></mrow>
+</mfrac>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+
+<div class="p"><!----></div>
+This manipulation makes it clear (I hope) that
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mi>r</mi></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi><mo>=</mo><mi>t</mi></mrow></math>, and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo stretchy="false">(</mo><mn>1</mn><mo stretchy="false">/</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo><mo>=</mo><mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>a</mi><mo stretchy="false">)</mo></mrow></math>, or
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo>=</mo><mo>-</mo><mi>log</mi><mo stretchy="false">(</mo><mn>1</mn><mo stretchy="false">/</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo></mrow></math>, or 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo>=</mo><mn>1</mn><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>a</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow></math>.
+
+<div class="p"><!----></div>
+Set up parameters and equivalents:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;a&nbsp;=&nbsp;-5
+&#62;&nbsp;b&nbsp;=&nbsp;2
+&#62;&nbsp;n0&nbsp;=&nbsp;1/(1&nbsp;+&nbsp;exp(-a))
+&#62;&nbsp;n0
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.006692851
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;K&nbsp;=&nbsp;1
+&#62;&nbsp;r&nbsp;=&nbsp;b
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Draw the curves:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;curve(exp(a&nbsp;+&nbsp;b&nbsp;*&nbsp;x)/(1&nbsp;+&nbsp;exp(a&nbsp;+&nbsp;b&nbsp;*&nbsp;x)),&nbsp;from&nbsp;=&nbsp;0,&nbsp;to&nbsp;=&nbsp;5,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ylab&nbsp;=&nbsp;"")
+&#62;&nbsp;curve(K/(1&nbsp;+&nbsp;(K/n0&nbsp;-&nbsp;1)&nbsp;*&nbsp;exp(-r&nbsp;*&nbsp;x)),&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;type&nbsp;=&nbsp;"p")
+&#62;&nbsp;legend(0,&nbsp;1,&nbsp;c("statistical",&nbsp;"pop-dyn"),&nbsp;pch&nbsp;=&nbsp;c(NA,&nbsp;1),&nbsp;lty&nbsp;=&nbsp;c(1,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NA),&nbsp;merge&nbsp;=&nbsp;TRUE)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab3A-009.png" alt="lab3A-009.png" />
+The <tt>merge=TRUE</tt> statement in the
+<tt>legend()</tt> command makes  R&nbsp;plot the
+point and line types in a single column.
+
+<div class="p"><!----></div>
+
+<br /><br /><hr /><small>File translated from
+T<sub><font size="-1">E</font></sub>X
+by <a href="http://hutchinson.belmont.ma.us/tth/">
+T<sub><font size="-1">T</font></sub>M</a>,
+version 3.70.<br />On 14 Sep 2005, 16:37.</small>
+</body></html>

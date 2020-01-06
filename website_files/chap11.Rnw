@@ -1,0 +1,2235 @@
+<<echo=FALSE,results=hide>>=
+library(emdbook) ## for trcoef
+require(bbmle)
+require(Hmisc)
+require(MASS) ## for eqscplot
+source("chapskel.R")
+@ 
+
+\section*{Summary}
+
+This chapter covers dynamic models, an important kind of multi-level
+model.  It shows how to simulate dynamic models, discusses process and
+observation error, and illustrates methods for fitting models that
+assume only one or the other.  For problems where we want to estimate
+process error when the magnitude of observation error is known, it
+introduces the SIMEX approach.  Finally, it presents a brief
+introduction to fitting state-space models, which can estimate both
+process and observation error, via the Kalman filter or Markov chain
+Monte Carlo.
+
+\section{Introduction}
+
+This chapter covers concepts and techniques for fitting \emph{dynamic}
+models --- models that describe how ecological processes drive
+populations to change over time. Dynamic models are a special case
+of the multi-level models we introduced in Chapter~\ref{chap:var}.
+Dynamic models contain both
+\emph{process error}, which feeds back on future states of
+the population, and \emph{observation error},
+which affects only the current observation.
+
+We introduce dynamic models by describing
+how to simulate them.
+Knowing how to simulate dynamic models is important because
+fitting dynamic models to data is so tricky 
+that it's essential to fit models to simulated data to confirm that
+the methods work.  (Most of the examples in this chapter
+use simulated ``data''.)
+
+The easiest way by far of dealing with observation
+and process error is to ignore one or the other
+(Section~\ref{sec:procobs1}).
+If your data have little noise
+you may be able to get away with this approach.
+When you can independently estimate 
+the variance of the observation error,
+the more recently developed SIMEX (simulation-extrapolation) algorithm
+provides a way to get unbiased parameter estimates
+(Section~\ref{sec:simex}).
+
+\emph{State space models} (Section~\ref{sec:statespace})
+can in principle estimate both process and observation
+error from a single data set,
+subject to the very strong constraint that the
+data actually provide enough information to separate
+them reliably.
+The \emph{Kalman filter} (Section~\ref{sec:kalman})
+is a relatively simple algorithm for estimating the parameters
+of state-space models with normally distributed
+error.
+More generally,
+computationally intensive 
+Bayesian \citep{MillarMeyer2000} and
+frequentist \citep{deValpineHastings2002,Thomas+2005,Lele+2007}
+methods can simultaneously estimate
+deterministic parameters, observation error, and
+process error in nonlinear, non-normal ecological
+models (Section~\ref{sec:mcmc}).
+The use of such methods has recently begun to explode in
+ecology \citep{Solow1998,Ellner+2002,deValpineHastings2002,deValpine2003,
+Jonsen+2003,Buckland+2004,ClarkBjornstad2004,Thompson+2005}.
+This chapter attempts to provide a basic 
+and relatively painless introduction.
+If you want to explore this area further
+you will have to dig into the literature
+\citep[e.g.][]{Calder+2003}.
+
+\section{Simulating dynamic models}
+
+Dynamic models describe the changes in the size and characteristics
+of a population over time. 
+At each time step except the first, the size and
+characteristics of the population depend on
+the size and characteristics at the previous time step
+(or one or more times farther in the past).
+It is often much harder to write down the mathematical
+formula that describes the population size at time $t$ than
+it is to describe how $N(t)$ depends on $N(t-1)$.
+In dynamic models the difference between observation and process error
+becomes vitally important in dynamic models, because they act
+differently. Process error affects future population dynamics,
+while observation error does not.
+
+To simulate a dynamic model:
+\begin{itemize}
+\item{Set aside space (a vector or matrix) to
+record the state of the population (numbers of
+organisms, possibly categorized by species/size/age).}
+\item{Set the starting conditions for all state variables.}
+\item{For each time step,
+apply \R\ commands to simulate population
+dynamics over the course of one time step.
+Then apply \R\ commands to simulate the
+observation process and
+record the current \emph{observed} state of the population.}
+\item{Plot and analyze the results.}
+\end{itemize}
+
+\subsection{Examples}
+We can construct dynamic models corresponding to
+the two simple static models (linear/normal and 
+hyperbolic/Poisson) introduced in Chapter~\ref{chap:sim}.
+
+\newcommand{\Nobs}{N_\text{\small obs}}
+\newcommand{\ssqobs}{\sigma^2_{\mbox{\small obs}}}
+\newcommand{\ssqproc}{\sigma^2_{\mbox{\small proc}}}
+
+\begin{figure}
+<<echo=FALSE>>=
+## linear simulation with process/observation error
+linsim = function(nt=20,N0=2,dN=1,sd_process=sqrt(2),
+  sd_obs=sqrt(2)) {
+  Nobs = numeric(nt)
+  N_cur=N0
+  Nobs[1]=N_cur+rnorm(1,sd=sd_obs)
+  for (i in 2:nt) {
+    N_cur=N_cur+dN+rnorm(1,sd=sd_process)
+    Nobs[i]=N_cur+rnorm(1,sd=sd_obs)
+  }
+  Nobs
+}
+N = linsim()
+nsim=1000
+nt=20
+Nmat_obsonly = matrix(ncol=nsim,nrow=nt)
+for (j in 1:nsim) {
+  Nmat_obsonly[,j] = linsim(sd_process=0,sd_obs=2)
+}
+env_obs = t(apply(Nmat_obsonly,1,quantile,c(0.025,0.975)))
+Nmat_proconly = matrix(ncol=nsim,nrow=nt)
+for (j in 1:nsim) {
+  Nmat_proconly[,j] = linsim(sd_process=2,sd_obs=0)
+}
+env_proc = t(apply(Nmat_proconly,1,quantile,c(0.025,0.975)))
+@ 
+
+<<echo=FALSE>>=
+## discrete pop with process/observation error
+  ## equilibrium of N(t+1)=N*a/(b+N): a/(b+N)=1 or N=a-b
+  ## with detection probability p we get (a-b)*p
+  ## pure process: Poisson variation; p=1, mean=(a-b), var=(a-b)
+  ## pure observation: Binomial variation around (a-b)*p;
+  ## mean = (a-b)*p, var= (a-b)*p*(1-p)
+  ## solve: M,V equal with (a1-b1) = (a2-b2)*p
+  ##                       (a1-b1) = (a2-b2)*p*(1-p)
+  ##                       poismean = (a2-b2)*p
+  ##                       can't do it -- not possible
+  ## have to settle for equal means
+
+dsim = function(nt=20,N0=(a-b),a=6,b=1,p=1,
+  proc_err=TRUE) {
+  Nobs=numeric(nt)
+  N_cur=N0
+  Nobs[1]=rbinom(1,size=N_cur,prob=p)
+  for (i in 2:nt) {
+    if (proc_err) {
+      N_cur = rpois(1,N_cur*a/(b+N_cur))
+      Nobs[i] = rbinom(1,size=N_cur,prob=p)
+    } else {
+      N_cur = N_cur*a/(b+N_cur)
+      Nobs[i] = rbinom(1,size=floor(N_cur)+rbinom(1,size=1,prob=N_cur-floor(N_cur)),
+            prob=p)
+    }
+  }
+  Nobs
+}
+nt=20
+dN=dsim()
+nsim=1000
+nt=20
+dNmat_obsonly = matrix(ncol=nsim,nrow=nt)
+for (j in 1:nsim) {
+  dNmat_obsonly[,j] = dsim(proc_err=FALSE,p=5/8,a=9)
+}
+denv_obs = t(apply(dNmat_obsonly,1,quantile,c(0.025,0.975)))
+dNmat_proconly = matrix(ncol=nsim,nrow=nt)
+for (j in 1:nsim) {
+  dNmat_proconly[,j] = dsim(p=1)
+}
+denv_proc = t(apply(dNmat_proconly,1,quantile,c(0.025,0.975)))
+@ 
+
+<<echo=FALSE,eval=FALSE>>=
+  long_dNmat_proconly = matrix(ncol=5000,nrow=100)
+  for (j in 1:5000) {
+    long_dNmat_proconly[,j] = dsim(nt=100,p=1)
+  }
+long_denv_proc = t(apply(long_dNmat_proconly,1,quantile,c(0.025,0.975)))
+matplot(1:100,long_denv_proc,type="l",col=1,lty=1)
+@ 
+
+<<echo=FALSE,fig=TRUE,width=10>>=
+op = par(  mfrow=c(1,2))
+par(cex=1.5,mar=c(4,4,0,1)+0.1,
+  mgp=c(2.5,0.75,0),las=1,bty="l")
+plot(1:nt,N,ylim=c(-8,35),type="b",xlab="Time",lwd=2,
+     ylab="Population density")
+matlines(1:nt,env_obs,type="l",lty=2,col=1)
+matlines(1:nt,env_proc,type="l",lty=3,col=1)
+text(13,30,"Process",adj=0)
+text(15,22.5,"Observation",adj=0)
+##
+plot(1:nt,dN,type="b",ylim=c(0,max(denv_proc)+1),lwd=2,xlab="Time",
+     ylab="Population numbers")
+matlines(1:nt,denv_obs,type="l",lty=2,col=1)
+matlines(1:nt,denv_proc,type="l",lty=3,col=1)
+text(3,10.5,"Process",adj=0)
+text(5.5,7.5,"Observation",adj=0)
+par(op)
+@ 
+\caption{Dynamic models with process and observation error.
+a: Linear, continuous (Normal) model. b. Nonlinear,
+discrete (hyperbolic/Poisson) model.  In each case the
+envelopes (dotted and dashed lines) show the 95\% confidence
+limits for equivalent models with pure process or pure
+observation error; the realizations shown are generated
+with a mixture of process and observation error.}
+\label{fig:dyn1}
+\end{figure}
+
+Figure~\ref{fig:dyn1}a shows a dynamic model
+analogous to the static model shown in Figure~\ref{fig:sim1}a
+(p.~\pageref{fig:sim1}).
+The closest analogue of the static linear model,
+$Y \sim \mbox{Normal}(a+bx)$, is a dynamic
+model with observation error only:
+\begin{equation}
+\begin{split}
+N(1) & =  a \\
+N(t+1) & =  N(t)+b \\
+\Nobs(t) & \sim  \mbox{Normal}(N(t),\ssqobs)
+\end{split}
+\label{eq:dynlin1}
+\end{equation}
+The first line in (\ref{eq:dynlin1})
+specifies the initial or starting condition
+(the value of $N$ at time $t=1$).
+The second line is the
+updating rule that
+determines the population size one time step
+in the future, which in this case is
+purely deterministic.
+The third line specifies the
+observation process, in this case that the
+observed value of the population
+size at time $t$, $\Nobs(t)$,
+is normally distributed around the
+true value $N(t)$ with variance $\ssqobs$.
+
+The \R\ code for this model 
+would first specify
+\code{nt}, the number of time steps,
+and assign values for the parameters
+\code{a}, \code{b} and \code{sd.obs}.
+Then:
+<<eval=FALSE>>=
+N = numeric(nt)
+Nobs = numeric(nt)
+N[1] = a
+for (t in 1:(nt-1)) {
+  N[t+1] = b+N[t]
+  Nobs[t]=rnorm(1,mean=N[t],sd=sd.obs)
+}
+Nobs[nt] = rnorm(1,mean=N[nt])
+@
+Since the \code{for} loop only runs from 1 to \code{nt-1},
+we have to set the observed value for
+$t=$\code{nt} at the end.  If we ran the loop
+to \code{nt} we would be predicting the
+state of the population at time \code{nt+1},
+beyond the end of the vector we have set aside
+for the results.  \R\ would cooperate by
+extending the length of the vector, but
+the too-long vector might lead to confusion
+or errors in subsequent steps.
+
+By contrast, a model with pure process error
+is defined as:
+\begin{equation}
+\begin{split}
+N(1) & =  a \\
+N(t+1) & \sim  \mbox{Normal}(N(t)+b,\ssqproc) \\
+\Nobs(t) & =  N(t)
+\end{split}
+\end{equation}
+The \R\ code:
+<<eval=FALSE>>=
+N = numeric(nt)
+Nobs = numeric(nt)
+N[1] = a
+for (t in 1:(nt-1)) {
+  N[t+1] = rnorm(1,mean=b+N[t],sd=sd.proc)
+  Nobs[t]=N[t]
+}
+Nobs[nt]=N[nt]
+@
+
+In this case, we assume that our observations
+are perfect ($\Nobs(t) =  N(t)$), but that
+the change in the population is noisy rather
+than deterministic.
+
+The expected behavior of this dynamic model
+is exactly the same whether the variability in
+the model is caused by observation error or
+process error, and in fact is identical to
+the deterministic part of 
+a standard linear model $N=a+b(t-1)$.  Furthermore,
+there is no way to separate process from observation
+error by simply looking at a single time series; the
+variation in the observed data will appear the same.
+(Figure~\ref{fig:dyn1} actually shows a 
+single realization of a model
+with equal amounts of process and observation error; 
+it falls outside the theoretical
+bounds of a observation-error-only model
+with slope $a=1$, but
+only because we know the true slope.
+We couldn't tell the difference
+in a real data set.)
+The difference only becomes apparent when
+we simulate many realizations of the same process
+and look at how the variation \emph{among realizations}
+changes over time (Figure~\ref{fig:dyn1}a).  With
+observation error only, the variance among realizations
+is constant over time; with process error only, there
+is initially no variance (we always start at the 
+same density), but the variance among realizations
+increases over time.
+
+Figure~\ref{fig:dyn1}b shows a discrete-population
+model with process and observation error.  In this
+case, the model is a rational function with
+the same form as the Beverton-Holt or Michaelis-Menten
+function.  Suppose that \emph{per capita} plant fecundity
+declines with population density 
+according to the hyperbolic function $F(N) = a/(b+N)$.
+Then let the the next year's expected population size 
+$N(t+1)$ equal (population size) $\times$ (\emph{per capita} fecundity) =
+$N(t) (a/(b+N(t)))$.  The population
+grows asymptotically
+to a stable population size of $a-b$.
+(Convince yourself that when $N(t)=(a-b)$,
+$N(t+1)=N(t)$, and the simulated dynamics
+in Figure~\ref{fig:dyn1}b are indeed nearly constant.)
+
+For the observation error model, we 
+assume that we only have a probability $p$
+of counting each individual that is 
+present in the population, which leads
+to a binomial distribution of observations:
+\begin{equation}
+\begin{split}
+N(1) & =  N_0 \\
+N(t+1) & =  aN(t)/(b+N(t)) \\
+\Nobs(t) & \sim  \mbox{Binomial}(N(t),p)
+\end{split}
+\end{equation}
+
+The \R\ code:
+<<eval=FALSE>>=
+N = numeric(nt)
+Nobs = numeric(nt)
+N[1] = N0
+for (t in 1:(nt-1)) {
+  N[t+1] = a*N[t]/(b+N[t])
+  Nobs[t]=rbinom(1,size=round(N[t+1]),prop=p)
+}
+Nobs[nt]=rbinom(1,size=round(N[nt]),prop=p)
+@ 
+The only problem in 
+this model is that $N(t+1)$
+is usually not an integer, in which case the
+binomial doesn't make sense. 
+I rounded the value in this case,
+although normally it would be more sensible 
+to incorporate a more realistic process model with
+(discrete) process error%
+\footnote{But \cite{Henson+2001} 
+describe some possible dynamic consequences
+of this kind of rounding,
+which they call ``lattice effects'',
+in ecological systems.}.
+Like the
+linear observation error model, the
+distribution of error stays constant
+over time  --- with a few random bumps
+on the upper confidence limit caused
+by sampling error (Figure~\ref{fig:dyn1}b).
+
+The process error model for the discrete
+population case is simpler:
+\begin{equation}
+\begin{split}
+N(1) & =  N_0 \\
+N(t+1) & \sim  \mbox{Poisson}(aN(t)/(b+N(t))) \\
+\Nobs(t) & =  N(t).
+\end{split}
+\end{equation}
+
+The \R\ code:
+<<eval=FALSE>>=
+N = numeric(nt)
+Nobs = numeric(nt)
+N[1] = N0
+for (t in 1:(nt-1)) {
+  N[t+1] = rpois(1,lambda=a*N[t]/(b+N[t]))
+  Nobs[t]=N[t]
+}
+Nobs[nt]=N[nt]
+@ 
+
+The population size still converges to $a-b$
+over time, but the distribution
+spreads out over the first few time steps. 
+In fact, many of the simulated populations
+quickly go extinct.
+However, since this model has
+a stable equilibrium,
+the distribution of process error
+reaches its own equilibrium,
+rather than spreading out continuously
+like the linear model in Figure~\ref{fig:dyn1}a.
+% (This is an example
+% of the interaction between nonlinearity
+% and variability, but in the opposite direction
+% from Jensen's inequality where variance affects
+% average population performance; here the nonlinearity
+% (density-dependence) in population dynamics 
+% keeps the variance low and stable over time.)
+
+% A final technical note: in the linear,
+% continuous model it 
+% was simple to make the variances match
+% among the two models by setting ($\ssqobs=4$, $\ssqproc=0$)
+% for the observation-error case and ($\ssqobs=0$, $\ssqproc=4$)
+% for the process-error case.  It wasn't so easy in
+% the discrete model, because there are strong constraints
+% on the variances of discrete distributions.
+% In particular the variance of the Poisson
+% is equal to its mean, and the variance of the
+% binomial is always less than its mean.
+
+\subsubsection{Continuous-time models}
+
+Many dynamic models in ecology are defined
+in continuous rather than discrete time.
+Typically these models are framed
+as ordinary differential equation (ODE)
+models.
+The rule $N(t+1)=f(N(t))$ is replaced
+by $dN/dt = f(N(t))$, which specifies
+the instantaneous population growth rate.
+Probably the best-known ODE model is the logistic, 
+$dN/dt=rN(1-N/K)$.
+%, or its
+%extension the theta-logistic,
+%$dN/dt=rN(1-N/K)^\theta$.
+Researchers use continuous-time models
+for a variety of reasons including
+realism (for populations with overlapping
+generations that can reproduce in any season),
+mathematical convenience (the dynamics of
+continuous-time models are often more stable
+than those of their discrete analogues),
+and consistency with theoretical models.
+Most dynamic models have no closed-form solution (we
+can't write down a simple equation for $N(t)$),
+so we often end up simulating them.
+
+The simplest algorithm for simulating continuous-time
+models is \emph{Euler's method}, which
+uses small time steps to
+approximate the continuous passage of time.
+Specifically,
+if we know the instantaneous growth rate
+$dN/dt=f(N(t))$, we can approximate
+the change in the population over 
+a short time interval $\Delta t$ by
+saying that the population grows linearly
+at rate $dN/dt$, and thus that
+$\Delta N \approx dN/dt \cdot \Delta t$:
+\begin{equation}
+\begin{split}
+N(t+\Delta t) & = N(t) + \Delta N \\
+& \approx  N(t)+ \frac{dN}{dt}  \Delta t \\
+              & =   N(t)+ f(N(t)) \Delta t .
+\end{split}
+\end{equation}
+In order to find the population size
+at some arbitrary time $t$
+we make $\Delta t$ ``small enough''
+and work our way from the starting time to $t$, adding
+$\Delta N$ to the population at each time step $\Delta t$.
+
+Euler's method is fine for small problems, but 
+it tends to be both slow and unstable relative to more
+sophisticated approaches.
+If you are going
+to do serious work with continuous-time problems you will need
+to solve them for thousands of different parameter values 
+(which may in turn require experimenting with different
+values of $\Delta t$).
+The \code{lsoda} function
+in \R's \code{odesolve} library, which implements
+an adaptive step size algorithm, will be much more efficient.
+
+The central problem with comparing ODE models to data is that
+incorporating stochasticity in any other way
+than simply imposing normally distributed observation error
+is difficult.
+The mathematical framework that underlies
+stochastic differential equations is subtle \citep{Roughgarden1997}
+and hard to apply to practical problems.
+For this reason, studies
+that attempt to estimate parameters of continuous-time
+models from data
+tend either to use simple least-squares
+criteria that correspond to Normal observation error \citep{GaniLeach2001}
+or revert to discrete-time models
+\citep{FinkenstadtGrenfell2000}.
+
+One can build dynamical models that are
+stochastic, discrete-valued (and hence more sensible for
+populations) and run in continuous time, picking random
+numbers for the \emph{waiting times} until the next
+event (birth, death, immigration, infection, etc.).
+The basic algorithm for simulating these models
+is called the \emph{Gillespie algorithm} \citep{Gillespie1977},
+but it, and the advanced methods required to estimate
+parameters based on such models, are
+beyond the scope of this chapter
+\citep{GibsonRenshaw1998,GibsonRenshaw2001}.
+
+\section{Observation and process error}
+
+%\newcommand{\ntrue}{n_{\mbox{\small true}}}
+\newcommand{\ntrue}{N}
+\newcommand{\nobs}{N_{\mbox{\small obs}}}
+\newcommand{\nobst}{N_{\mbox{\small obs},t}}
+\newcommand{\nobstm}{N_{\mbox{\small obs},t-1}}
+\newcommand{\vproc}{\sigma^2_{\mbox{\small proc}}}
+\newcommand{\vobs}{\sigma^2_{\mbox{\small obs}}}
+
+In general, we describe dynamic data by setting
+up 
+\begin{itemize}
+\item{A deterministic function for the 
+\emph{expected} population dynamics ---
+the relationship between the current density
+and the expected density at time $t+1$,
+$\bar N(t+1) = f(N(t))$:
+for example, the discrete logistic equation, $\bar N(t+1)=N(t)+r N(t)(1- N(t)/K)$,  with parameters $r$ and $K$.}
+\item{
+A model of process error: for example, 
+$\ntrue(t)$ is negative binomially distributed
+with overdispersion parameter $k$,
+or $\ntrue(t) \sim \mbox{NegBin}(\mu=\bar N(t),k)$.}
+\item{A model of observation error: for example, a binomial
+sample with capture probability $p$ from $\ntrue(t), or 
+\nobs(t) \sim \mbox{Binom}(p,\ntrue(t))$.}
+\end{itemize}
+
+To understand some of the basic issues of dynamic data,
+let's look at the simplest deterministic model
+for population growth --- a
+constant increase in the population
+density per time step, $f(N(t)) = N(t)+b$,
+with Normally distributed process and observation
+error.
+Formally:
+\begin{eqnarray}
+\ntrue(t+1) & \sim & \mbox{Normal}(\ntrue(t)+b,\vproc) \\
+\nobs(t) & \sim & \mbox{Normal}(\ntrue(t),\vobs)
+\end{eqnarray}
+where $\vproc$ and $\vobs$ are the process and observation
+variances.
+
+\begin{figure}
+<<echo=FALSE>>=
+tvec = 1:200
+a.true=5
+b.true=0.05 ## 0.01
+x0 = rnorm(200,mean=a.true+b.true*tvec,sd=2)
+x = x0[-200]
+y = x0[-1]
+lm.ols = lm(x0~tvec)
+lm1 = lm(y~x)
+lm2 = lm(x~y)
+tmpf=function(p) {
+  a=p[1]
+  b=p[2]
+  sum((y-b*x-a)^2/(b^2+1))
+}
+O1 = optim(fn=tmpf,par=c(1,1))
+a1 = arima(x0,c(1,0,0))
+@ 
+
+<<echo=FALSE,fig=TRUE,width=10>>=
+op=par(pty="s",mfrow=c(1,2),cex=1.5,mgp=c(2.5,1,0),
+  mar=c(4,4,2,1)+0.1,las=1,lwd=2,bty="l")
+plot(x0,xlab="Time",ylab="N(t)",type="l")
+abline(lm.ols,lwd=2)
+plot(x,y,
+     xlab="N(t)",ylab="N(t+1)",col="gray")
+xvec = seq(floor(min(x)),ceiling(max(x)),length=100)
+matlines(xvec,predict(lm1,interval="prediction",newdata=data.frame(x=xvec)),
+         col=1,lty=c(1,2,2))
+invisible(require(ellipse,quietly=TRUE))
+cov1 = cov(cbind(x,y))
+lines(ellipse(cov1,centre=c(mean(x),mean(y))),lty=2)
+## calculate principal axis
+e1 = eigen(cov1)$values[1]
+rmaslope = sqrt(coef(lm1)[2]*coef(lm2)[2])
+## y = a+e1*x
+##abline(a=mean(y)-e1*mean(x),b=e1)
+##abline(a=mean(y)-rmaslope*mean(x),b=rmaslope,col=2)
+abline(a=O1$par[1],b=O1$par[2],lty=2)
+par(xpd=NA)
+legend(2,25,c("process error","observation error"),
+       lty=1:2,bty="n")
+par(xpd=FALSE)
+par(op)
+@ 
+\caption{Time-series data: process or observation error?}
+\label{fig:procerr1}
+\end{figure}
+
+Suppose we recorded the data in Figure~\ref{fig:procerr1},
+and wanted to try to understand what was going on in the population.
+Depending on the combination of observation and
+process error that we assumed, we could draw 
+very different conclusions about these data.
+
+\newcommand{\detN}{\bar N}
+If we assumed there was only observation error, with no process error,
+then the simplest approach would be to solve the deterministic
+equation ($\detN(t+1)=\detN(t)+b$) as a function of time to get $\detN(t) =
+\detN(0)+bt$ and estimate $b$ as the slope of an ordinary linear
+regression (\verb+lm(N~time)+).  We would interpret the population
+dynamics as a linear trend with time.
+
+What if we instead wanted to use 
+the plot of $N(t+1)$ against $N(t)$ 
+(Figure~\ref{fig:procerr1}b)
+to fit $f(N)$ ($f(N)=N+b$) directly?
+We would have to recognize that both
+$\nobs(t)$ and $\nobs(t+1)$ contain observation
+error, which doesn't fit the assumptions
+of ordinary linear regression.  Instead
+we would minimize the \emph{diagonal} deviations
+of points from a line $y=a+bx$, a procedure
+sometimes called \emph{model~II} regression
+\footnote{Model~II regression is a big topic
+\citep{Warton+2006};
+in special cases like this one 
+(dynamic data with only observation error) where we can
+assume that the variances in $x$ and $y$ are the
+same, we can use \emph{reduced major axis} regression,
+which gives the slope as $\sigma_y/\sigma_x$,
+or equivalently as $\sqrt{b_{yx}/b_{xy}}$, where
+$b_{yx}$ is the slope of the ordinary regression
+of $y$ on $x$ and 
+$b_{xy}$ is the slope of the ordinary regression
+of $x$ on $y$.}.
+Our model of the points $\{N(t),N(t+1)\}$ would
+be that they were bivariate normal, with the mean
+of $N(t+1)$ equal to $N(t)+b$; the ellipse in
+(Figure~\ref{fig:procerr1}b) represents the
+confidence limits for the points in this model.
+
+On the other hand, if we assumed process error only 
+(with no observation error),
+then we should fit an ordinary linear regression
+to the plot of $N(t)$ vs. $N(t+1)$, because we assume that we
+know the $x$ variable ($N(t)$) perfectly and the only uncertainty
+comes in the population growth from $t$ to $t+1$.  If we allow the
+full linear model $N(t+1)=a N(t)+b$, then we are fitting an
+\emph{autoregressive model}: while the overall trend would be the same
+as the ordinary linear model (provided $a<1$), the variance structure
+is different\footnote{We can fit the restricted model $f(N)=b+N$,
+assuming the slope of $N(t+1)$ vs. $N(t)$ is exactly 1, with
+\code{lm(y\~{}offset(x))}.}.  Figure~\ref{fig:procerr1}b also shows
+that this assumption gives different answers from the model~II
+regression, with a larger intercept (which corresponds to a larger
+population growth rate---remember this is the graph of
+$N(t)$ vs. $N(t+1)$, not the graph of $N(t)$ vs. $t$) and a flatter slope.
+
+What if we can't reasonably assume either pure process error or pure
+observation error?  Intermediate assumptions
+can lead to any answer between the two slopes shown in the figure,
+which might lead to a wide range of different biological conclusions!
+Unfortunately the data don't easily show us what assumption to
+make.  The noisier our data, the more the results of the
+linear-trend and autoregressive models will diverge. In the extreme where
+we have almost no information, the linear-trend model will say that
+$N(t)=N(t+1)$ (a 45\textdegree regression line), while the
+autoregressive model will say that $N(t+1)$ is independent of $N(t)$
+(a flat line).
+Since we have no information, our conclusions
+are entirely driven by the structure of our assumptions.
+This example is the first indication that in analyzing dynamic
+models we may sometimes be attempting to separate processes
+(process and observation variability) for which we have
+very little distinguishing information.
+We will return to this sobering theme at various points during the chapter.
+
+\section{Process and observation error}
+\label{sec:procobs1}
+Now we will see how the extreme assumptions 
+of only process error or only observation error play out
+if we want to fit a model with more interesting dynamics
+than simple linear increase or decrease with time.
+For problems with small amounts of error,
+or if you 
+want to keep things simple,
+use on of these approaches as suggested by \cite{HilbornMangel1997}.
+For example, pure process error would
+be a reasonable model for small discrete populations
+that could be counted exactly or for experimental
+populations observed in the lab \citep{DruryDwyer2005}.
+Pure observation error seems less plausible, but
+you would still be in good company picking one
+or the other: many 
+well-respected analyses
+of dynamic data have used these crude but simple methods
+\citep{Ives+1999,GaniLeach2001,vanVeen+2005}.
+
+<<echo=FALSE>>=
+## simulate logistic y with process and observation error
+set.seed(1001)
+r = 1
+K = 10
+t0 = 5
+n0 = 1
+tot.t = 10
+dt=0.5
+sd.proc= 1
+sd.obs = 1
+set.seed(1001)
+tvec = seq(1,tot.t,by=dt)
+n=length(tvec)
+y = numeric(n)
+ydet=numeric(n)
+y[1] = n0
+ydet[1] = n0
+e.proc = rnorm(n,mean=0,sd=sd.proc)
+e.obs = rnorm(n,mean=0,sd=sd.obs)
+for (i in 2:n) {
+  ydet[i] = ydet[i-1]+r*ydet[i-1]*(1-ydet[i-1]/K)*dt
+  y[i] = y[i-1]+(r*y[i-1]*(1-y[i-1]/K)+e.proc[i-1])*dt ## process only
+}
+## sd is variance in GROWTH RATE: should translate to
+## sd.proc/4 with delta-t=0.5
+y.procobs = y+e.obs
+y.obs = ydet+e.obs
+X = cbind(ydet,y,y.procobs,y.obs)
+@ 
+
+\subsection{Observation error only: shooting or trajectory matching}
+
+<<echo=FALSE>>=
+t0 = 1
+## fit to logistic by shooting
+shootfun = function(n0,r,K,sigma) {
+  y.pred = K/(1+(K/n0-1)*exp(-r*(tvec-t0)))
+  -sum(dnorm(y.procobs,y.pred,sd=sigma,log=TRUE))
+}
+m.shoot = mle2(shootfun,start=list(n0=1,r=1,K=10,sigma=1),
+  method="Nelder-Mead")
+@ 
+\begin{figure}
+<<echo=FALSE>>=
+## calculate diagonal points???
+## find the intersection of (xn,yn)-a*(x+y) and (x,K/(1+(K/n0-1)*exp(r*(x-t0))))
+##  xn + a*D = x
+##  yn - a*D = K/(1+(K/n0-1)*exp(r*(x-t0)))
+## solve for D:
+##  yn - a*D = K/(1+(K/n0-1)*exp(r*(xn+a*D-t0)))
+## transcendental, I'm afraid
+intdist = function(x,y,pars) {
+  tmpf = function(D) { with(as.list(pars),y-D-K/(1+(K/(x+D)-1)*exp(-r*dt)))}
+  D = uniroot(tmpf,c(-10,10))$root
+}
+D = numeric(n-1)
+for (i in 1:(n-1)) {
+  D[i] = intdist(y.procobs[i],y.procobs[i+1],coef(m.shoot))
+}   
+@ 
+
+<<echo=FALSE,fig=TRUE,width=8>>=
+op = par(mfrow=c(1,2))
+par(cex=1.5,mar=c(4,4,0,1)+0.1,
+  mgp=c(2.5,0.75,0),las=1,bty="l",
+  mfrow=c(1,2))
+## N vs t
+plot(tvec,y.procobs,xlab="Time",ylab="N(t)",ylim=c(0,15))
+with(as.list(coef(m.shoot)),curve(K/(1+(K/n0-1)*exp(-r*(x-t0))),add=TRUE))
+y.pred = with(as.list(coef(m.shoot)),K/(1+(K/n0-1)*exp(-r*(tvec-t0))))
+segments(tvec,y.procobs,tvec,y.pred,lty=2)
+points(tvec,y.procobs,pch=16,col="gray")
+##text(6,4,paste(names(coef(m.shoot)),round(coef(m.shoot),2),sep="=",collapse="\n"))
+## N(t+1) vs N(t)
+## FIXME: not sure this is really an improvement
+eqscplot(y.procobs[-n],y.procobs[-1],xlab="N(t)",ylab="N(t+1)",
+         xlim=c(0,15),ylim=c(0,15),tol=0)
+with(as.list(coef(m.shoot)),curve(K/(1+(K/x-1)*exp(-r*dt)),add=TRUE))
+segments(y.procobs[-n],y.procobs[-1],y.procobs[-n]+D,y.procobs[-1]-D,lty=2)
+points(y.procobs[-n],y.procobs[-1],pch=16,col="gray")
+par(op)
+@ 
+\caption{Logistic fit: shooting/trajectory matching (observation error only).
+True parameters $r=1$, $K=10$, $N(0)=1$, $\ssqobs=\ssqproc=1$.
+Estimated parameters 
+$r=\Sexpr{round(coef(m.shoot)["r"],2)}$,
+$K=\Sexpr{round(coef(m.shoot)["K"],2)}$,
+$N(0)=\Sexpr{round(coef(m.shoot)["n0"],2)}$,
+$\ssqobs=\Sexpr{round(coef(m.shoot)["sigma"]^2,2)}$.
+a: time dynamics, showing vertical residuals of observations from the
+fitted line.  b: next vs. current observation, showing diagonal
+residuals from the fitted line.}
+\label{fig:shoot}
+\end{figure}
+
+If we assume observation error only we can start with the initial
+conditions of the system (e.g. the starting population
+sizes: we either assume we know these or take 
+the starting values as
+additional parameters of the model) and ``shoot'' through the whole
+period, without correcting the model as we go along: this procedure is
+also called \emph{trajectory matching}.  If the deterministic dynamics
+are particularly simple (e.g. linear, exponential, or logistic) we may
+be able to derive a formula for $N(t)$ as a function of the starting
+conditions and calculate the predicted values in a single step
+(\code{N=a+b*time} or \code{N=a*exp(b*time)}), but much more often we
+will only be able to compute the expected values using a
+loop to go from the value at each time step to the value at the next
+time step.  (If you have a continuous-time model, 
+you can use the \code{odesolve} package to solve it
+numerically for each set of parameter values.)
+One way or the other, we compute the predicted values at
+all observation times,
+ignoring the variability in the actual data, and then compare
+the overall fit of the predicted curve to the data.
+
+Since we assume there is no uncertainty in the predicted values for
+each time step given the starting conditions and the
+parameters, the only error is between the predicted values and the
+observed values.  We can then do what we've been doing all
+along, assume independent observations and add up
+the log-likelihoods of observation error for every data
+point based on our model of observation error.
+
+Trajectory matching is widely used because it is simple
+and requires no consideration of process variability.
+If one assumes normally distributed observation error with
+constant variance, it simplifies still further to least-squares
+fitting of the deterministic trajectory
+\citep[e.g.][]{GaniLeach2001,vanVeen+2005}.
+Trajectory matching also works with missing data or
+unobserved variables \citep{Wood2001}, although
+\cite{Ellner+2002} warn that trajectory
+matching can be seriously misleading in cases where
+process variability qualitatively changes the dynamics
+of the population \citep[e.g.][]{Ellner+1998}.
+
+\subsection{Process error only: one-step-ahead fitting}
+<<echo=FALSE>>=
+t0 = 1
+## fit to logistic by one-step-ahead
+stepfun = function(r,K,sigma) {
+  y2 = y.procobs[-n]
+  y.pred = K/(1+(K/y2-1)*exp(-r*dt))
+  -sum(dnorm(y.procobs[-1],y.pred,sd=sigma,log=TRUE))
+}
+m.step = mle2(stepfun,start=list(r=1,K=10,sigma=1),method="Nelder-Mead",
+  control=list(parscale=c(1,10,1)))
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=8>>=
+op = par(cex=1.5,mar=c(4,4,0,1)+0.1,
+  mgp=c(2.5,0.75,0),las=1,bty="l",
+  mfrow=c(1,2))
+plot(tvec,y.procobs,pch=16,ylim=c(0,15),
+xlab="time",ylab="N(t)")
+logist = function(x0,t,r=1,K=10) {
+  K/(1+(K/x0-1)*exp(-r*dt))
+}
+y.pred = with(as.list(coef(m.step)),K/(1+(K/y.procobs[-n]-1)*exp(-r*dt)))
+arrows(tvec[-n],y.procobs[-n],tvec[-1],y.pred,length=0.1,angle=20)
+points(tvec[-1],y.pred)
+segments(tvec[-1],y.pred,tvec[-1],y.procobs[-1],lty=2)
+##text(6,4,paste(names(coef(m.step)),round(coef(m.step),2),sep="=",collapse="\n"))
+legend("topleft",c("observed","predicted"),
+       pch=c(16,1))
+##
+plot(y.procobs[-n],y.procobs[-1],xlab="N(t)",ylab="N(t+1)",xlim=c(0,15),ylim=c(0,15))
+with(as.list(coef(m.step)),curve(K/(1+(K/x-1)*exp(-r*dt)),add=TRUE))
+segments(y.procobs[-n],y.pred,y.procobs[-n],y.procobs[-1],lty=2)
+points(y.procobs[-n],y.procobs[-1],pch=16,col="gray")
+par(op)
+@ 
+\caption{Logistic fit: one-step-ahead (process error only).
+True parameters $r=1$, $K=10$, $N(0)=1$, $\ssqobs=\ssqproc=1$.
+Estimated parameters 
+$r=\Sexpr{round(coef(m.step)["r"],2)}$,
+$K=\Sexpr{round(coef(m.step)["K"],2)}$,
+$\ssqobs=\Sexpr{round(coef(m.step)["sigma"]^2,2)}$.
+a: Time dynamics and predictions.  b: Current vs. next observations,
+showing vertical residuals from the fitted line.}
+\label{fig:onestep}
+\end{figure}
+
+Alternatively, we can assume there is no observation error.  
+Then the
+only uncertainty is in the relationship between $N_t$ and $N_{t+1}$.
+If we plot the expected value of each $N_{t+1}$ as a function of the
+(perfectly known) $N_t$, we have errors only in the $Y$ variable
+(Figure~\ref{fig:shoot}).
+Instead of starting with the initial conditions and ``shooting''
+(forecasting) through the whole observation time period,
+we take the observation from each
+time step and predict just the next time step.  This way we need not
+worry about how process errors compound from step to step.
+(This procedure is more difficult with missing time points,
+because we then have to somehow figure out the expected
+relationship, including the process error,
+between (e.g.) $N(t)$ and $N(t+2)$ \citep{ClarkBjornstad2004}.)
+This procedure is called \emph{one-step-ahead prediction}
+(Figure~\ref{fig:onestep}).
+For population
+dynamics modeled in continuous rather than discrete
+time, a slightly more sophisticated analogue is called
+\emph{gradient matching} \citep{Ellner+2002}.
+
+Shooting and one-step-ahead prediction are approximations,
+but they are simple and usually worth trying before you do
+anything more sophisticated.  If the answers are not
+(biologically) significantly different, the fancier techniques
+may not be worth the effort.  Furthermore, if you find in
+the end that the distinction between process and observation
+variability is unidentifiable, stating the results of
+process-error-only and observation-error-only analyses and saying that
+the true value is likely to be somewhere between those answers may
+be the best you can do.
+
+\section{SIMEX}
+\label{sec:simex}
+
+In our one-step-ahead example, ignoring observation error
+led to a high estimate of $r$ (\Sexpr{round(coef(m.step)["r"],2)}
+vs. true value \Sexpr{r}) and a low estimate of $K$
+(\Sexpr{round(coef(m.step)["K"],2)}
+vs. true value \Sexpr{K}).  It's 
+impossible to infer from a single
+example, but in fact ignoring observation
+error will generally
+give upward biased answers for $r$ because observation
+error suggests that the population is changing faster than it
+really is.
+In this example $K$ is biased downward as well.
+It's hard to figure out in general what direction
+of bias to expect --- it depends in detail
+on the nonlinearities in the model --- but estimates 
+of nonlinear model parameters that ignore observation error 
+are very likely to be biased one way or the other.
+
+However, if you do have an estimate of the magnitude of
+the observation error, you can use the
+SIMEX (simulation-extrapolation) algorithm to
+correct for the bias caused by neglecting observation error.
+SIMEX works by inflating the observation error --- adding
+additional noise to the data set --- and re-estimating
+the parameters
+\citep{CookStefanski1994,StefanskiCook1995,Carroll+1995,Carroll+1999}.  
+After estimating how increasing
+levels of observation error change the parameter
+estimates, you can then extrapolate
+to estimate the parameter values you \emph{would} get with
+zero observation error. (Yes, this seems like black
+magic, but it works.)
+
+More specifically, the procedure for SIMEX is as follows:
+\begin{itemize}
+\item{based on your estimate of observation error,
+pick a range of increased error values: tripling the
+existing observation variance in 4--8 steps is a reasonable rule
+of thumb. (For example, if the estimate of
+observation error is $\vobs$, pick observation
+variances of $\{1.5 \vobs, 2 \vobs, 2.5 \vobs, 3 \vobs \}$.}
+\item{for each error magnitude in your range,
+generate a data set with that increased error.
+The procedure is more stable if you pick a single
+set of normally distributed
+random values and then multiply them by increasing
+factors for each simulation.  (If $y_i$ are
+your values and $\epsilon_i$ is a set of normal deviates
+with variance $\vobs$, 
+the first simulated data set with the
+inflation factors above would be $y_i+\sqrt{0.5} \epsilon_i$;
+the variance of this data set is $\vobs + 0.5 \vobs = 1.5\vobs$.
+The second data set with $y_i+\epsilon_i$ would have
+variance $2 \vobs$.)}
+\item{For each simulated data set, estimate and save
+the values of the parameters, using one-step-ahead
+prediction.}
+\item{
+Estimate a relationship between the total variance
+and the values of the parameters (a separate
+regression for each parameter, typically 
+a linear or quadratic regression:
+\verb$lm1 = lm(param~measerr+I(measerr^2))$).
+}
+\item{Find the SIMEX bias-corrected estimates of the parameters
+by extrapolating the regressions to zero variance
+(for a linear or quadratic regression, the first
+coefficient is the intercept: \code{coef(lm1)[1]}).}
+\end{itemize}
+
+<<echo=FALSE>>=
+simlogistdata = function(seed=1001,
+  r=1,K=10,n0=1,t0=1,tot.t=10,dt=0.5,
+  sd.proc=1,sd.obs=1) {
+  if (!is.null(seed)) set.seed(seed)
+  tvec = seq(1,tot.t,by=dt)
+  n=length(tvec)
+  y = numeric(n)
+  ydet=numeric(n)
+  y[1] = n0
+  ydet[1] = n0
+  e.proc = rnorm(n,mean=0,sd=sd.proc)
+  e.obs = rnorm(n,mean=0,sd=sd.obs)
+  for (i in 2:n) {
+    ydet[i] = ydet[i-1]+r*ydet[i-1]*(1-ydet[i-1]/K)*dt
+    y[i] = y[i-1]+(r*y[i-1]*(1-y[i-1]/K)+e.proc[i-1])*dt ## process only
+  }
+  y.procobs = y+e.obs
+  y.obs = ydet+e.obs
+  cbind(tvec,y.procobs)
+}
+@ 
+
+%% logistic estimate:
+%% x2 = x1 + r*x1*(1-x1/K) + epsilon
+%% want to minimize SSQ:
+%%  sum (x2 - (x1 + r*x1*(1-x1/K)))^2
+%%  sum (x2 - x1*(1+r*(1-x1/K))) = sum (dev^2)
+%%  or sum (x2-x1) - r*(1-x1/K)
+%%  deriv wrt r:
+%%  sum (2 * (dev)*( - x1*(1-x1/K)) = 0
+%%    or sum (dev)*(x1*(1-x1/K)) = 0  % (divide by -2)
+%%       sum ((x2-x1)*x1*(1-x1/K) - r*x1*(1-x1/K)
+%%      r = sum(x2-x1)*x1*(1-x1/K)/sum(x1*(1-x1/K))
+%%
+%% wrt K: sum (2*(dev)*r*x1^2/K^2)
+%%        sum((x2-x1-r*x1)*r*x1^2/K^2 +r*x1^2/K*r*x1^2/K^2) = 0
+%%        sum((x2-x1-r*x1) + r*x1^2/K) = 0
+%%        sum(x2-x1*(1+r)) =  -sum(r*x1^2)/K
+%%        K = -r*sum(x1^2)/sum(x2-x1*(1+r))  %% ? maybe ??
+<<eval=FALSE,echo=FALSE>>=
+ylast = y[-1]
+yfirst = y[-n]
+sum((ylast-yfirst)*yfirst*(1-yfirst/10))/sum(yfirst*(1-yfirst/10))
+-sum(yfirst^2)/sum(ylast-yfirst*(1+1))
+@ 
+
+<<echo=FALSE>>=
+## fit to logistic by one-step-ahead (assume proc. error only)
+stepfun2 = function(r,K,sigma,y) {
+  ystart = y[-n]
+  yend = y[-1]
+  y.pred = K/(1+(K/ystart-1)*exp(-r*dt))
+  -sum(dnorm(yend,y.pred,sd=sigma,log=TRUE))
+}
+jagged = FALSE
+newdata = simlogistdata(tot.t=100,sd.proc=2)
+n = nrow(newdata)
+y.procobs = newdata[,2]
+tvec = newdata[,1]
+randvals = rnorm(n,mean=0,sd=1)
+simex0 = function(s,...) {
+  y.simex = y.procobs+if (jagged) rnorm(n,mean=0,sd=s) else randvals*s
+  coef(mle2(stepfun2,start=list(r=1,K=10,sigma=1),
+                      data=list(y=y.simex),...))
+}     
+sdvec = seq(0,2,length=10)
+simextab = t(sapply(sdvec,simex0,method="Nelder-Mead"))
+predmat = apply(simextab,1,
+  function(X) {
+    r=X[1]; K=X[2]; n0=y.procobs[1]
+    K/(1+(K/n0-1)*exp(-r*(tvec-t0)))
+  })
+##matplot(predmat,type="b")
+rvec = simextab[,"r"]
+Kvec = simextab[,"K"]
+tsdvec = sqrt(sd.obs^2+sdvec^2)
+tsdvec2a = seq(0,1,length=40)
+tsdvec2b = seq(1,max(tsdvec),length=40)
+q.r = lm(rvec~tsdvec+I(tsdvec^2))
+q.K = lm(Kvec~tsdvec+I(tsdvec^2))
+l.r = lm(rvec~tsdvec)
+l.K = lm(Kvec~tsdvec)
+@
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op=par(mar=c(5,5,2,5)+0.1,las=1,cex=1.5,lwd=2,bty="l")
+plot(tsdvec,rvec,xlim=c(0,max(tsdvec)),
+     xlab="Total observation error",ylab="",ylim=c(0.9,max(rvec)))
+mtext(side=2,"r",line=3,cex=1.5)
+lines(tsdvec2a,predict(q.r,newdata=data.frame(tsdvec=tsdvec2a)),lty=2)
+lines(tsdvec2b,predict(q.r,newdata=data.frame(tsdvec=tsdvec2b)))
+abline(h=1,lty=3)
+points(par("usr")[1],coef(q.r)[1],pch=16,xpd=NA)
+## K plot
+par(new=TRUE)
+plot(tsdvec,Kvec,pch=2,xlim=c(0,max(tsdvec)),ylim=c(9,10.5),axes=FALSE,
+     xlab="",ylab="",col="darkgray")
+lines(tsdvec2a,predict(q.K,newdata=data.frame(tsdvec=tsdvec2a)),lty=2,col="darkgray")
+lines(tsdvec2b,predict(q.K,newdata=data.frame(tsdvec=tsdvec2b)),col="darkgray")
+axis(side=4,col="darkgray",col.axis="darkgray")
+mtext(side=4,at=9.75,line=par("mgp")[1],"K",col="darkgray")
+abline(h=10,lty=3,col="darkgray")
+points(par("usr")[2],coef(q.K)[1],pch=16,col="darkgray",xpd=NA)
+par(op)
+@ 
+\caption{SIMEX extrapolation for the logistic model.
+Horizontal lines show true values: black/circles show estimates
+for $r$ and gray/triangles show estimates for $K$, both extrapolated
+quadratically back to $\sigma^2=0$.}
+\label{fig:simex}
+\end{figure}
+
+\section{State space models}
+\label{sec:statespace}
+The final, most sophisticated and most general but most challenging
+category of statistical estimation procedures for dynamic data
+are so-called \emph{state-space models}. 
+In principle state-space models
+can allow you to estimate parameters of the
+deterministic process, observation error, \emph{and}
+process error from a single observed time series --- %
+always subject to the constraints of identifiability.
+Trying to fit state-space models to time series that are
+too short, vary too little, or otherwise contain
+insufficient information to identify the parameters will lead
+to numerical problems and wide confidence intervals if
+you're lucky (and skilled), and misleading answers if
+you're unlucky.
+Schnute's warning about identifiability (p.~\pageref{schnutequote})
+refers specifically to state-space models.
+With that warning in mind, here we go \ldots
+
+In general, we know that observation error will be the
+same for each observation (or at least depend only on
+the true value, and not on when it is measured),
+while the process error will tend to increase over time.
+The longer we wait between observations, the more random
+variation will decrease our certainty about the state of the system. 
+
+The key insight of state-space models is that every observation we
+make does several things:
+\begin{itemize}
+\item{It provides information that
+shrinks the cloud of uncertainty around the true but unknown
+current state of the system.}
+\item{It provides \emph{indirect} information about the likelihood
+of the next state.  For example, a higher-than-expected
+population count in 2000 increases the expectation for the 2001
+count.}
+\item{It also provides indirect information about the
+\emph{previous} state of the system.
+For example, a higher-than-expected
+population count in 2000 also makes us think that the true
+population size in 1999 might have been higher than
+we previously thought.}
+\end{itemize}
+If this discussion sounds Bayesian to you (updating our expectations
+of the probability of the state of the system based on prior
+observations), you're right; lots of state-space modeling has
+a Bayesian flavor, although it can also be done in a frequentist
+framework \citep{deValpineHastings2002,Ionides+2006,Lele+2007}. 
+At this cutting-edge level,
+there's a lot more interplay between Bayesian and frequentist
+approaches than at more basic levels.
+%% \todo{cite Lele composite likelihood?}
+
+Estimation algorithms for state-space models are essentially systems
+that carry out the complicated bookkeeping required to
+keep track of the current estimates of the true state of the system at
+a particular time. For each new choice of parameters, the algorithm works
+through the data set one observation at a time, updating estimates of
+the true value and variance at that time based on the parameters and
+the current estimate of the previous time step (and in some systems, of
+the next time step as well).  Once this is done for the whole
+data set, you can use the estimates and variances to calculate the likelihood
+for the new set of parameters and decide how to pick the next one,
+using a standard algorithm such as Nelder-Mead or MCMC.
+
+
+\subsection{Kalman filter}
+\label{sec:kalman}
+
+The \emph{Kalman filter} is an algorithm for calculating the expected
+means and covariances of the observed values for a whole time series
+in the presence of observation and process error.  In its original
+form it works only for models that are linear (exponential increase or
+decrease or expected constant population size over time) with
+multivariate normal error; the \emph{extended Kalman filter} uses an
+approximation that works for nonlinear population dynamics.  The
+Kalman filter's great strengths are its (relative) simplicity and
+speed, and its flexibility.
+
+The Kalman filter works by stepping
+through the data set one observation at a time, updating what
+we know about the mean and variance of the true state
+variables at time $t$.  It is an inductive procedure, giving
+the rules for figuring out the mean and variance at time $t$
+if we already know the mean and variance at time $t-1$.  Clearly,
+then, if we can figure out starting values for the mean and
+variance at time 1, we can work through the whole data set
+this way.
+
+I'll illustrate this with a very simple example (keeping
+in mind that we can add many realistic complications),
+with a single population growing linearly at rate $a$
+per year, with an autoregressive term $b$ that means that
+$N_{t-1}$ and $N_t$ have a correlation coefficient of
+$b$ (over and above the general linear trend with time).
+I assume there is both process ($\vproc$) and
+observation ($\vobs$) error, both normally distributed.
+% N_t ~ b*N_{t-1}
+% <N_t N_{t-1}> = <b N_{t-1}^2> = b Var N
+
+So our model is:
+\begin{eqnarray}
+N_t & \sim & \mbox{Normal}(a + bN_{t-1},\vproc) \label{eq:kfeq} \\
+\nobst & \sim & \mbox{Normal}(N_t,\vobs)
+\end{eqnarray}
+If $b<1$, then the population is stable, because random
+deviations in $N$ shrink by a factor $b$ every year;
+if $b>1$, then the population is unstable and
+random deviations grow over time.
+
+Suppose, based on all the observations up through time
+$t-1$ we believe that the mean of the true population
+size at time $t-1$, $N_{t-1}$, is $\mu_0$, and its variance is $\sigma^2_0$.
+We can calculate based only on the population parameters $a$ and $b$ what
+we expect the mean and variance should be at the next time step,
+The change in the mean is a direct reflection of the population model;
+the variance term is a combination of multiplying the previous variance
+by $b^2$ since we have multiplied the population size by $b$, and adding
+the new variability introduced by process error between $t-1$ and $t$.
+So
+\begin{eqnarray}
+\mbox{mean}(N_t|\nobstm) = \mu_1 & = & a + b\mu_0 \label{eq:kfm}\\ 
+\mbox{Var}(N_t|\nobstm) = \sigma^2_1 & = & b^2 \sigma^2_0 + \vproc.
+\label{eq:kfv}
+\end{eqnarray}
+More stable populations, indicated by low values of $b$,
+imply lower variance. As $b$ gets very small, no variance
+carries over from one time step to the next and the standing
+variance of the population becomes just $\vproc$.
+
+The mean of the observation at time $t$ equals
+the mean of the true value (we assume error, but no biases, in the
+observation process).
+The variance equals the
+current variance of the true population size plus the
+observation variance:
+\begin{eqnarray}
+\mbox{mean}(\nobst|\nobstm) = \mu_2 & = & \mu_1 \\ 
+\mbox{Var}(N_t|\nobstm) = \sigma^2_2 & = & \sigma^2_1 + \vobs
+\end{eqnarray}
+
+The last step of the Kalman filter, taking the information about
+the current observation into account, is the hardest.  The current
+observation, of course, changes the mean of the true population state.
+How much it changes it depends on how far the current observation
+is from where it was expected to be based on the previous information
+($\nobst-\mu_2$), as well as the ratio of the variances of the true value
+and of the observation.  If there is no observation error, then the
+variance of the observation is the same as the variance of the true
+state of the population, and (as shown by the formula below) we 
+simply set the mean of the population equal to the current observation.
+If there is lots of observation error, then the current observation
+doesn't tell us very much and we don't let an unexpected observation
+change our value of the mean much.
+\begin{equation}
+\mbox{mean}(N_t|\nobst) = \mu_3  =  \mu_1 + \frac{\sigma^2_1}{\sigma^2_2}(\nobst-\mu_2)
+\end{equation}
+The Bayesian approach suggests another interpretation of this
+equation: our best estimate of the
+current population size is a weighted average of 
+our prior --- what we think the population size is based on previous time steps ($\mu_1$) --- and the current observational data ($\nobst$).
+
+Finally, we need to update the variance based on the current observation.
+Here we actually reduce the current variance of the true value,
+again based on the ratio
+of the variance of the true value to the variance of the observation.
+\begin{equation}
+\mbox{Var}(N_t|\nobst) = \sigma^2_3  =  \sigma^2_1\left(1 - \frac{\sigma^2_1}{\sigma^2_2}\right)
+\end{equation}
+If there is no observation error, then $\sigma_1^2=\sigma_2^2$
+and the variance of the true value becomes zero.
+Unlike the mean, the variance is independent of the observed data.
+
+Now that we've figured out the mean and variance of $N$ and
+$N_{\text{obs}}$ based on all the observations up to time $t$, we can
+repeat the procedure to calculate the values at time $t+1$.
+Once we have worked through the whole data set, we know the
+expected mean and variance at each time step, and we can calculate the
+standard normal log-likelihood for the observed values (of course we
+don't know the true values to compare with those means and variances).
+
+The concepts are the same but the formulas are considerably 
+more complicated in the general case described by \cite{Schnute1994}.
+The one extension I will describe here is how
+to estimate a nonlinear population growth function $f(N)$
+(called the \emph{extended Kalman filter}).
+
+All we have to do is replace (\ref{eq:kfm}) and (\ref{eq:kfv}) with
+appropriate generalizations.  For example, let's replace the linear
+equation in (\ref{eq:kfeq}) with the discrete logistic equation:
+\begin{equation}
+N_t \sim \mbox{Normal}(N_{t-1} + r N_{t-1} \left(1- \frac{N_{t-1}}{K}\right) ,\vproc). 
+\label{eq:kfnleq}
+\end{equation}
+Then substitute this equation for (\ref{eq:kfm}):
+\begin{equation}
+\mbox{mean}(N_t|\nobstm) = \mu_1  =  \mu_0 + r\mu_0 \left(1- \frac{\mu_0}{K}\right)
+\end{equation}
+
+For the variance, we need to
+find the equivalent of $b$, the
+\emph{per capita} growth rate, to substitute into (\ref{eq:kfv}).
+A reasonable approximation for the current
+\emph{per capita} growth rate is
+the derivative of the population growth rate 
+with respect to the population size:
+\begin{equation}
+\frac{\partial f}{\partial N} = \frac{\partial (N + rN(1-N/K))}{\partial N} = 1+r-2N/K.
+\end{equation}
+Since this equation is based on a first-order Taylor expansion,
+it is only good for relatively small noise or short time steps.
+
+Evaluating the derivative
+at the current mean value of the population size ($N=\mu_1$) gives
+\begin{equation}
+\mbox{Var}(N_t|\nobstm) = \sigma^2_1  =  (1+r-2N/K)^2 \sigma^2_0 + \vproc.
+\end{equation}
+If the population is currently growing ($\frac{\partial f}{\partial N}>1$), the variance is inflated.
+If it is shrinking, the variance is deflated.
+
+<<echo=FALSE,eval=FALSE>>=
+#library(MASS)
+dx = 3
+dy = 3
+sc = 0.5
+xpos = rep(0:1,each=3)*dx
+ypos = rep(0:2,2)*dy
+symbols(xpos,ypos,circles=rep(1,6),inches=sc,
+        xlab="",ylab="",xlim=c(-1,5),ylim=c(-1,7))
+for (i in 1:3) {
+  text(0,ypos[i],
+       substitute(N[i],list(i=i)))
+}
+for (i in 1:3) {
+  text(dx,ypos[i],
+       substitute(N[list(obs,i)],list(i=i)))
+}
+@ 
+
+
+<<echo=FALSE>>=
+kfpred.gen <- function(A,B,C,D,U,V,N0,MX.start,WX.start,Y) {
+  ## follows Schnute 1994 notation
+  ## would need to allocate space for answers
+  MX <- MX.start
+  WX <- WX.start
+  MY[,1] <- C + D %*% MX.start
+  WY[,,1] <- D %*% WX.start %*% t(D) + V
+  for (t in 2:nt) {
+    MXi <- A+B %*% MX
+    WXi <- B %*% WX %*% t(B) + U
+    MY[,t] <- C+D %*% MXi
+    WY[,,t] <- D %*% WXi %*% t(D) + V
+    MX <- MX + WX %*% t(D) %*% solve(WY[,,t]) %*% (Y[,t]-MY[,t])
+    WX <- WX - WX %*% t(D) %*% solve(WY[,,t]) %*% D %*% WX
+  } 
+}
+@ 
+
+So how do we implement this in \R?
+<<eval=FALSE,echo=FALSE>>=
+kfpred <- function(a,b,procvar,obsvar,M.n.start,Var.n.start,Nobs,c=1,d=1) {
+  nt <- length(Nobs)
+  M.nobs <- numeric(nt)
+  Var.nobs <- numeric(nt)
+  M.n <- M.n.start
+  Var.n <- Var.n.start
+  M.nobs[1] <- M.n.start
+  Var.nobs[1] <- Var.n.start+obsvar
+  for (t in 2:nt) {
+    M.ni <- a+b*M.n
+    Var.ni <- b^2*Var.n + procvar
+    M.nobs[t] <- M.ni
+    Var.nobs[t] <- Var.ni + obsvar
+    M.n <- M.ni +  Var.ni/Var.nobs[t]*(Nobs[t]-M.nobs[t])
+    Var.n <- Var.ni*(1 - Var.ni/Var.nobs[t])
+  } 
+  list(mean=M.nobs,var=Var.nobs)
+}
+kflik <- function(a,b,logprocvar,logobsvar,M.n.start,logVar.n.start) {
+  pred <- kfpred(a,b,exp(logprocvar),exp(logobsvar),M.n.start,exp(logVar.n.start),
+                 Nobs=Nobs)
+  -sum(dnorm(Nobs,pred$mean,sqrt(pred$var),log=TRUE))
+}
+## simulate data:
+set.seed(1001)
+nt <- 200
+obsvar <- 10
+procvar <- 20
+a <- 0.5
+b <- 1
+N <- numeric(nt)
+Nobs <- numeric(nt)
+N[1] <- 150
+for (t in 2:nt) {
+  N[t] <- a +b*N[t-1]+rnorm(1,sd=sqrt(procvar))
+}
+tvec <- 1:nt
+Nobs <- N+rnorm(nt,sd=sqrt(obsvar))
+
+## kfpred(2,0.99,procvar=procvar,obsvar=obsvar,M.n.start=Nobs[1],Var.n.start=1,Nobs=Nobs)
+kflik(2,1,logprocvar=log(procvar),logobsvar=log(obsvar),
+      M.n.start=N[1],logVar.n.start=log(procvar+obsvar))
+m1 <- mle2(minuslogl=kflik,
+          start=list(a=1,b=0.9,logprocvar=0,logobsvar=0,
+            M.n.start=150,logVar.n.start=0),
+          fixed=list(b=1),
+          method="Nelder-Mead",
+          control=list(maxit=1000))
+pred1 <- do.call(kfpred,c(as.list(trcoef(coef(m1))),list(Nobs=Nobs)))
+plot(pred1$mean,type="l")
+points(Nobs)
+matlines(1:length(Nobs),
+         pred1$mean+2*outer(sqrt(pred1$var),c(-1,1),"*"),lty=2,col=1)
+plot(pred1$mean,Nobs)
+## get silly answers, at first ...
+## need to limit abs(b)<1, var params > 0
+
+-logLik(m1)
+confint(m1,method="hessian")
+@ 
+
+<<eval=FALSE,echo=FALSE>>=
+m1prof <- profile(m1,which="logprocvar",trace=TRUE)
+newvals <- list(a=33.067243,b=1.00000,logprocvar=3.810141,logobsvar=-31.542905,
+                M.n.start=151.222582,logVar.n.start=-85.620510)
+do.call("kflik",newvals)
+## something wacky going on inside -- reports new better minimum in
+##   profiling, yet reported parameters don't do better in outside
+##   scope ???
+##
+a.prof <- profile(m1,which="a")
+pv <- a.prof@profile$a$par.vals
+z  <- a.prof@profile$a$z
+a.ci <- confint(m1,parm="a")
+plot(pv[,"a"],z)
+abline(v=a.ci)
+abline(v=confint(m1,method="hessian",parm="a"),col=2)
+plot(pv[,"a"],z,type="b")
+abline(v=a.ci)
+abline(v=confint(m1,method="hessian",parm="a"),col=2)
+## agrees well enough with the Hessian-based CI
+## over this range what happens
+rrange <- range(which(abs(z)<2.5))
+rvals <- rrange[1]:rrange[2]
+matplot(pv[rvals,"a"],exp(pv[rvals,c("logobsvar","logprocvar")]),type="l")
+plot(pv[rvals,"a"],exp(pv[rvals,"logprocvar"]),type="b")
+matplot(pv[rvals,"a"],pv[rvals,-1],ylim=c(-10,20),type="b")
+
+m2 <- mle2(minuslogl=kflik,
+          start=list(a=1,b=0.9,logprocvar=0,logobsvar=0,
+            M.n.start=150,logVar.n.start=0),
+          fixed=list(b=1,M.n.start=150,logVar.n.start=-2),
+          method="Nelder-Mead",
+          control=list(maxit=1000))
+
+m3 <- mle2(minuslogl=kflik,
+          start=list(a=1,b=0.9,logprocvar=0,logobsvar=0,
+            M.n.start=150,logVar.n.start=0),
+          fixed=list(b=1,logprocvar=-30,M.n.start=150,logVar.n.start=-2),
+          method="Nelder-Mead",
+          control=list(maxit=1000))
+@
+
+The \R\ supplement defines a function 
+\code{nlkfpred} that calculates
+the non-linear Kalman filter predictions for a set of time-series data
+and a \code{nlkflik} that uses those predictions to compute
+the negative log-likelihood for a set of parameters.
+We fit all the parameters on the log scale to avoid
+the possibility of negative parameter values.
+
+<<echo=FALSE>>=
+nlkfpred = function(r,K,procvar,obsvar,M.n.start,Var.n.start,Nobs) {
+  nt = length(Nobs)
+  M.nobs = numeric(nt)
+  Var.nobs = numeric(nt)
+  M.n = M.n.start
+  Var.n = Var.n.start
+  M.nobs[1] = M.n.start
+  Var.nobs[1] = Var.n.start+obsvar
+  for (t in 2:nt) {
+    M.ni = M.n+r*M.n*(1-M.n/K)
+    b = 1+r-2*r*M.n/K
+    Var.ni = b^2*Var.n + procvar
+    M.nobs[t] = M.ni
+    Var.nobs[t] = Var.ni + obsvar
+    M.n = M.ni +  Var.ni/Var.nobs[t]*(Nobs[t]-M.nobs[t])
+    Var.n = Var.ni*(1 - Var.ni/Var.nobs[t])
+  } 
+  list(mean=M.nobs,var=Var.nobs)
+}
+nlkflik = function(logr,logK,logprocvar,logobsvar,logM.n.start,logVar.n.start,obs.data) {
+  pred = nlkfpred(r=exp(logr),K=exp(logK),
+                   procvar=exp(logprocvar),obsvar=exp(logobsvar),
+                   M.n.start=exp(logM.n.start),Var.n.start=exp(logVar.n.start),
+                   Nobs=y.procobs2)
+  -sum(dnorm(obs.data,mean=pred$mean,sd=sqrt(pred$var),log=TRUE))
+}
+@ 
+
+<<echo=FALSE>>=
+rval = 0.25
+n0val = 3
+procvar = 0.5
+obsvar = 0.5
+nt = 100
+newdata2 = simlogistdata(tot.t=nt,sd.proc=sqrt(0.5),sd.obs=sqrt(0.5),
+  n0=3,r=0.25,seed=1002,dt=1)
+y.procobs2 = newdata2[,2]
+@ 
+
+<<>>=
+##plot(y.procobs2,ylim=c(-1,12))
+
+
+<<echo=FALSE,eval=FALSE>>=
+L1 = do.call("nlkfpred",c(trcoef(startvec),list(Nobs=y.procobs2)))
+head(cbind(NL1$mean,NL1$var,y.procobs2),20)
+do.call("nlkflik",startvec)
+@ 
+
+We need to pick starting values for the 
+estimation. I'm going to cheat here
+since I know the true values, but it would be easy
+enough to do a one-step-ahead or trajectory-matching
+fit to the data, or even eye-ball, to estimate
+reasonable starting values for $r$, $K$, and the
+variances.
+<<>>=
+startvec = list(logr=log(0.25),logK=log(10),logprocvar=log(0.5),logobsvar=log(0.5),
+                 logM.n.start=log(3),logVar.n.start=-2)
+@ 
+
+
+Maximum-likelihood estimation of the parameters:
+% visible code to show what is really done above/stored
+<<cache=TRUE>>=
+m4 = mle2(minuslogl=nlkflik,
+  start=startvec,data=list(obs.data=y.procobs2),
+  method="Nelder-Mead",
+  control=list(maxit=2000))
+@ 
+
+
+% hide this for now:
+<<cache=TRUE,echo=FALSE>>=
+ucsim = replicate(1000,with(as.list(trcoef(coef(m4))),
+  simlogistdata(tot.t=100,sd.proc=sqrt(procvar),sd.obs=sqrt(obsvar),
+                n0=M.n.start,r=r,K=K,seed=NULL,dt=1)[,2]))
+ucsim[ucsim<0] = NA  ## clear out negative values
+ucsim.mean = rowMeans(ucsim,na.rm=TRUE)
+ucsim.env = t(apply(ucsim,1,quantile,c(0.025,0.975),na.rm=TRUE))
+##  save("ucsim.mean","ucsim.env","m4",file="nlkf.RData")
+##} else load("nlkf.RData")
+@ 
+
+The fitted parameters are reasonable
+and the confidence intervals bracket the true values:
+<<echo=FALSE,results=tex>>=
+restab = cbind(trcoef(unlist(startvec)),trcoef(coef(m4)),exp(confint(m4,method="quad")))
+## ignoring starting values since they're kind of funky anyway
+restab <- restab[1:4,]
+dimnames(restab) = list(
+          c("$r$","$K$","$\\ssqproc$","$\\ssqobs$"),
+          c("true","fitted","2.5\\%","97.5\\%"))
+latex(round(restab[1:4,],2),file="",title="",table.env=FALSE)
+@ 
+It's not surprising that the confidence intervals are narrow for
+$K$, slightly wider for $r$ (the population spends more time
+around its carrying capacity than in the growth phase),
+or that the confidence intervals for the variances are
+larger than the confidence intervals for the deterministic
+parameters.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=8>>=
+op = par(cex=2,lwd=2,mar=c(4,4,2,1)+0.1,mfrow=c(1,2),las=1,bty="l")
+pred2 = do.call(nlkfpred,c(as.list(trcoef(coef(m4))),list(Nobs=y.procobs2)))
+plot(pred2$mean,type="l",ylim=c(0,15),xlab="Time",ylab="Population density",axes=FALSE)
+axis(side=2)
+axis(side=1,at=c(0,50,100))
+box()
+points(y.procobs2,cex=0.5)
+matlines(1:length(y.procobs2),
+         pred2$mean+2*outer(sqrt(pred2$var),c(-1,1),"*"),lty=2,col=1)
+matlines(1:length(y.procobs2),
+         cbind(ucsim.mean,ucsim.env),col="darkgray",lty=c(1,2,2))
+### sweeeeeeet.
+legend(25,7,
+       c("obs","pred.","unconditional"),
+       pch=c(16,NA,NA),
+       lty=c(NA,1,1),
+       col=c("black","black","gray"),
+       merge=TRUE)
+transf = function(x) exp(x)
+par(mar=c(4,4.5,2,1)+0.1)
+plot(transf(ellipse(vcov(m4)[3:4,3:4],centre=coef(m4)[3:4])),type="l",
+     xlab=expression(sigma[var]^2),
+     ylab=expression(sigma[obs]^2),
+     ylim=c(0.2,1.1))
+points(transf(coef(m4)[3]),transf(coef(m4)[4]))
+text(transf(coef(m4)[3]),transf(coef(m4)[4])+0.04,"estimated")
+points(transf(startvec[[3]]),transf(startvec[[4]]),pch=16)
+text(transf(startvec[[3]]),transf(startvec[[4]])+0.04,"true")
+text(0.28,1.09,"95% conf. int")
+## abline(v=exp(confint(m4,method="quad")[3,]),lty=2)
+##
+## curve(1/14*1/x,add=TRUE)
+## curve(1/2.5*1/x,add=TRUE)
+## plot(ellipse(vcov(m4),t=1.96,which=3:4,centre=coef(m4)[3:4]),type="l")
+## abline(v=confint(m4,method="quad")[3,],lty=2)
+par(op)
+@ 
+\caption{Results of Kalman filter: (a) observed, predicted,
+  and results of unconditional simulations; (b) MLE, true
+  value, and approximate 95\% bivariate confidence interval.}
+\label{fig:kf}
+\end{figure}
+
+The Kalman filter has been widely used in fisheries
+modeling, where the need to squeeze information out of rare data is so
+strong that researchers are always looking for the next powerful
+technique.
+Early on, researchers applied the technique
+to abundant but noisy catch-per-unit-effort data.
+More recent applications have used the
+Kalman filter
+as a way to estimate the locations of animals from 
+noisy telemetry data,
+allowing the observed position at a previous time to help constrain the
+expected location at the current time
+\citep{Jonsen+2003}.  
+The KF has more recently begun
+to make its way into mainstream terrestrial ecology, as a way
+of estimating parameters for the
+growth of species of conservation concern
+in the presence of both observation and observation
+error \citep{Lindley2003}.
+While the assumption of linear population
+dynamics in the standard Kalman filter might seem constraining,
+the autoregressive equation $N_t = a+b N_{t-1}$ does allow
+a range of population dynamics, from fluctuation around
+a stable equilibrium if $a>0$ and $b<1$, to exponential
+dynamics if $a=0$ (declining if $b<1$, increasing if $b>1$),
+to a pure random walk if $a=0$ and $b=1$.
+Much of conservation biology is built on linear models,
+which will often apply when species are
+rare and thus intraspecific competition is low \citep{Caswell2000}.
+And if you do need nonlinearity,
+you can always use the extended Kalman filter.
+
+There are ways to incorporate
+many other biological complexities in the Kalman filter
+such as
+multiple species, time lags, 
+bias and imperfect catchability in observations,
+correlated observations,
+time-varying control parameters, and
+covariates measured with error); see
+\cite{Schnute1994} for details.
+Don't be scared by the notation.
+If you follow through
+it carefully, you can match up the special case
+here with all the details in that paper.
+
+\subsection{Markov chain Monte Carlo approaches
+(WinBUGS et al.)}
+\label{sec:mcmc}
+
+The Kalman filter has limitations.  In particular, it assumes
+normal, or log-normal, distributions.  More
+subtly, the Kalman filter is a \emph{prospective}
+algorithm \citep{Schnute1994}.
+It uses only the
+information up to time $t$ to predict the
+mean and variance of the population size,
+even though the observation at time $t+1$ also gives us
+information about the population size at
+time $t$ --- \emph{retrospective} information
+that we might be able to use to improve estimation.
+
+There are several ways to do retrospective
+bookkeeping. Schnute discusses a frequentist approach
+called the \emph{errors-in-variables} method,
+and de Valpine~\citep{deValpineHastings2002,deValpine2003}
+has also developed such a frequentist method.
+Here I'm going to present Bayesian methods
+\citep[e.g.][]{MillarMeyer2000},
+which are rapidly growing in popularity because
+BUGS makes it simple to develop and estimate the parameters
+of relatively complex population dynamic models
+(\cite{Lele+2007} suggest a way to use BUGS
+to calculate maximum likelihood estimates for
+complex models).
+The basic idea carries over from the Kalman filter;
+if you assume you know all the observations and the
+true values at every \emph{other} time step, you 
+can use them to estimate the population size \emph{now}.
+The Markov chain Monte Carlo approach alternates
+between picking new random values for each true
+population size, one at a time (at each time step
+pretending you know the population sizes at all the
+other time steps), and picking new random values
+for the parameters that are consistent with
+the current assumed population size.
+Figure~\ref{fig:dynam-DAG} shows the
+dependency graph for the first four steps of a logistic
+process.  Each observed value depends on the true
+value at that time step and the observation error;
+each true value depends on the parameters, and
+determines the observed value and the value
+at the next time step.  In this kind of graph,
+though, you can also follow arrows
+\emph{backwards} to see that the true value
+at time~2 depends in a fairly
+obvious way on the value at time~1, 
+but is also influenced by the observed value at time~2 and
+by the true value at time~3 --- and hence indirectly by
+the observation at time 3, just as we suggested
+above.
+
+%In terms of equations,
+% the posterior distribution of $N(t)$ conditional on all
+% of its related nodes ($N(t-1)$, $N(t+1)$, $r$, $K$,
+% $\vproc$, $\nobs(t)$) is
+% $$
+% P(N(t)|N(t-1),N(t+1),r,K,\vproc,\nobs(t)) \propto
+% \mbox{Normal}(N(t)|f(N(t-1),r,K),\vproc) 
+% \cdot \mbox{Normal}(N(t+1)|f(N(t),r,K),\vproc)
+% \cdot \mbox{Normal}(\nobs(t)|N(t),\vobs) \cdot (\mbox{priors})
+% $$
+
+\begin{figure}
+\includegraphics{dynam-DAG}
+\caption{Dependency structure for the logistic model.}
+\label{fig:dynam-DAG}
+\end{figure}
+
+To use BUGS to analyze dynamic data you must first
+decide on a model. Here we'll again use the discrete
+logistic equation with normally distributed observation
+and process error for comparison, although 
+BUGS would allow us to be much more flexible.
+You also need to set priors for the parameters.
+Translating (\ref{eq:kfm}) and (\ref{eq:kfv})
+into BUGS syntax produces the following model.
+
+\begin{verbatim}
+model {
+  t[1] <- n0
+  o[1] ~ dnorm(t[1],tau.obs)
+  for (i in 2:N) {
+     v[i] <- t[i-1]+r*t[i-1]*(1-t[i-1]/K)
+     t[i] ~ dnorm(v[i],tau.proc)
+     o[i] ~ dnorm(t[i],tau.obs)
+  }
+\end{verbatim}
+
+The first two lines define the initial conditions.
+The rest of the model
+steps through the data set, calculating
+the deterministic expectation (\code{v[i]})
+and then defining the
+distribution of the true values (\code{t[i]}) and 
+observed values (\code{o[i]}).
+
+The rest of the model file defines the
+priors:
+\begin{verbatim}
+  r ~ dunif(0.1,maxr)
+  K ~ dgamma(0.005,0.005)
+  tau.obs ~ dgamma(0.005,0.005)
+  tau.proc ~ dgamma(0.005,0.005)
+  n0 ~ dgamma(1,n0scale)
+}
+\end{verbatim}
+
+The prior growth rate $r$ is uniformly
+distributed between 0.1 and a maximum value, which
+I made a parameter so I could vary it within \R\ without
+changing my BUGS input file.
+The priors for the carrying capacity
+$K$ and the precisions (inverse variances)
+$\tau_{\text{obs}}$ and $\tau_{\text{proc}}$
+are gamma distributions with rate and shape
+parameters of 0.005, giving them a mean of 1 and
+a large variance ($0.005/0.005^2=200$:
+remember that
+BUGS uses a shape+rate parameterization rather
+than the shape+scale parameterization we are used
+to). The initial density $n_0$ has a prior
+distribution that is gamma with shape parameter
+1 and a rate parameter equal to the reciprocal
+of the first observed value --- again defined
+as an parameter to be calculated in \R\ --- which gives it
+an exponential distribution with mean
+equal to the first observed value.
+Though weak, this prior is stronger
+than the prior distributions for the carrying capacity 
+and precisions.
+
+A bit of \R\ code to define the upper limit of
+the $r$ prior and the parameter of the initial-state
+prior:
+<<>>=
+library(R2WinBUGS)
+maxr <- 2
+n0rate <- 1/y.procobs2[1]
+@ 
+
+Setting up the model, using the same data series {\tt y.procobs2} as
+before: we start 5~different chains, 
+using the \code{perturb.params} 
+from the \code{emdbook} package to change the values
+of $r$ and the precisions ($\tau_{\text{obs}}$, $\tau_{\text{proc}}$).
+We should probably vary the starting values of the
+precisions a bit more systematically, although BUGS
+tends to crash if the starting values
+are too extreme.
+
+<<>>=
+o <- y.procobs2
+N <- length(y.procobs2)
+
+statespace.data <- list ("N", "o","maxr","n0rate")
+## inits <- list(list(n0=y.procobs2[1],r=0.2,K=10,tau.obs=1,tau.proc=1),
+##               list(n0=y.procobs2[1],r=0.1,K=10,tau.obs=1,tau.proc=1),
+##               list(n0=y.procobs2[1],r=0.4,K=10,tau.obs=1,tau.proc=1),
+##               list(n0=y.procobs2[1],r=0.2,K=10,tau.obs=3,tau.proc=1),
+##              list(n0=y.procobs2[1],r=0.2,K=10,tau.obs=1,tau.proc=3))
+inits = perturb.params(
+  list(n0=y.procobs2[1],r=0.2,K=10,tau.obs=1,tau.proc=1),
+  alt=list(r=c(0.1,0.4),tau.obs=3,tau.proc=3))
+@ 
+
+Defining the parameters we want to keep track of:
+we could also track the estimated
+true values at each time step.
+<<>>=
+parameters <- c("r","K","tau.obs","tau.proc","n0")
+@
+
+Running WinBUGS from within \R, and converting the
+output to a CODA object --- the
+format returned by R2WinBUGS and the CODA format
+have slightly different formats and capabilities:
+<<eval=FALSE>>=
+statespace.sim <- bugs(data=statespace.data, inits, param=parameters,
+                       model="statespace.bug", n.chains=length(inits), 
+                       n.iter=15000)
+s1 = as.mcmc.bugs(statespace.sim)
+@ 
+
+
+<<echo=FALSE>>=
+library(coda)
+@ 
+
+<<echo=FALSE,cache=TRUE>>=
+statespace.sim <- bugs(data=statespace.data, inits, param=parameters,
+                       model="statespace.bug", n.chains=length(inits), n.iter=15000,
+                       n.burnin=5000,n.thin=37)
+s1 = as.mcmc.bugs(statespace.sim)
+sum1 = summary(s1)
+## save("statespace.sim","s1","sum1",file="statespace.bugsim")
+@ 
+
+R2WinBUGS's defaults for running an MCMC analysis are
+to take the total number of iterations (the default is 2,000);
+set aside half of them as ``burn-in''; divide the other half
+equally among all the chains specified by the user
+(the default is 3); and ``thin'' the results until there
+are a total of 1,000 iterations saved across all chains.
+In this case I chose to do 15,000 iterations with 5 chains,
+so each chain ran for 3000 steps; the first 1500
+were discarded; and then 13\% of the remaining iterates
+were kept for a total of 1000.
+
+Checking convergence:
+<<>>=
+gelman.diag(s1)
+@ 
+Based on the G-R rule of thumb
+that a scale reduction factor $<1.2$ for all variables
+means adequate convergence,
+the G-R diagnostic suggests that the chains
+did in fact run long enough to mix with each
+other.
+
+The summary of a CODA object provides
+the quantiles of the chains; these results are practically
+identical to those from the Kalman filter.
+I have inverted the precisions 
+($\tau_{\text{proc}}=1/\vproc$, $\tau_{\text{obs}}=1/\vobs$
+to make it easier
+to compare directly with the KF results; the
+median is not identical to the mode (close to
+the maximum likelihood estimate if the priors are
+weak), but it's close.
+<<echo=FALSE,results=tex>>=
+tab1 <- sum1$quantiles[1:4,c(1,3,5)]
+tab1[3:4,] <- 1/tab1[3:4,]
+tab1[3:4,] <- tab1[4:3,3:1]
+rownames(tab1)[3:4] <- c("$\\vproc$","$\\vobs$")
+colnames(tab1) <- c("2.5\\%","median","97.5\\%")
+latex(round(tab1,2),file="",title="",table.env=FALSE)
+@ 
+
+
+Figure~\ref{fig:r2winbugsci} shows
+the results of the R2WinBUGS run for
+$\vobs$ and $\vproc$.
+The values from
+the Kalman filter (Figure~\ref{fig:kf})
+are shown in gray. The 95\% credible
+interval matches the approximate 95\%
+confidence interval reasonably well,
+especially considering that the 95\%
+interval is an approximation based
+on the local curvature.  The mode of
+the posterior density, as expected,
+is very close to the MLE --- with
+a weak prior probability distribution,
+the likelihood surface and the posterior
+probability distribution are close to
+the same shape.  The mean is slightly
+larger than the mode --- there is some
+skew towards large values of the process
+variance --- while the median, not
+shown, falls between the mean and the mode.
+All four summary values (posterior mean,
+mode, and median, and the MLE) and the
+true value all fall within the 50\% credible
+interval; as is often the case, all of
+these estimates give us \emph{approximately}
+the same answer.
+
+<<echo=FALSE>>=
+library(MASS)
+vproc <- 1/statespace.sim$sims.list$tau.proc
+vobs <- 1/statespace.sim$sims.list$tau.obs
+##plot(vproc,vobs)
+k1 = kde2d(vproc,vobs,n=60,lims=c(0,1,0.1,1.1))
+k1z = cumsum(rev(sort(k1$z)))/sum(k1$z)
+w <- which.min(abs(k1z-0.95))
+critlevel <-rev(sort(k1$z))[w]
+w2 <- which.min(abs(k1z-0.5))
+critlevel2 <-rev(sort(k1$z))[w2]
+## double-check:
+## sum(rev(sort(k1$z))[(w+1):(length(k1$z))])/sum(k1$z)
+transf <- function(x) exp(x)
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op <- par(cex=1.5,lwd=2,mar=c(4,5,2,1)+0.1,las=1,mgp=c(2.5,1,0))
+plot(transf(ellipse(vcov(m4)[3:4,3:4],centre=coef(m4)[3:4])),type="l",
+     xlab=expression(sigma[proc]^2),
+     ylab=expression(sigma[obs]^2),ylim=c(0,1.1),xlim=c(0,1),col="gray")
+points(transf(coef(m4)[3]),transf(coef(m4)[4]),col="gray",pch=16)
+#text(transf(coef(m4)[3]),transf(coef(m4)[4])+0.04,col="gray","KF")
+points(transf(startvec[[3]]),transf(startvec[[4]]),pch=16)
+text(transf(startvec[[3]]),transf(startvec[[4]])+0.04,"true")
+contour(k1,level=critlevel,drawlabels=FALSE,add=TRUE)
+contour(k1,level=critlevel2,drawlabels=FALSE,add=TRUE,lty=2)
+points(mean(vproc),mean(vobs))
+text(mean(vproc),mean(vobs)-0.05,"mean")
+##segments(0.44,0.44,mean(vproc),mean(vobs)-0.02)
+maxind <- which(k1$z==max(k1$z),TRUE)
+##points(median(vproc),median(vobs),pch=2)
+points(k1$x[maxind[1]],k1$y[maxind[2]],pch=3)
+text(0.3,0.58,"mode")
+text(0.67,0.116,"95% cred. int.")
+text(0.22,0.74,"50%")
+par(op)
+@ 
+\caption{Results of R2WinBUGS for logistic equation with
+process and observation error.  Gray ellipse and point
+represent MLE and approximate (information-based)
+95\% confidence interval for Kalman filter fit
+(Section~\ref{sec:kalman}).  Solid line is 95\%
+credible interval based on BUGS chain; dashed
+lines is 50\% c.i.  Points show the true (known)
+value, mean and mode of the posterior density.}
+\label{fig:r2winbugsci}
+\end{figure}
+
+Finally, Figure~\ref{fig:winbugsdensity} shows density plots
+for the R2WinBUGS analysis. The densities are all reasonably
+symmetric and bracket the known true values (the density of
+{\tt tau.obs} extends to very high values; 
+this is the result of a single freakish excursion
+in one of the chains to a very high value).
+Each chain's density is drawn with a different line types;
+they all fall on top of each other, reassuring us that
+the chains have converged and are all telling the same story.
+
+<<fig=TRUE,echo=FALSE,width=8,eval=FALSE>>=
+par(mgp=c(2.5,1,0),mfrow=c(1,2))
+plot(1/as.numeric(s1[,"tau.obs"]),1/as.numeric(s1[,"tau.proc"]),log="xy",pch=".",
+     xlab=expression(sigma[obs]^2),ylab=expression(sigma[proc]^2))
+plot(1/as.numeric(s1[,"tau.obs"]),as.numeric(s1[,"r"]),log="x",pch=".",
+     ylab="r",xlab=expression(sigma[obs]^2))
+@ 
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+trellis.par.set(canonical.theme(color=FALSE))
+print(densityplot(s1,trace=FALSE))
+@ 
+\caption{Density plots of R2WinBUGS results for the logistic
+equation. Different line types show results from different
+chains.}
+\label{fig:winbugsdensity}
+\end{figure}
+
+\section{Conclusions}
+This chapter has covered a variety of methods
+for estimating the parameters of dynamic models, 
+ranging from crude (assuming
+either process error or observation error, but not both) to
+sophisticated (state-space models).  
+
+We have largely skipped over the question of
+how to decide which dynamic models to fit.
+We have mentioned the logistic and a few
+simple discrete stochastic models here, and
+the theta-logistic in Chapter~\ref{chap:determ},
+but most of the book has focused on static models.
+Understanding dynamic models is a huge topic, mostly
+focused on deterministic models --- %
+\cite{EllnerGuckenheimer2006} or the other references
+listed in the ecological modeling section in Chapter~1
+(p.~\ref{ecomodrefs}) make a good starting point on the dynamics
+side, \cite{Clark2007} includes a review of dynamic modeling
+in his presentation of Bayesian methods, and
+\cite{BjornstadGrenfell2001} give an overview
+of more recent advances in the field.
+
+On the other hand, it's easy to incorporate some additional ecology in
+the single-species logistic model.  For example, with either the
+Kalman filter or MCMC you can incorporate the effects of covariates on
+the growth rate.  To incorporate a linear effect of rainfall on the
+growth rate, you could just change the appropriate line of the BUGS
+model file to
+\begin{verbatim}
+v[i] <- t[i-1]+(r0+r1*rain[i-1])*t[i-1]*(1-t[i-1]/K)
+\end{verbatim}
+and change the \code{parameters} and \code{data} values
+accordingly in the \R\ code.
+
+All too often, you can observe only one facet of a complicated
+ecological interaction.  For example, we might be able to sample just
+hare populations in a complex Canadian ecosystem consisting of
+lynx, hare, vegetation, and birds of prey.  While trying to
+reconstruct an entire ecosystem from observations of a single species
+is hopeless, it is in principle possible to include additional
+unobserved variables in a state-space model --- remember that the
+``true'' population sizes are also unobserved.  Be very careful not to
+incorporate more complexity in your model than the data can support:
+try your model out with some optimistic, but plausible, simulation
+data.  Such reconstruction has been shown to work, for example, in
+simple epidemic models, where the number of new cases is observed but
+the number of possibly susceptible individuals left in the population
+is not.  A formal process of ``susceptible reconstruction'' provides a
+time-series of susceptibles to go along with the time-series of
+infected individuals, which then allows estimation of a transmission
+parameter~\citep{FinkenstadtGrenfell2000,LekoneFinkenstadt2006}.
+
+This chapter has presented only analyses of discrete-time
+models, where the methods are much better developed.
+It is a shame that continuous-time methods for
+dynamical data are
+so sparse, since most theoretical models
+of ecological systems are defined in continuous time.
+Analysis is feasible if you 
+assume only observation error \citep{GaniLeach2001,%
+vanVeen+2005} or know the amount of observation
+error and use SIMEX to correct bias \citep{Ellner+2002,MelbourneChesson2006},
+but the Kalman filter and MCMC approaches have
+been used almost exclusively in discrete time
+(although \cite{Fujiwara+2005} provide a
+recent counterexample).
+Gibson has developed such methods \citep{GibsonRenshaw1998,GibsonRenshaw2001,%
+Gibson1997,StreftarisGibson2004}, but they have
+yet to be widely used or made practical.
+
+Right now Bayesian analyses of dynamic models are
+easier than frequentist analyses, but the frequentists
+are catching up fast.
+\emph{Particle filtering} or \emph{sequential
+importance sampling} are powerful frequentist alternatives to
+the Bayesian MCMC methods presented here
+\citep{Doucet+2001,Buckland+2004,Thomas+2005,%
+Harrison+2006,Ionides+2006}.
+Particle filtering starts with a large number of random samples
+(``particles'': e.g. 250,000 in \citep{Thomas+2005})
+from a prior (or pseudo-prior) distribution, including the
+distribution of the initial values of the state
+variables.  Each sample is projected
+forward (simulated) one step, and a likelihood
+based on the first observation is calculated for
+each sample.  The same number of particles are
+then resampled, but with weights proportional
+to their likelihoods.  After simulating one more
+step, the likelihoods based on the next observation
+are calculated and the particles are resampled again
+(thus taking the observations at both $t$ and $t+1$
+into account).  This process is iterated for
+the whole time series of observations, with various
+algorithms used to prevent all of the resamples
+from coming from a very small number of particles.
+
+Estimating parameters of dynamic ecological models
+is still clearly an exercise on the cutting edge of
+science.  Most of the papers that have appeared to
+date are technical and methods-oriented rather than
+applications to particular ecological questions.  As
+time goes on the tools will improve and more examples 
+will appear, giving potential users a better
+idea how much data (at least within an order of magnitude)
+is needed to apply these methods successfully.  In the
+meantime, always check your answers against the results
+of simulations and against one-step-ahead 
+(process error only) and trajectory-matching (observation
+error only) fits.
+
+\section*{\R\ supplement}
+
+\subsection*{Kalman filter}
+
+Here's a function that 
+computes the Kalman filter predictions.  {\tt Nobs} is the data set;
+{\tt r} and {\tt K} are the population dynamic parameters
+(soon we will estimate these by maximum likelihood);
+{\tt procvar} and {\tt obsvar} are the process and
+observation variances;
+and {\tt M.n.start} and {\tt Var.n.start} are the
+starting values of the mean and variance.
+This code sets aside numeric vectors for
+the results on the mean and variance of the observed
+population size at each time step:
+we don't have to save the mean and variance of
+the true population size since we don't have
+anything to compare them with.
+It then sets the starting values and
+works through the data set one time step
+at a time, applying the equations above:
+<<>>=
+nlkfpred = function(r,K,procvar,obsvar,M.n.start,Var.n.start,Nobs) {
+  nt = length(Nobs)
+  M.nobs = numeric(nt)
+  Var.nobs = numeric(nt)
+  M.n = M.n.start
+  Var.n = Var.n.start
+  M.nobs[1] = M.n.start
+  Var.nobs[1] = Var.n.start+obsvar
+  for (t in 2:nt) {
+    M.ni = M.n+r*M.n*(1-M.n/K)
+    b = 1+r-2*r*M.n/K
+    Var.ni = b^2*Var.n + procvar
+    M.nobs[t] = M.ni
+    Var.nobs[t] = Var.ni + obsvar
+    M.n = M.ni +  Var.ni/Var.nobs[t]*(Nobs[t]-M.nobs[t])
+    Var.n = Var.ni*(1 - Var.ni/Var.nobs[t])
+  } 
+  list(mean=M.nobs,var=Var.nobs)
+}
+@ 
+
+Our likelihood function takes a set of parameters
+(all fitted on the log scale so we don't run into trouble
+with negative values of the parameters), runs the
+Kalman filter to predict the values of the means
+and variances, and then plugs these values into
+a Normal likelihood comparison with a set of
+observed values (taking the square root of
+the estimated variance since {\tt dnorm}
+uses the standard deviation, not the
+variance, as a parameter):
+<<>>=
+nlkflik = function(logr,logK,logprocvar,logobsvar,logM.n.start,logVar.n.start,obs.data) {
+  pred = nlkfpred(r=exp(logr),K=exp(logK),
+                   procvar=exp(logprocvar),obsvar=exp(logobsvar),
+                   M.n.start=exp(logM.n.start),Var.n.start=exp(logVar.n.start),
+                   Nobs=y.procobs2)
+  -sum(dnorm(obs.data,mean=pred$mean,sd=sqrt(pred$var),log=TRUE))
+}
+@ 

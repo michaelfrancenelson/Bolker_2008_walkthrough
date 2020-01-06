@@ -1,0 +1,1631 @@
+<?xml version="1.0"?>
+<!DOCTYPE html    PUBLIC "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN"
+           "http://www.w3.org/Math/DTD/mathml2/xhtml-math11-f.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="GENERATOR" content="TtM 3.70" />
+ <style type="text/css">
+ div.p { margin-top: 7pt; }
+ span.roman {font-family: serif; font-style: normal; font-weight: normal;} 
+</style>
+ 
+
+
+<title> Lab 5: stochastic simulation </title>
+</head>
+<body>
+ 
+<h1 align="center">Lab 5: stochastic simulation </h1>
+
+<h3 align="center">Ben Bolker </h3>
+
+ &#169; 2005 Ben Bolker
+
+<div class="p"><!----></div>
+ <h2><a name="tth_sEc1">
+1</a>&nbsp;&nbsp;Static simulation models</h2>
+
+<div class="p"><!----></div>
+     <h3><a name="tth_sEc1.1">
+1.1</a>&nbsp;&nbsp;Simple models</h3>
+
+<div class="p"><!----></div>
+      <h4><a name="tth_sEc1.1.1">
+1.1.1</a>&nbsp;&nbsp;Linear model</h4>
+The code for the static linear model should (I hope)
+seem pretty straightforward by now.
+I defined an <tt>x</tt> vector, evenly spaced between
+1 and 20; set up parameter values; calculated
+a deterministic value; and then added 20
+random normally distributed values to the
+deterministic values.  I then plotted
+a scatterplot (<tt>plot()</tt>) and added
+both the theoretical value of the 
+line (<tt>abline</tt> in its slope-intercept form)
+and the fitted linear regression line
+(<tt>lm(y~x)</tt>, as seen in Lab&nbsp;1).
+
+<div class="p"><!----></div>
+Pick 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi></mrow></math> values and set parameters:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;x&nbsp;=&nbsp;1:20
+&#62;&nbsp;a&nbsp;=&nbsp;2
+&#62;&nbsp;b&nbsp;=&nbsp;1
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Set random-number seed:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;set.seed(1001)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculate the deterministic expectation
+(<tt>y_det</tt>) and then pick 20 normally
+distributed values with these means
+and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&sigma;</mi><mo>=</mo><mn>2</mn></mrow></math>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;y_det&nbsp;=&nbsp;a&nbsp;+&nbsp;b&nbsp;*&nbsp;x
+&#62;&nbsp;y&nbsp;=&nbsp;rnorm(20,&nbsp;mean&nbsp;=&nbsp;y_det,&nbsp;sd&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Plot the simulated values along with
+the estimated linear regression line
+and the theoretical values:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(x,&nbsp;y)
+&#62;&nbsp;abline(lm(y&nbsp;~&nbsp;x),&nbsp;lty&nbsp;=&nbsp;2)
+&#62;&nbsp;abline(a,&nbsp;b)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5-004.png" alt="lab5-004.png" />
+(<tt>lines(x,y_det)</tt> would have the same
+effect as the last statement).
+
+<div class="p"><!----></div>
+For the hyperbolic simulation:
+Pick parameters:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;a&nbsp;=&nbsp;6
+&#62;&nbsp;b&nbsp;=&nbsp;1
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Pick 50 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi></mrow></math> values uniformly distributed between 0 and 5:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;x&nbsp;=&nbsp;runif(50,&nbsp;min&nbsp;=&nbsp;0,&nbsp;max&nbsp;=&nbsp;5)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculate the deterministic expectation
+(<tt>y_det</tt>) and then pick 50 Poisson values
+with these means:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;y_det&nbsp;=&nbsp;a/(b&nbsp;+&nbsp;x)
+&#62;&nbsp;y&nbsp;=&nbsp;rpois(50,&nbsp;y_det)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Plot the simulated values and add the
+theoretical curve (we'll wait until Chapter&nbsp;6
+to see how to estimate the curve):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(x,&nbsp;y)
+&#62;&nbsp;curve(a/(b&nbsp;+&nbsp;x),&nbsp;add&nbsp;=&nbsp;TRUE)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5-008.png" alt="lab5-008.png" />
+
+<div class="p"><!----></div>
+<b>Exercise  1:</b>
+Simulate a set of 100 values with
+
+<ul>
+<li>
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi></mrow></math> values uniformly distributed between 0 and 10;
+<div class="p"><!----></div>
+</li>
+
+<li>mean 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>y</mi></mrow></math> values following a Ricker model
+with 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi></mrow></math> (initial slope) = 1 and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi></mrow></math> (exponential
+decay parameter) = 0.5;
+<div class="p"><!----></div>
+</li>
+
+<li>gamma-distributed heterogeneity with shape parameter 3
+and mean as above
+<div class="p"><!----></div>
+</li>
+</ul>
+Plot the simulated values and superimpose the theoretical
+curve.
+
+<div class="p"><!----></div>
+ <h2><a name="tth_sEc2">
+2</a>&nbsp;&nbsp;Intermediate simulations</h2>
+
+<div class="p"><!----></div>
+     <h3><a name="tth_sEc2.1">
+2.1</a>&nbsp;&nbsp;Pigweed</h3>
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;set.seed(1001)
+&#62;&nbsp;nparents&nbsp;=&nbsp;50
+&#62;&nbsp;noffspr&nbsp;=&nbsp;10
+&#62;&nbsp;L&nbsp;=&nbsp;30
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Pick locations of parents:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;parent_x&nbsp;=&nbsp;runif(nparents,&nbsp;min&nbsp;=&nbsp;0,&nbsp;max&nbsp;=&nbsp;L)
+&#62;&nbsp;parent_y&nbsp;=&nbsp;runif(nparents,&nbsp;min&nbsp;=&nbsp;0,&nbsp;max&nbsp;=&nbsp;L)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Pick angles and distances of offsets of
+offspring from parents:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;angle&nbsp;=&nbsp;runif(nparents&nbsp;*&nbsp;noffspr,&nbsp;min&nbsp;=&nbsp;0,&nbsp;max&nbsp;=&nbsp;2&nbsp;*&nbsp;pi)
+&#62;&nbsp;dist&nbsp;=&nbsp;rexp(nparents&nbsp;*&nbsp;noffspr,&nbsp;0.5)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculate offspring locations (duplicating each
+parent's position <tt>noffspr</tt> times):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;offspr_x&nbsp;=&nbsp;rep(parent_x,&nbsp;each&nbsp;=&nbsp;noffspr)&nbsp;+&nbsp;cos(angle)&nbsp;*&nbsp;dist
+&#62;&nbsp;offspr_y&nbsp;=&nbsp;rep(parent_y,&nbsp;each&nbsp;=&nbsp;noffspr)&nbsp;+&nbsp;sin(angle)&nbsp;*&nbsp;dist
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculate distances:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;dist&nbsp;=&nbsp;sqrt((outer(offspr_x,&nbsp;offspr_x,&nbsp;"-"))^2&nbsp;+&nbsp;(outer(offspr_y,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;offspr_y,&nbsp;"-"))^2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculate neighborhood crowding matrix:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nbrcrowd&nbsp;=&nbsp;apply(dist&nbsp;&lt;&nbsp;2,&nbsp;1,&nbsp;sum)&nbsp;-&nbsp;1
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Plot offspring locations:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(offspr_x,&nbsp;offspr_y,&nbsp;xlab&nbsp;=&nbsp;"",&nbsp;ylab&nbsp;=&nbsp;"")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5-016.png" alt="lab5-016.png" />
+
+<div class="p"><!----></div>
+Plot distribution of neighborhood crowding:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;b1&nbsp;=&nbsp;barplot(table(factor(nbrcrowd,&nbsp;levels&nbsp;=&nbsp;0:max(nbrcrowd)))/length(nbrcrowd),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xlab&nbsp;=&nbsp;"Number&nbsp;of&nbsp;neighbors",&nbsp;ylab&nbsp;=&nbsp;"Proportion")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5-017.png" alt="lab5-017.png" />
+
+<div class="p"><!----></div>
+<b>Exercise  2</b>: superimpose a negative binomial
+distribution, with the parameters estimated by the method
+of moments, on the previous plot.
+
+<div class="p"><!----></div>
+Calculate crowding index as 3 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo>&times;</mo></mrow></math> neighborhood density:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;ci&nbsp;=&nbsp;nbrcrowd&nbsp;*&nbsp;3
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Take parameter of hyperbolic function 
+and gamma shape parameter from Pacala and Silander:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;M&nbsp;=&nbsp;2.3
+&#62;&nbsp;alpha&nbsp;=&nbsp;0.49
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Expected value of biomass/
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&alpha;</mi></mrow></math> (note that
+Pacala and Silander estimate the scale parameter
+as a function of crowding index, not the mean):  
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;mass_det&nbsp;=&nbsp;M/(1&nbsp;+&nbsp;ci)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Pick random deviates:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;mass&nbsp;=&nbsp;rgamma(length(mass_det),&nbsp;scale&nbsp;=&nbsp;mass_det,&nbsp;shape&nbsp;=&nbsp;alpha)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Plot values and theoretical curve:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(ci,&nbsp;mass,&nbsp;cex&nbsp;=&nbsp;0.5,&nbsp;xlab&nbsp;=&nbsp;"Competition&nbsp;index",&nbsp;ylab&nbsp;=&nbsp;"Biomass&nbsp;(g)")
+&#62;&nbsp;curve(M/(1&nbsp;+&nbsp;x)&nbsp;*&nbsp;alpha,&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;from&nbsp;=&nbsp;0)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5-022.png" alt="lab5-022.png" />
+
+<div class="p"><!----></div>
+Parameters for seed set model (slope and overdispersion):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;b&nbsp;=&nbsp;271.6
+&#62;&nbsp;k&nbsp;=&nbsp;0.569
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Deterministic model and random values:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;seed_det&nbsp;=&nbsp;b&nbsp;*&nbsp;mass
+&#62;&nbsp;seed&nbsp;=&nbsp;rnbinom(length(seed_det),&nbsp;mu&nbsp;=&nbsp;seed_det,&nbsp;size&nbsp;=&nbsp;k)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Plot (1+seed set) on a double-logarithmic scale:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(mass,&nbsp;1&nbsp;+&nbsp;seed,&nbsp;log&nbsp;=&nbsp;"xy",&nbsp;xlab&nbsp;=&nbsp;"Mass",&nbsp;ylab&nbsp;=&nbsp;"1+Seed&nbsp;set")
+&#62;&nbsp;curve(b&nbsp;*&nbsp;x&nbsp;+&nbsp;1,&nbsp;add&nbsp;=&nbsp;TRUE)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5-025.png" alt="lab5-025.png" />
+
+<div class="p"><!----></div>
+Extra stuff: superimpose the 95% confidence limits on the plot
+(use a logarithmically spaced 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi></mrow></math> vector to calculate them):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;logxvec&nbsp;=&nbsp;seq(-7,&nbsp;0,&nbsp;length&nbsp;=&nbsp;100)
+&#62;&nbsp;xvec&nbsp;=&nbsp;10^logxvec
+&#62;&nbsp;lower&nbsp;=&nbsp;qnbinom(0.025,&nbsp;mu&nbsp;=&nbsp;b&nbsp;*&nbsp;xvec,&nbsp;size&nbsp;=&nbsp;k)
+&#62;&nbsp;upper&nbsp;=&nbsp;qnbinom(0.975,&nbsp;mu&nbsp;=&nbsp;b&nbsp;*&nbsp;xvec,&nbsp;size&nbsp;=&nbsp;k)
+&#62;&nbsp;lines(xvec,&nbsp;lower&nbsp;+&nbsp;1,&nbsp;lty&nbsp;=&nbsp;2)
+&#62;&nbsp;lines(xvec,&nbsp;upper&nbsp;+&nbsp;1,&nbsp;lty&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<b>Exercise  3</b>: superimpose the
+median of the distribution on the above graph as well: how
+does it differ from the mean?
+
+<div class="p"><!----></div>
+<b>Exercise  4*</b>: reproduce Figure 3.<br />
+<font size="+1"><b>or</b></font> <br />
+<b>Exercise  5**</b>: reproduce Figure 3, but with
+a beta-binomial error structure instead of a binomial error
+structure.  Use Morris's parameterization of the beta-binomial,
+with 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>p</mi></mrow></math> equal to the hyperbolic <em>per capita</em> recruitment
+function (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>R</mi><mo stretchy="false">/</mo><mi>S</mi><mo>=</mo><mi>a</mi><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">/</mo><mi>b</mi><mo stretchy="false">)</mo><mi>S</mi></mrow></math>) and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&theta;</mi><mo>=</mo><mn>10</mn></mrow></math>.
+
+<div class="p"><!----></div>
+ <h2><a name="tth_sEc3">
+3</a>&nbsp;&nbsp;Dynamic models</h2>
+
+<div class="p"><!----></div>
+     <h3><a name="tth_sEc3.1">
+3.1</a>&nbsp;&nbsp;Discrete time</h3>
+
+<div class="p"><!----></div>
+      <h4><a name="tth_sEc3.1.1">
+3.1.1</a>&nbsp;&nbsp;Linear growth model</h4>
+
+<div class="p"><!----></div>
+Set up parameters: number of time steps,
+starting value, change in 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi></mrow></math> per unit
+time (slope), and standard deviations of
+process and measurement error:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nt&nbsp;=&nbsp;20
+&#62;&nbsp;N0&nbsp;=&nbsp;2
+&#62;&nbsp;dN&nbsp;=&nbsp;1
+&#62;&nbsp;sd_process&nbsp;=&nbsp;sqrt(2)
+&#62;&nbsp;sd_obs&nbsp;=&nbsp;sqrt(2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The first way to do this problem:
+marginally less efficient but perhaps
+easier to understand, save both
+the true and the observed values.
+
+<div class="p"><!----></div>
+Set aside space:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;Nobs&nbsp;=&nbsp;numeric(nt)
+&#62;&nbsp;N&nbsp;=&nbsp;numeric(nt)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Set initial values and pick observation error
+for first time step:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;N[1]&nbsp;=&nbsp;N0
+&#62;&nbsp;Nobs[1]&nbsp;=&nbsp;N[1]&nbsp;+&nbsp;rnorm(1,&nbsp;sd&nbsp;=&nbsp;sd_obs)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;for&nbsp;(i&nbsp;in&nbsp;2:nt)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;N[i]&nbsp;=&nbsp;N[i&nbsp;-&nbsp;1]&nbsp;+&nbsp;rnorm(1,&nbsp;mean&nbsp;=&nbsp;dN,&nbsp;sd&nbsp;=&nbsp;sd_process)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nobs[i]&nbsp;=&nbsp;N[i]&nbsp;+&nbsp;rnorm(1,&nbsp;sd&nbsp;=&nbsp;sd_obs)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+An alternative, marginally more efficient way to
+run this simulation is keeping only the current value
+of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi></mrow></math>, as follows:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;cur_N&nbsp;=&nbsp;N0
+&#62;&nbsp;Nobs[1]&nbsp;=&nbsp;N[1]&nbsp;+&nbsp;rnorm(1,&nbsp;sd&nbsp;=&nbsp;sd_obs)
+&#62;&nbsp;for&nbsp;(i&nbsp;in&nbsp;2:nt)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cur_N&nbsp;=&nbsp;cur_N&nbsp;+&nbsp;rnorm(1,&nbsp;mean&nbsp;=&nbsp;dN,&nbsp;sd&nbsp;=&nbsp;sd_process)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nobs[i]&nbsp;=&nbsp;cur_N&nbsp;+&nbsp;rnorm(1,&nbsp;sd&nbsp;=&nbsp;sd_obs)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+If you plan to experiment a lot with such simulations
+with different parameters, it's convenient to define
+a function that will do the whole thing in one command
+(with default parameters so you can conveniently change
+one thing at a time):
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;linsim&nbsp;=&nbsp;function(nt&nbsp;=&nbsp;20,&nbsp;N0&nbsp;=&nbsp;2,&nbsp;dN&nbsp;=&nbsp;1,&nbsp;sd_process&nbsp;=&nbsp;sqrt(2),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sd_obs&nbsp;=&nbsp;sqrt(2))&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cur_N&nbsp;=&nbsp;N0
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nobs[1]&nbsp;=&nbsp;N[1]&nbsp;+&nbsp;rnorm(1,&nbsp;sd&nbsp;=&nbsp;sd_obs)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(i&nbsp;in&nbsp;2:nt)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cur_N&nbsp;=&nbsp;cur_N&nbsp;+&nbsp;rnorm(1,&nbsp;mean&nbsp;=&nbsp;dN,&nbsp;sd&nbsp;=&nbsp;sd_process)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nobs[i]&nbsp;=&nbsp;cur_N&nbsp;+&nbsp;rnorm(1,&nbsp;sd&nbsp;=&nbsp;sd_obs)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return(Nobs)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(make sure that the last statement in your function is
+either a variable by itself, or an explicit <tt>return()</tt> statement)
+
+<div class="p"><!----></div>
+Run one simulation and fit a linear regression:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;N&nbsp;=&nbsp;linsim(sd_proc&nbsp;=&nbsp;2)
+&#62;&nbsp;tvec&nbsp;=&nbsp;1:20
+&#62;&nbsp;lm1&nbsp;=&nbsp;lm(N&nbsp;~&nbsp;tvec)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Plot the points along with the linear regression line
+and the theoretical values:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(tvec,&nbsp;N,&nbsp;type&nbsp;=&nbsp;"b")
+&#62;&nbsp;abline(lm1)
+&#62;&nbsp;abline(a&nbsp;=&nbsp;2,&nbsp;b&nbsp;=&nbsp;1,&nbsp;lty&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5-035.png" alt="lab5-035.png" />
+
+<div class="p"><!----></div>
+Running experiments with many linear simulations:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nsim&nbsp;=&nbsp;100
+&#62;&nbsp;Nmat&nbsp;=&nbsp;matrix(nrow&nbsp;=&nbsp;20,&nbsp;ncol&nbsp;=&nbsp;100)
+&#62;&nbsp;for&nbsp;(i&nbsp;in&nbsp;1:nsim)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nmat[,&nbsp;i]&nbsp;=&nbsp;linsim()
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Find the 2.5% quantile:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;lower&nbsp;=&nbsp;apply(Nmat,&nbsp;1,&nbsp;quantile,&nbsp;0.025)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(You can find both the 2.5% and the 97.5% quantile
+at the same time with
+<tt>t(apply(Nmat,1,quantile,c(0.025,0.975)))</tt>.)
+
+<div class="p"><!----></div>
+<b>Exercise  6*</b>:
+Using (among other functions) <tt>matplot()</tt>, 
+<tt>rowMeans()</tt>,
+<tt>quantile()</tt> (maybe <tt>matlines()</tt>):
+
+<ul>
+<li>run 1000 linear simulations with 
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msub><mrow><mi>&sigma;</mi></mrow><mrow>
+<mtext>obs</mtext>
+</mrow>
+</msub>
+<mo>=</mo>
+<msub><mrow><mi>&sigma;</mi></mrow><mrow>
+<mtext>proc</mtext>
+</mrow>
+</msub>
+<mo>=</mo><mn>2</mn></mrow></math>.
+<div class="p"><!----></div>
+</li>
+
+<li>Plot all of the individual lines, in gray
+<div class="p"><!----></div>
+</li>
+
+<li>Plot the mean at each time step, in black
+<div class="p"><!----></div>
+</li>
+
+<li>Plot the 95% quantiles at each time step, black, with
+dashed lines
+<div class="p"><!----></div>
+</li>
+</ul>
+Do the results match what you expect from the two extreme
+cases (measurement error only/process error only) shown
+in the chapter?
+
+<div class="p"><!----></div>
+      <h4><a name="tth_sEc3.1.2">
+3.1.2</a>&nbsp;&nbsp;Sink population growth model</h4>
+Here's another example, a model of
+a sink population that
+is maintained by immigration: the number
+of individuals in the population surviving each year is
+binomial, with a constant survival probability.
+A Poisson-distributed number of immigrants arrives
+every year, with a constant rate.
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;immigsim&nbsp;=&nbsp;function(nt&nbsp;=&nbsp;20,&nbsp;N0&nbsp;=&nbsp;2,&nbsp;immig,&nbsp;surv)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;N&nbsp;=&nbsp;numeric(nt)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;N[1]&nbsp;=&nbsp;N0
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(i&nbsp;in&nbsp;2:nt)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nsurv&nbsp;=&nbsp;rbinom(1,&nbsp;size&nbsp;=&nbsp;N[i&nbsp;-&nbsp;1],&nbsp;prob&nbsp;=&nbsp;surv)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;N[i]&nbsp;=&nbsp;Nsurv&nbsp;+&nbsp;rpois(1,&nbsp;immig)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return(N)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Running 1000 simulations:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nsim&nbsp;=&nbsp;1000
+&#62;&nbsp;nt&nbsp;=&nbsp;30
+&#62;&nbsp;p&nbsp;=&nbsp;0.95
+&#62;&nbsp;N0&nbsp;=&nbsp;2
+&#62;&nbsp;immig&nbsp;=&nbsp;10
+&#62;&nbsp;Nmat&nbsp;=&nbsp;matrix(ncol&nbsp;=&nbsp;nsim,&nbsp;nrow&nbsp;=&nbsp;nt)
+&#62;&nbsp;for&nbsp;(j&nbsp;in&nbsp;1:nsim)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nmat[,&nbsp;j]&nbsp;=&nbsp;immigsim(nt&nbsp;=&nbsp;nt,&nbsp;N0&nbsp;=&nbsp;N0,&nbsp;surv&nbsp;=&nbsp;p,&nbsp;immig&nbsp;=&nbsp;immig)
++&nbsp;}
+&#62;&nbsp;tvec&nbsp;=&nbsp;1:nt
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+It turns out that we can also derive the theoretical curve:
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>E</mi><mo stretchy="false">[</mo>
+<msub><mrow><mi>N</mi></mrow><mrow><mi>t</mi><mo>+</mo><mn>1</mn></mrow>
+</msub>
+<mo stretchy="false">]</mo><mo>=</mo><mi>p</mi>
+<msub><mrow><mi>N</mi></mrow><mrow><mi>t</mi></mrow>
+</msub>
+<mo>+</mo><mi>I</mi></mrow></math>,
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow>
+<mtable align="right" width="80%">
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>N</mi><mo stretchy="false">(</mo><mi>t</mi><mo>+</mo><mn>1</mn><mo stretchy="false">)</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mi>pN</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>+</mo><mi>I</mi></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>N</mi><mo stretchy="false">(</mo><mi>t</mi><mo>+</mo><mn>2</mn><mo stretchy="false">)</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mi>p</mi><mo stretchy="false">(</mo>
+<msub><mrow><mi>pN</mi></mrow><mrow><mi>t</mi></mrow>
+</msub>
+<mo>+</mo><mi>I</mi><mo stretchy="false">)</mo><mo>+</mo><mi>I</mi><mo>=</mo>
+<msup><mrow><mi>p</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+
+<msub><mrow><mi>N</mi></mrow><mrow><mi>t</mi></mrow>
+</msub>
+<mo>+</mo><mi>pI</mi><mo>+</mo><mi>I</mi></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mo>&#x2026;</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow></mrow>
+</mtd><mtd columnalign="left">
+<mrow></mrow>
+</mtd></mtr>
+</mtable>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+So in general, by induction,
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow><mi>N</mi><mo stretchy="false">(</mo><mi>t</mi><mo>+</mo><mi>n</mi><mo stretchy="false">)</mo><mo>=</mo>
+<msup><mrow><mi>p</mi></mrow><mrow><mi>n</mi></mrow>
+</msup>
+
+<msub><mrow><mi>N</mi></mrow><mrow><mi>t</mi></mrow>
+</msub>
+<mo>+</mo>
+<munderover><mo>&sum;</mo><mrow><mi>j</mi><mo>=</mo><mn>0</mn> </mrow>
+<mrow><mi>n</mi><mo>-</mo><mn>1</mn></mrow></munderover>
+<msup><mrow><mi>p</mi></mrow><mrow><mi>j</mi></mrow>
+</msup>
+<mi>I</mi></mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+or
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow><mi>N</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>=</mo>
+<msup><mrow><mi>p</mi></mrow><mrow><mi>t</mi><mo>-</mo><mn>1</mn></mrow>
+</msup>
+
+<msub><mrow><mi>N</mi></mrow><mrow><mn>1</mn></mrow>
+</msub>
+<mo>+</mo>
+<mfrac><mrow><mn>1</mn><mo>-</mo>
+<msup><mrow><mi>p</mi></mrow><mrow><mi>t</mi><mo>-</mo><mn>1</mn></mrow>
+</msup>
+</mrow>
+<mrow><mn>1</mn><mo>-</mo><mi>p</mi></mrow>
+</mfrac>
+<mi>I</mi></mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+(accounting for the fact that we start at 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow></math>
+and using the formula for the sum of a geometric series,
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<munderover><mo>&sum;</mo><mrow><mi>j</mi><mo>=</mo><mn>0</mn> </mrow>
+<mrow><mi>n</mi><mo>-</mo><mn>1</mn></mrow></munderover>
+<msup><mrow><mi>p</mi></mrow><mrow><mi>j</mi></mrow>
+</msup>
+<mo>=</mo><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo>
+<msup><mrow><mi>p</mi></mrow><mrow><mi>t</mi><mo>-</mo><mn>1</mn></mrow>
+</msup>
+<mo stretchy="false">)</mo><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>p</mi><mo stretchy="false">)</mo></mrow></math>).
+
+<div class="p"><!----></div>
+Plotting 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi></mrow></math>
+and superimposing
+lines showing the mean value of the simulations:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;matplot(tvec,&nbsp;Nmat,&nbsp;type&nbsp;=&nbsp;"l",&nbsp;col&nbsp;=&nbsp;"gray")
+&#62;&nbsp;lines(tvec,&nbsp;rowMeans(Nmat),&nbsp;lwd&nbsp;=&nbsp;2)
+&#62;&nbsp;curve(p^(x&nbsp;-&nbsp;1)&nbsp;*&nbsp;N0&nbsp;+&nbsp;(1&nbsp;-&nbsp;p^(x&nbsp;-&nbsp;1))/(1&nbsp;-&nbsp;p)&nbsp;*&nbsp;immig,&nbsp;add&nbsp;=&nbsp;TRUE)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5-041.png" alt="lab5-041.png" />
+
+<div class="p"><!----></div>
+     <h3><a name="tth_sEc3.2">
+3.2</a>&nbsp;&nbsp;Continuous time</h3>
+
+<div class="p"><!----></div>
+Solving the theta-logistic model,
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow>
+<mfrac><mrow><mi>dN</mi></mrow>
+<mrow><mi>dt</mi></mrow>
+</mfrac>
+<mo>=</mo><mi>rN</mi>
+<msup><mrow><mo>(</mo><mn>1</mn><mo>-</mo>
+<mfrac><mrow><mi>N</mi></mrow>
+<mrow><mi>K</mi></mrow>
+</mfrac>
+<mo>)</mo></mrow><mrow><mi>&theta;</mi></mrow>
+</msup>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+numerically:
+
+<div class="p"><!----></div>
+Attach <tt>odesolve</tt> package:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;library(odesolve)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Define a function for the derivative.  It <em>must</em>
+have arguments (time, state vector, parameters), although
+they need not be called  <tt>t</tt>, <tt>y</tt>, <tt>params</tt>. 
+The only other peculiarity is that instead of returning
+the derivative (<tt>dNdt</tt> in this case) 
+by itself you actually have to return a list
+containing the derivative as its first element and
+"a vector of global values that are required at each point"
+(which can usually be <tt>NULL</tt>).
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;derivfun&nbsp;=&nbsp;function(t,&nbsp;y,&nbsp;parms)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;r&nbsp;=&nbsp;parms[1]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;K&nbsp;=&nbsp;parms[2]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;theta&nbsp;=&nbsp;parms[3]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;N&nbsp;=&nbsp;y[1]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dNdt&nbsp;=&nbsp;r&nbsp;*&nbsp;N&nbsp;*&nbsp;sign(1&nbsp;-&nbsp;N/K)&nbsp;*&nbsp;abs((1&nbsp;-&nbsp;N/K))^theta
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;list(dNdt,&nbsp;NULL)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Once you've defined the derivative function, you can 
+use the <tt>lsoda</tt> function to solve
+that differential equation for any set of 
+starting values (<tt>y</tt>), 
+times (<tt>times</tt>), and parameters (<tt>parms</tt>)
+you like.
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;tvec&nbsp;=&nbsp;seq(0,&nbsp;50,&nbsp;by&nbsp;=&nbsp;0.2)
+&#62;&nbsp;x1&nbsp;=&nbsp;lsoda(y&nbsp;=&nbsp;c(N&nbsp;=&nbsp;1),&nbsp;times&nbsp;=&nbsp;tvec,&nbsp;func&nbsp;=&nbsp;derivfun,&nbsp;parms&nbsp;=&nbsp;c(r&nbsp;=&nbsp;0.2,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;K&nbsp;=&nbsp;10,&nbsp;theta&nbsp;=&nbsp;1))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+You get back a numeric matrix with a column for
+the times and columns for all of the state variables
+(only one in this case):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;head(x1)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;time&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;N
+[1,]&nbsp;&nbsp;0.0&nbsp;1.000000
+[2,]&nbsp;&nbsp;0.2&nbsp;1.036581
+[3,]&nbsp;&nbsp;0.4&nbsp;1.074341
+[4,]&nbsp;&nbsp;0.6&nbsp;1.113303
+[5,]&nbsp;&nbsp;0.8&nbsp;1.153495
+[6,]&nbsp;&nbsp;1.0&nbsp;1.194945
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Re-running the solution for different values of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&theta;</mi></mrow></math>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;x2&nbsp;=&nbsp;lsoda(y&nbsp;=&nbsp;c(N&nbsp;=&nbsp;1),&nbsp;times&nbsp;=&nbsp;tvec,&nbsp;func&nbsp;=&nbsp;derivfun,&nbsp;parms&nbsp;=&nbsp;c(r&nbsp;=&nbsp;0.2,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;K&nbsp;=&nbsp;10,&nbsp;theta&nbsp;=&nbsp;2))
+&#62;&nbsp;x3&nbsp;=&nbsp;lsoda(y&nbsp;=&nbsp;c(N&nbsp;=&nbsp;1),&nbsp;times&nbsp;=&nbsp;tvec,&nbsp;func&nbsp;=&nbsp;derivfun,&nbsp;parms&nbsp;=&nbsp;c(r&nbsp;=&nbsp;0.2,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;K&nbsp;=&nbsp;10,&nbsp;theta&nbsp;=&nbsp;0.5))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Putting the results together into a single matrix
+(both columns of the first matrix and only the
+second column of the other two):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;X&nbsp;=&nbsp;cbind(x1,&nbsp;x2[,&nbsp;"N"],&nbsp;x3[,&nbsp;"N"])
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Plotting with <tt>matplot()</tt>,
+and using <tt>curve</tt> and the known
+solution for the plain old logistic
+to check the solution when 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&theta;</mi><mo>=</mo><mn>1</mn></mrow></math>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;matplot(X[,&nbsp;"time"],&nbsp;X[,&nbsp;2:4],&nbsp;type&nbsp;=&nbsp;"l",&nbsp;col&nbsp;=&nbsp;1,&nbsp;xlab&nbsp;=&nbsp;"time",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ylab&nbsp;=&nbsp;"N")
+&#62;&nbsp;r&nbsp;=&nbsp;0.2
+&#62;&nbsp;K&nbsp;=&nbsp;10
+&#62;&nbsp;N0&nbsp;=&nbsp;1
+&#62;&nbsp;curve(K/((1&nbsp;+&nbsp;(K/N0&nbsp;-&nbsp;1)&nbsp;*&nbsp;exp(-r&nbsp;*&nbsp;x))),&nbsp;type&nbsp;=&nbsp;"p",&nbsp;add&nbsp;=&nbsp;TRUE)
+&#62;&nbsp;legend(30,&nbsp;4,&nbsp;c(expression(theta&nbsp;==&nbsp;1),&nbsp;expression(theta&nbsp;==&nbsp;2),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;expression(theta&nbsp;==&nbsp;0.5)),&nbsp;lty&nbsp;=&nbsp;1:3)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab5-048.png" alt="lab5-048.png" />
+
+<div class="p"><!----></div>
+(remember you have to use <tt>==</tt> to
+get an equals sign in a
+math expression).
+
+<div class="p"><!----></div>
+ <h2><a name="tth_sEc4">
+4</a>&nbsp;&nbsp;Power etc. calculations</h2>
+
+<div class="p"><!----></div>
+This section will first go through a relatively
+simple example (the source-sink population model
+presented above), showing the basic steps of a
+power calculation.  I'll then give a briefer sketch
+of some of the gory details of doing the Shepherd model
+power analysis discussed in the chapter.
+
+<div class="p"><!----></div>
+     <h3><a name="tth_sEc4.1">
+4.1</a>&nbsp;&nbsp;Sink population dynamics</h3>
+
+<div class="p"><!----></div>
+The sink population presented above was a recovering
+sink population: the biological question I will
+try to answer is: how long do I have to sample the
+population for to test that it is really recovering?
+How does this depend on the survival and immigration
+rates?
+
+<div class="p"><!----></div>
+First, simulate one set of values and a time vector:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nt&nbsp;=&nbsp;20
+&#62;&nbsp;sim0&nbsp;=&nbsp;immigsim(nt&nbsp;=&nbsp;nt,&nbsp;N0&nbsp;=&nbsp;2,&nbsp;surv&nbsp;=&nbsp;0.9,&nbsp;immig&nbsp;=&nbsp;10)
+&#62;&nbsp;tvec&nbsp;=&nbsp;1:nt
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Run a linear regression and extract the
+point estimate
+and confidence limits
+for the slope:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;lm1&nbsp;=&nbsp;lm(sim0&nbsp;~&nbsp;tvec)
+&#62;&nbsp;slope&nbsp;=&nbsp;coef(lm1)["tvec"]
+&#62;&nbsp;ci.slope&nbsp;=&nbsp;confint(lm1)["tvec",&nbsp;]
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(look at the output of <tt>confint(lm1)</tt> to see how it's structured).
+
+<div class="p"><!----></div>
+Now run the model for a series of lengths of observation time
+and record the values for each length:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nvec&nbsp;=&nbsp;c(3,&nbsp;5,&nbsp;7,&nbsp;10,&nbsp;15,&nbsp;20)
+&#62;&nbsp;nsim&nbsp;=&nbsp;500
+&#62;&nbsp;powsimresults&nbsp;=&nbsp;matrix(nrow&nbsp;=&nbsp;length(nvec)&nbsp;*&nbsp;nsim,&nbsp;ncol&nbsp;=&nbsp;5)
+&#62;&nbsp;colnames(powsimresults)&nbsp;=&nbsp;c("n",&nbsp;"sim",&nbsp;"slope",&nbsp;"slope.lo",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"slope.hi")
+&#62;&nbsp;ctr&nbsp;=&nbsp;1
+&#62;&nbsp;for&nbsp;(i&nbsp;in&nbsp;1:length(nvec))&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nt&nbsp;=&nbsp;nvec[i]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tvec&nbsp;=&nbsp;1:nt
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cat(nt,&nbsp;"\n")
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(sim&nbsp;in&nbsp;1:nsim)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;current.sim&nbsp;=&nbsp;immigsim(nt&nbsp;=&nbsp;nt,&nbsp;N0&nbsp;=&nbsp;N0,&nbsp;surv&nbsp;=&nbsp;p,&nbsp;immig&nbsp;=&nbsp;immig)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lm1&nbsp;=&nbsp;lm(current.sim&nbsp;~&nbsp;tvec)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;slope&nbsp;=&nbsp;coef(lm1)["tvec"]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ci.slope&nbsp;=&nbsp;confint(lm1)["tvec",&nbsp;]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;powsimresults[ctr,&nbsp;]&nbsp;=&nbsp;c(nt,&nbsp;sim,&nbsp;slope,&nbsp;ci.slope)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ctr&nbsp;=&nbsp;ctr&nbsp;+&nbsp;1
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
++&nbsp;}
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+3&nbsp;
+5&nbsp;
+7&nbsp;
+10&nbsp;
+15&nbsp;
+20&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+A couple of  R&nbsp;tricks in this code:
+
+<ul>
+<li>I'm going to keep the output in long format, with
+each row containing the sample size and simulation number
+along with the estimate and confidence intervals:
+this will make it easy to cross-tabulate the results
+(see below)
+<div class="p"><!----></div>
+</li>
+
+<li>I keep a counter variable <tt>ctr</tt> to track
+which row of the matrix I'm filling in, and add
+one to it each time through the loop. (Alternately
+I could calculate that at the <tt>i</tt>
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow></mrow><mrow><mi>t</mi></mrow>
+</msup>
+<mi>h</mi></mrow></math> sample size 
+and <tt>s</tt>
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow></mrow><mrow><mi>t</mi></mrow>
+</msup>
+<mi>h</mi></mrow></math> simulation I should be filling in
+row <tt>(i-1)*nsim+i</tt>.)
+Make sure to reset <tt>ctr</tt> if you re-run the
+<tt>for</tt> loops.
+<div class="p"><!----></div>
+</li>
+
+<li>the <tt>cat()</tt> command is just printing results
+as I go along: on Windows you may have to go to a menu
+and unselect the "buffered output" option.  The
+<tt>"\n"</tt> at the end specifies a new line.
+<div class="p"><!----></div>
+</li>
+
+<li>I keep track of simulation number in the loop
+but the <em>index</em> of the sample size:
+<tt>i</tt> is (1, 2, 3, ...) rather
+than <tt>i</tt> (3, 5, 7, ...). This isn't
+totally necessary in this case since we're using
+<tt>ctr</tt> to index the rows of the matrix, but it's
+generally safer.
+<div class="p"><!----></div>
+</li>
+</ul>
+
+<div class="p"><!----></div>
+Now summarize the results, cross-tabulating
+by the number of samples.
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nfac&nbsp;=&nbsp;factor(powsimresults[,&nbsp;"n"])
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Select the point estimate and calculate its mean
+(
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>E</mi><mo stretchy="false">[</mo>
+<mover><mrow><mi>s</mi></mrow>
+<mo>&Hat;</mo></mover>
+<mo stretchy="false">]</mo></mrow></math>)
+for each observation length:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;slope.mean&nbsp;=&nbsp;tapply(powsimresults[,&nbsp;"slope"],&nbsp;nfac,&nbsp;mean)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculate the standard deviation:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;slope.sd&nbsp;=&nbsp;tapply(powsimresults[,&nbsp;"slope"],&nbsp;nfac,&nbsp;sd)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+to calculate the variance of the estimate.
+
+<div class="p"><!----></div>
+Calculating whether the true value fell within
+the confidence limits in a particular simulation.
+(The theoretical value of the slope is a little
+hard here since the expected value of the population
+is actually to grow to an asymptote.  Near the
+beginning the slope is close to the immigration
+rate:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;ci.good&nbsp;=&nbsp;(powsimresults[,&nbsp;"slope.hi"]&nbsp;&#62;&nbsp;immig)&nbsp;&amp;&nbsp;(powsimresults[,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"slope.lo"]&nbsp;&lt;&nbsp;immig)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculating the coverage by cross-tabulating the number of "good" confidence
+intervals and dividing by the number of simulations per 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>d</mi></mrow></math>/sample size combination:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nsim&nbsp;=&nbsp;500
+&#62;&nbsp;slope.cov&nbsp;=&nbsp;tapply(ci.good,&nbsp;nfac,&nbsp;sum)/nsim
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(so the "coverage" actually decreases in this case,
+but this is a bad example - sorry!)
+
+<div class="p"><!----></div>
+Calculating whether the null value (zero) <em>did not</em>
+fall within the confidence limits:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;null.value&nbsp;=&nbsp;0
+&#62;&nbsp;reject.null&nbsp;=&nbsp;(powsimresults[,&nbsp;"slope.hi"]&nbsp;&lt;&nbsp;null.value)&nbsp;|&nbsp;(powsimresults[,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"slope.lo"]&nbsp;&#62;&nbsp;null.value)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculating the power by cross-tabulating the number of rejections
+of the null hypothesis  and dividing by the number of simulations per 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>d</mi></mrow></math>/sample size combination:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;slope.pow&nbsp;=&nbsp;tapply(reject.null,&nbsp;nfac,&nbsp;sum)/nsim
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+In this case it's very easy to see, very quickly, that
+the population is recovering ...
+
+<div class="p"><!----></div>
+<b>Exercise  7*</b>: redo this example, but with negative
+binomial growth (with 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi><mo>=</mo><mn>5</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi><mo>=</mo><mn>1</mn></mrow></math>, and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi><mo>=</mo><mn>0</mn><mo>.</mo><mn>5</mn></mrow></math>).  If you want
+to be fancy, try to nest an additional <tt>for</tt> loop and
+cross-tabulate your answers with a single command (see code
+below under reef fish example): otherwise simply change
+the variable and re-run the code three times. <br />
+<font size="+1"><b>or</b></font> <br />
+<b>Exercise  8**</b>: in  R, you
+can fit a quadratic function with
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;lm.q&nbsp;=&nbsp;lm(sim0&nbsp;~&nbsp;tvec&nbsp;+&nbsp;I(tvec^2))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Extract the point estimate
+for the quadratic term
+with <tt>coef(lm.q)[3]</tt> and
+the confidence intervals with
+<tt>confint(lm.q)[3,]</tt>.
+For the original model (with Poisson variability),
+do a power analysis of your ability to
+detect the leveling-off of the
+curve (as a negative
+quadratic term in the regression fit)
+as a function of number of observation
+periods.  (If you're really ambitious,
+combine the two problems and
+try this with negative binomial variation.)
+
+<div class="p"><!----></div>
+     <h3><a name="tth_sEc4.2">
+4.2</a>&nbsp;&nbsp;Reef fish dynamics</h3>
+
+<div class="p"><!----></div>
+Regenerating a simulated version of Schmitt et al. data.
+
+<div class="p"><!----></div>
+(Re)define zero-inflated negative binomial and Shepherd functions:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;rzinbinom&nbsp;=&nbsp;function(n,&nbsp;mu,&nbsp;size,&nbsp;zprob)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ifelse(runif(n)&nbsp;&lt;&nbsp;zprob,&nbsp;0,&nbsp;rnbinom(n,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;size))
++&nbsp;}
+&#62;&nbsp;shep&nbsp;=&nbsp;function(x,&nbsp;a&nbsp;=&nbsp;0.696,&nbsp;b&nbsp;=&nbsp;9.79,&nbsp;d&nbsp;=&nbsp;1)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;x^d)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Parameters for distribution of settlers
+(
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msub><mrow><mi>p</mi></mrow><mrow><mi>z</mi></mrow>
+</msub>
+</mrow></math>) and
+Shepherd function (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>d</mi></mrow></math>):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;mu&nbsp;=&nbsp;25.32
+&#62;&nbsp;k&nbsp;=&nbsp;0.932
+&#62;&nbsp;zprob&nbsp;=&nbsp;0.123
+&#62;&nbsp;a&nbsp;=&nbsp;0.696
+&#62;&nbsp;b&nbsp;=&nbsp;9.79
+&#62;&nbsp;d&nbsp;=&nbsp;1.1
+&#62;&nbsp;n&nbsp;=&nbsp;603
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Simulate one set of values:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;set.seed(1002)
+&#62;&nbsp;settlers&nbsp;=&nbsp;rzinbinom(n,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k,&nbsp;zprob&nbsp;=&nbsp;zprob)
+&#62;&nbsp;recr&nbsp;=&nbsp;rbinom(n,&nbsp;prob&nbsp;=&nbsp;shep(settlers,&nbsp;a,&nbsp;b,&nbsp;d),&nbsp;size&nbsp;=&nbsp;settlers)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The nonlinear least-squares function <tt>nls()</tt> takes
+a formula and a named set of starting values.
+Start by fitting the Beverton-Holt, which is easier
+to fit than the Shepherd.
+(This is a typical way to fit a complex model: start with
+a simpler, easier-to-fit model that is a special case of the complex model,
+then use those fitted parameters as a starting point
+for the harder estimation problem.)
+Use the theoretical
+values of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi></mrow></math> as starting parameters
+for the Beverton-Holt fit:
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;bh.fit&nbsp;=&nbsp;nls(recr&nbsp;~&nbsp;a&nbsp;*&nbsp;settlers/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;settlers),&nbsp;start&nbsp;=&nbsp;c(a&nbsp;=&nbsp;0.696,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b&nbsp;=&nbsp;9.79))
+&#62;&nbsp;bh.fit
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+Nonlinear&nbsp;regression&nbsp;model
+&nbsp;&nbsp;model:&nbsp;&nbsp;recr&nbsp;~&nbsp;a&nbsp;*&nbsp;settlers/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;settlers)&nbsp;
+&nbsp;&nbsp;&nbsp;data:&nbsp;&nbsp;parent.frame()&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b&nbsp;
+0.7775758&nbsp;6.6934193&nbsp;
+&nbsp;residual&nbsp;sum-of-squares:&nbsp;&nbsp;1639.527&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The function <tt>coef(bh)</tt> gives the fitted parameters
+(coefficients).  Use these, plus a starting value of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>d</mi><mo>=</mo><mn>1</mn></mrow></math>,
+to fit the Shepherd function.
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;shep.fit&nbsp;=&nbsp;nls(recr&nbsp;~&nbsp;a&nbsp;*&nbsp;settlers/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;settlers^d),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;start&nbsp;=&nbsp;c(coef(bh.fit),&nbsp;d&nbsp;=&nbsp;1))
+&#62;&nbsp;shep.fit
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+Nonlinear&nbsp;regression&nbsp;model
+&nbsp;&nbsp;model:&nbsp;&nbsp;recr&nbsp;~&nbsp;a&nbsp;*&nbsp;settlers/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;settlers^d)&nbsp;
+&nbsp;&nbsp;&nbsp;data:&nbsp;&nbsp;parent.frame()&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;d&nbsp;
+&nbsp;0.5998674&nbsp;12.0196853&nbsp;&nbsp;1.1362227&nbsp;
+&nbsp;residual&nbsp;sum-of-squares:&nbsp;&nbsp;1631.212&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculate confidence intervals:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;ci&nbsp;=&nbsp;confint(shep.fit)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+Waiting&nbsp;for&nbsp;profiling&nbsp;to&nbsp;be&nbsp;done...
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;ci
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;97.5%
+a&nbsp;0.4630841&nbsp;&nbsp;0.8419771
+b&nbsp;6.2920786&nbsp;26.0900580
+d&nbsp;0.9846074&nbsp;&nbsp;1.3152524
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Extract the estimates for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>d</mi></mrow></math>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;ci["d",&nbsp;]
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;97.5%&nbsp;
+0.9846074&nbsp;1.3152524&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Sometimes the confidence interval fitting runs into trouble
+and stops with an error like
+
+<pre>
+Error&nbsp;in&nbsp;prof$getProfile()&nbsp;:&nbsp;step&nbsp;factor&nbsp;0.000488281&nbsp;reduced&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;below&nbsp;'minFactor'&nbsp;of&nbsp;0.000976562
+
+</pre>
+
+<div class="p"><!----></div>
+This kind of glitch is fairly rare when doing analyses one at a time,
+but very common when doing power analyses, which require thousands
+or tens of thousands of fits.  A few  R&nbsp;tricks for dealing with this:
+
+<ul>
+<li><tt>x = try(command)</tt> "tries" a command to see if it works or not;
+it it doesn't work,  Rdoesn't stop but sets <tt>x</tt> equal to the
+error message. To test whether the command stopped or not, see if
+<tt>class(x)=="try-error"</tt>
+
+<div class="p"><!----></div>
+</li>
+
+<li><tt>while</tt> and <tt>if</tt> are commands for flow control
+(like the <tt>for()</tt> command introduced earlier in this lab):
+<tt>if</tt> executes a set of commands (once) if some condition
+is true, and 
+<tt>while</tt> loops and executes a set of commands <em>as long as</em> some condition
+is true
+
+<div class="p"><!----></div>
+</li>
+</ul>
+
+<div class="p"><!----></div>
+The code below is a slightly simplified version of what I did
+to generate the values
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;getvals&nbsp;=&nbsp;function(n&nbsp;=&nbsp;100,&nbsp;d&nbsp;=&nbsp;1)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;OK&nbsp;=&nbsp;FALSE
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;while&nbsp;(!OK)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;z&nbsp;=&nbsp;simdata(n,&nbsp;d)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;bh.fit&nbsp;=&nbsp;try(nls(recr&nbsp;~&nbsp;a&nbsp;*&nbsp;settlers/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;settlers),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;start&nbsp;=&nbsp;c(a&nbsp;=&nbsp;0.696,&nbsp;b&nbsp;=&nbsp;9.79),&nbsp;data&nbsp;=&nbsp;z))
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shep.fit&nbsp;=&nbsp;try(nls(recr&nbsp;~&nbsp;a&nbsp;*&nbsp;settlers/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;settlers^d),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;start&nbsp;=&nbsp;c(coef(bh.fit),&nbsp;d&nbsp;=&nbsp;1),&nbsp;data&nbsp;=&nbsp;z))
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;OK&nbsp;=&nbsp;(class(shep.fit)&nbsp;!=&nbsp;"try-error"&nbsp;&amp;&amp;&nbsp;class(bh.fit)&nbsp;!=&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"try-error")
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if&nbsp;(OK)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;bh.ci&nbsp;=&nbsp;try(confint(bh.fit))
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shep.ci&nbsp;=&nbsp;try(confint(shep.ti))
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;OK&nbsp;=&nbsp;(class(shep.ci)&nbsp;!=&nbsp;"try-error"&nbsp;&amp;&amp;&nbsp;class(bh.ci)&nbsp;!=&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"try-error")
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;res&nbsp;=&nbsp;c(coef(bh.fit),&nbsp;bh.ci,&nbsp;coef(shep.fit),&nbsp;shep.ci)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;names(res)&nbsp;=&nbsp;c("a.bh",&nbsp;"b.bh",&nbsp;"a.bh.lo",&nbsp;"b.bh.lo",&nbsp;"a.bh.hi",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"b.bh.hi",&nbsp;"a.shep",&nbsp;"b.shep",&nbsp;"d.shep",&nbsp;"a.shep.lo",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"b.shep.lo",&nbsp;"d.shep.lo",&nbsp;"a.shep.hi",&nbsp;"b.shep.hi",&nbsp;"d.shep.hi")
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;res
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Here I loaded the results of a big set of simulations I had run:
+download it from the web page if you want to actually run these commands.
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;load("chap5-batch2.RData")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+I then used
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;faclist&nbsp;=&nbsp;list(factor(resmat[,&nbsp;"d"]),&nbsp;factor(resmat[,&nbsp;"n"]))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+To define a set of factors to break up the data (i.e., I will want
+to cross-tabulate by both true parameter value 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>d</mi></mrow></math> and sample size)
+and then ran
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;d.shep.mean&nbsp;=&nbsp;tapply(resmat[,&nbsp;"d.shep"],&nbsp;faclist,&nbsp;mean)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+to calculate the mean value 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>E</mi><mo stretchy="false">[</mo>
+<mover><mrow><mi>d</mi></mrow>
+<mo>&Hat;</mo></mover>
+<mo stretchy="false">]</mo></mrow></math> and
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;d.shep.sd&nbsp;=&nbsp;tapply(resmat[,&nbsp;"d.shep"],&nbsp;faclist,&nbsp;sd)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+to calculate the variance of the estimate.
+
+<div class="p"><!----></div>
+Calculating whether the true value fell within
+the confidence limits in a particular simulation:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;ci.good&nbsp;=&nbsp;(resmat[,&nbsp;"d.shep.hi"]&nbsp;&#62;&nbsp;resmat[,&nbsp;"d"])&nbsp;&amp;&nbsp;(resmat[,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"d.shep.lo"]&nbsp;&lt;&nbsp;resmat[,&nbsp;"d"])
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculating the coverage by cross-tabulating the number of "good" confidence
+intervals and dividing by the number of simulations per 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>d</mi></mrow></math>/sample size combination:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nsim&nbsp;=&nbsp;400
+&#62;&nbsp;d.shep.cov&nbsp;=&nbsp;tapply(ci.good,&nbsp;faclist,&nbsp;sum)/nsim
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculating whether the null value <em>did not</em>
+fall within the confidence limits:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;null.value&nbsp;=&nbsp;1
+&#62;&nbsp;reject.null&nbsp;=&nbsp;(resmat[,&nbsp;"d.shep.hi"]&nbsp;&lt;&nbsp;null.value)&nbsp;|&nbsp;(resmat[,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"d.shep.lo"]&nbsp;&#62;&nbsp;null.value)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculating the power by cross-tabulating the number of null-hypothesis
+rejections and dividing by the number of simulations per 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>d</mi></mrow></math>/sample size combination:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nsim&nbsp;=&nbsp;400
+&#62;&nbsp;d.shep.pow&nbsp;=&nbsp;tapply(reject.null,&nbsp;faclist,&nbsp;sum)/nsim
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<b>Randomization tests (to come)</b>
+
+<br /><br /><hr /><small>File translated from
+T<sub><font size="-1">E</font></sub>X
+by <a href="http://hutchinson.belmont.ma.us/tth/">
+T<sub><font size="-1">T</font></sub>M</a>,
+version 3.70.<br />On  6 Oct 2005, 16:11.</small>
+</body></html>

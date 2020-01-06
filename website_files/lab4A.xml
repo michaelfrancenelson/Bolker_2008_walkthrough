@@ -1,0 +1,943 @@
+<?xml version="1.0"?>
+<!DOCTYPE html    PUBLIC "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN"
+           "http://www.w3.org/Math/DTD/mathml2/xhtml-math11-f.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="GENERATOR" content="TtM 3.70" />
+ <style type="text/css">
+ div.p { margin-top: 7pt; }
+ span.roman {font-family: serif; font-style: normal; font-weight: normal;} 
+</style>
+ 
+
+
+<title> Lab 4 solutions </title>
+</head>
+<body>
+ 
+<h1 align="center">Lab 4 solutions </h1>
+
+<h3 align="center">&#169; 2005 Ben Bolker </h3>
+
+ <b>Exercise  1</b>:
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;set.seed(1001)
+&#62;&nbsp;x&nbsp;=&nbsp;rbinom(n&nbsp;=&nbsp;8,&nbsp;size&nbsp;=&nbsp;10,&nbsp;prob&nbsp;=&nbsp;0.2)
+&#62;&nbsp;sort(x)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0&nbsp;0&nbsp;2&nbsp;2&nbsp;2&nbsp;2&nbsp;4&nbsp;5
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Probabilities:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;dbinom(3:5,&nbsp;size&nbsp;=&nbsp;10,&nbsp;prob&nbsp;=&nbsp;0.2)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.20132659&nbsp;0.08808038&nbsp;0.02642412
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Cumulative probability:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;sum(dbinom(5:10,&nbsp;size&nbsp;=&nbsp;10,&nbsp;prob&nbsp;=&nbsp;0.2))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.0327935
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+or
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;1&nbsp;-&nbsp;pbinom(4,&nbsp;size&nbsp;=&nbsp;10,&nbsp;prob&nbsp;=&nbsp;0.2)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.0327935
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+since <tt>pbinom(q)</tt> gives the probability
+of <tt>q</tt> <em>or fewer</em> successes.
+The best answer is probably
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;pbinom(4,&nbsp;size&nbsp;=&nbsp;10,&nbsp;prob&nbsp;=&nbsp;0.2,&nbsp;lower.tail&nbsp;=&nbsp;FALSE)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.0327935
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+because it will be more accurate when the
+upper tail probabilities are very small.
+
+<div class="p"><!----></div>
+Tail probabilities:
+calculating the quantiles with <tt>qbinom</tt>
+is just the start.
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;qbinom(c(0.025,&nbsp;0.975),&nbsp;prob&nbsp;=&nbsp;0.2,&nbsp;size&nbsp;=&nbsp;10)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0&nbsp;5
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The actual answer based on these results (0,5)
+is that we will not be able to detect
+a deviation below 0.2 with only 10 samples;
+6 or more successes would suggest a significantly
+greater probability.  (The probability of getting
+5 or more successes, or <tt>pbinom(4,size=10,prob=0.2,
+lower.tail=FALSE)</tt> is 0.032, which does not attain
+the 2.5% level we are looking for in the upper
+tail.  The probability of 6 or more successes,
+<tt>pbinom(5,size=10,prob=0.2,lower.tail=FALSE)</tt>,
+is 0.006.  We would need a sample size of 17 to
+be able to detect a probability significantly
+below 0.2.)
+
+<div class="p"><!----></div>
+<b>Exercise 2*</b>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;mu&nbsp;=&nbsp;2
+&#62;&nbsp;k&nbsp;=&nbsp;0.5
+&#62;&nbsp;x&nbsp;=&nbsp;rnbinom(10000,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k)
+&#62;&nbsp;tx&nbsp;=&nbsp;table(factor(x,&nbsp;levels&nbsp;=&nbsp;0:max(x)))/10000
+&#62;&nbsp;b1&nbsp;=&nbsp;barplot(tx,&nbsp;ylab&nbsp;=&nbsp;"Probability")
+&#62;&nbsp;points(b1,&nbsp;dnbinom(0:max(x),&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k),&nbsp;pch&nbsp;=&nbsp;1)
+&#62;&nbsp;mean(x)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;1.9445
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;var(x)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;9.585978
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;mu
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;2
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;mu&nbsp;*&nbsp;(1&nbsp;+&nbsp;mu/k)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;10
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;p&nbsp;=&nbsp;1/(1&nbsp;+&nbsp;mu/k)
+&#62;&nbsp;n&nbsp;=&nbsp;k
+&#62;&nbsp;points(b1,&nbsp;dnbinom(0:max(x),&nbsp;prob&nbsp;=&nbsp;p,&nbsp;size&nbsp;=&nbsp;k),&nbsp;pch&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab4A-007.png" alt="lab4A-007.png" />
+Here's how I translated  
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>p</mi></mrow></math> to 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi></mrow></math>:
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo>=</mo><mi>k</mi></mrow></math> and
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow>
+<mtable align="right" width="80%">
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>&mu;</mi></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>p</mi><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mi>p</mi></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>&mu;</mi><mo stretchy="false">/</mo><mi>n</mi></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>p</mi><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mi>p</mi></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>p</mi><mi>&mu;</mi><mo stretchy="false">/</mo><mi>n</mi></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>p</mi><mo stretchy="false">)</mo></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>p</mi><mo stretchy="false">(</mo><mi>&mu;</mi><mo stretchy="false">/</mo><mi>n</mi><mo>+</mo><mn>1</mn><mo stretchy="false">)</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mn>1</mn></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>p</mi></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mn>1</mn><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>&mu;</mi><mo stretchy="false">/</mo><mi>n</mi><mo stretchy="false">)</mo><mo>=</mo><mn>1</mn><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>&mu;</mi><mo stretchy="false">/</mo><mi>k</mi><mo stretchy="false">)</mo></mrow>
+</mtd></mtr>
+</mtable>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+
+<div class="p"><!----></div>
+<b>Exercise 3</b>:
+1.5 is the mean number of counts per category.
+I suppose this could be interesting if you
+were trying to describe an average sample size
+per treatment, but otherwise it seems
+pretty much irrelevant.
+
+<div class="p"><!----></div>
+<b>Exercise 4*</b>:
+Preliminaries: set up parameters and
+derivative.  Since we're only going to
+be changing the distribution and not
+the function, the second derivative
+won't change.
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;a&nbsp;=&nbsp;0.696
+&#62;&nbsp;b&nbsp;=&nbsp;9.79
+&#62;&nbsp;d1&nbsp;=&nbsp;D(expression(a&nbsp;*&nbsp;x/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;x)),&nbsp;"x")
+&#62;&nbsp;d2&nbsp;=&nbsp;D(d1,&nbsp;"x")
+&#62;&nbsp;Smean&nbsp;=&nbsp;24.5
+&#62;&nbsp;d2_num&nbsp;=&nbsp;eval(d2,&nbsp;list(a&nbsp;=&nbsp;0.696,&nbsp;b&nbsp;=&nbsp;9.79,&nbsp;x&nbsp;=&nbsp;Smean))
+&#62;&nbsp;mval&nbsp;=&nbsp;a&nbsp;*&nbsp;Smean/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;Smean)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Solving for the parameters of the gamma in terms
+of the moments 
+(
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi><mo>=</mo><mi>as</mi></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo>=</mo>
+<msup><mrow><mi>as</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow></math>)
+gives 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo>=</mo>
+<msup><mrow><mi>&mu;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">/</mo>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>s</mi><mo>=</mo>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">/</mo><mi>&mu;</mi></mrow></math>.
+I'm going to build this into my function for
+computing the integral.
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;tmpf&nbsp;=&nbsp;function(S,&nbsp;mean&nbsp;=&nbsp;Smean,&nbsp;var)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dgamma(S,&nbsp;shape&nbsp;=&nbsp;mean^2/var,&nbsp;scale&nbsp;=&nbsp;var/mean)&nbsp;*&nbsp;a&nbsp;*&nbsp;S/(1&nbsp;+&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(a/b)&nbsp;*&nbsp;S)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Check: I should the get the same answer as before when 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo>=</mo>
+<msup><mrow><mi>&mu;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo>=</mo><mn>24</mn><mo>.</mo>
+<msup><mrow><mn>5</mn></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow></math>
+(which is true for the exponential distribution)
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;integrate(tmpf,&nbsp;lower&nbsp;=&nbsp;0,&nbsp;upper&nbsp;=&nbsp;Inf,&nbsp;var&nbsp;=&nbsp;Smean^2)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+5.010691&nbsp;with&nbsp;absolute&nbsp;error&nbsp;&lt;&nbsp;5.5e-05
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Looks OK.
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;Svar_vec&nbsp;=&nbsp;c(Smean^2,&nbsp;100,&nbsp;25,&nbsp;1)
+&#62;&nbsp;dapprox&nbsp;=&nbsp;mval&nbsp;+&nbsp;1/2&nbsp;*&nbsp;Svar_vec&nbsp;*&nbsp;d2_num
+&#62;&nbsp;exact&nbsp;=&nbsp;c(integrate(tmpf,&nbsp;lower&nbsp;=&nbsp;0,&nbsp;upper&nbsp;=&nbsp;Inf,&nbsp;var&nbsp;=&nbsp;Smean^2)$value,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;integrate(tmpf,&nbsp;lower&nbsp;=&nbsp;0,&nbsp;upper&nbsp;=&nbsp;Inf,&nbsp;var&nbsp;=&nbsp;100)$value,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;integrate(tmpf,&nbsp;lower&nbsp;=&nbsp;0,&nbsp;upper&nbsp;=&nbsp;Inf,&nbsp;var&nbsp;=&nbsp;25)$value,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;integrate(tmpf,&nbsp;lower&nbsp;=&nbsp;0,&nbsp;upper&nbsp;=&nbsp;Inf,&nbsp;var&nbsp;=&nbsp;1)$value)
+&#62;&nbsp;merr&nbsp;=&nbsp;(mval&nbsp;-&nbsp;exact)/exact
+&#62;&nbsp;err&nbsp;=&nbsp;(dapprox&nbsp;-&nbsp;exact)/exact
+&#62;&nbsp;data.frame(exact&nbsp;=&nbsp;exact,&nbsp;mval&nbsp;=&nbsp;mval,&nbsp;delta&nbsp;=&nbsp;dapprox,&nbsp;mval.err&nbsp;=&nbsp;merr,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;delta.err&nbsp;=&nbsp;err)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;exact&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mval&nbsp;&nbsp;&nbsp;&nbsp;delta&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mval.err&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;delta.err
+1&nbsp;5.010691&nbsp;6.219323&nbsp;4.778299&nbsp;0.2412106838&nbsp;-4.637931e-02
+2&nbsp;5.983161&nbsp;6.219323&nbsp;5.979253&nbsp;0.0394711611&nbsp;-6.532386e-04
+3&nbsp;6.159482&nbsp;6.219323&nbsp;6.159306&nbsp;0.0097153649&nbsp;-2.858574e-05
+4&nbsp;6.216923&nbsp;6.219323&nbsp;6.216923&nbsp;0.0003861181&nbsp;-3.878837e-08
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+A slicker way to get all the exact values is:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;tmpf2&nbsp;=&nbsp;function(var)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;integrate(tmpf,&nbsp;lower&nbsp;=&nbsp;0,&nbsp;upper&nbsp;=&nbsp;Inf,&nbsp;var&nbsp;=&nbsp;var)$value
++&nbsp;}
+&#62;&nbsp;sapply(Svar_vec,&nbsp;tmpf2)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;5.010691&nbsp;5.983161&nbsp;6.159482&nbsp;6.216923
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<b>Exercise 5*</b>:
+Based just on the expressions in the normalization constant
+(
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&Gamma;</mi><mo stretchy="false">(</mo><mi>a</mi><mo>+</mo><mi>b</mi><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mi>&Gamma;</mi><mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">)</mo><mi>&Gamma;</mi><mo stretchy="false">(</mo><mi>b</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow></math> for the standard
+parameterization, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&Gamma;</mi><mo stretchy="false">(</mo><mi>&theta;</mi><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mi>&Gamma;</mi><mo stretchy="false">(</mo><mi>&theta;</mi><mi>P</mi><mo stretchy="false">)</mo><mi>&Gamma;</mi><mo stretchy="false">(</mo><mi>&theta;</mi><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>P</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow></math>)
+gives 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&theta;</mi><mo>=</mo><mi>a</mi><mo>+</mo><mi>b</mi></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>P</mi><mo>=</mo><mi>a</mi><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mi>a</mi><mo>+</mo><mi>b</mi><mo stretchy="false">)</mo></mrow></math> 
+or conversely 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo>=</mo><mi>&theta;</mi><mi>P</mi></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mi>&theta;</mi><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>P</mi><mo stretchy="false">)</mo></mrow></math>.
+In this parameterization, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>P</mi></mrow></math> is the mean proportion/
+number of successes/etc. and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&theta;</mi></mrow></math> governs the width
+of the distribution.
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;my_rbeta&nbsp;=&nbsp;function(n,&nbsp;theta,&nbsp;P)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;rbeta(n,&nbsp;shape1&nbsp;=&nbsp;theta&nbsp;*&nbsp;P,&nbsp;shape2&nbsp;=&nbsp;theta&nbsp;*&nbsp;(1&nbsp;-&nbsp;P))
++&nbsp;}
+&#62;&nbsp;my_dbeta&nbsp;=&nbsp;function(x,&nbsp;theta,&nbsp;P)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dbeta(x,&nbsp;shape1&nbsp;=&nbsp;theta&nbsp;*&nbsp;P,&nbsp;shape2&nbsp;=&nbsp;theta&nbsp;*&nbsp;(1&nbsp;-&nbsp;P))
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;x&nbsp;=&nbsp;my_rbeta(1000,&nbsp;theta&nbsp;=&nbsp;10,&nbsp;P&nbsp;=&nbsp;0.2)
+&#62;&nbsp;hist(x,&nbsp;breaks&nbsp;=&nbsp;50,&nbsp;prob&nbsp;=&nbsp;TRUE,&nbsp;col&nbsp;=&nbsp;"gray")
+&#62;&nbsp;curve(my_dbeta(x,&nbsp;theta&nbsp;=&nbsp;10,&nbsp;P&nbsp;=&nbsp;0.2),&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;lwd&nbsp;=&nbsp;2)
+&#62;&nbsp;abline(v&nbsp;=&nbsp;0.2,&nbsp;lwd&nbsp;=&nbsp;2,&nbsp;lty&nbsp;=&nbsp;3)
+&#62;&nbsp;abline(v&nbsp;=&nbsp;mean(x),&nbsp;lty&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab4A-014.png" alt="lab4A-014.png" />
+
+<div class="p"><!----></div>
+<b>Exercise 6</b>:
+
+<div class="p"><!----></div>
+Define the functions:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;dzinbinom&nbsp;=&nbsp;function(x,&nbsp;mu,&nbsp;size,&nbsp;zprob)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ifelse(x&nbsp;==&nbsp;0,&nbsp;zprob&nbsp;+&nbsp;(1&nbsp;-&nbsp;zprob)&nbsp;*&nbsp;dnbinom(0,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;size&nbsp;=&nbsp;size),&nbsp;(1&nbsp;-&nbsp;zprob)&nbsp;*&nbsp;dnbinom(x,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;size))
++&nbsp;}
+&#62;&nbsp;rzinbinom&nbsp;=&nbsp;function(n,&nbsp;mu,&nbsp;size,&nbsp;zprob)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ifelse(runif(n)&nbsp;&lt;&nbsp;zprob,&nbsp;0,&nbsp;rnbinom(n,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;size))
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Plotting (adding a point to show the fraction of the
+zeros that come from sampling zeros):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;mu&nbsp;=&nbsp;4
+&#62;&nbsp;size&nbsp;=&nbsp;0.5
+&#62;&nbsp;zprob&nbsp;=&nbsp;0.2
+&#62;&nbsp;x&nbsp;=&nbsp;rzinbinom(10000,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;size,&nbsp;zprob&nbsp;=&nbsp;zprob)
+&#62;&nbsp;tx&nbsp;=&nbsp;table(factor(x,&nbsp;levels&nbsp;=&nbsp;0:max(x)))/10000
+&#62;&nbsp;b1&nbsp;=&nbsp;barplot(tx,&nbsp;ylab&nbsp;=&nbsp;"Probability",&nbsp;ylim&nbsp;=&nbsp;c(0,&nbsp;0.5))
+&#62;&nbsp;points(b1,&nbsp;dzinbinom(0:max(x),&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;size,&nbsp;zprob&nbsp;=&nbsp;zprob),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pch&nbsp;=&nbsp;16)
+&#62;&nbsp;points(b1[1],&nbsp;dnbinom(0,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;size)&nbsp;*&nbsp;(1&nbsp;-&nbsp;zprob),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pch&nbsp;=&nbsp;16,&nbsp;col&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab4A-016.png" alt="lab4A-016.png" />
+
+<div class="p"><!----></div>
+The mean of the zero-inflated negative binomial
+is 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>E</mi><mo stretchy="false">[</mo><mi>p</mi><mo>&middot;</mo><mn>0</mn><mo>+</mo><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>p</mi><mo stretchy="false">)</mo><mo>&middot;</mo>
+<mtext>NegBin</mtext>
+<mo stretchy="false">]</mo></mrow></math>, or
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>p</mi></mrow></math> times the mean of the negative binomial, or:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;mu&nbsp;*&nbsp;(1&nbsp;-&nbsp;zprob)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;3.2
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;mean(x)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;3.1405
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Close enough ...
+
+<div class="p"><!----></div>
+<b>Exercise 7*</b>:
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;mu&nbsp;=&nbsp;4
+&#62;&nbsp;k&nbsp;=&nbsp;0.5
+&#62;&nbsp;x&nbsp;=&nbsp;rpois(10000,&nbsp;rgamma(10000,&nbsp;shape&nbsp;=&nbsp;k,&nbsp;scale&nbsp;=&nbsp;mu/k))
+&#62;&nbsp;plot(table(x)/10000)
+&#62;&nbsp;points(0:max(x),&nbsp;dnbinom(0:max(x),&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k),&nbsp;cex&nbsp;=&nbsp;0.75)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab4A-018.png" alt="lab4A-018.png" />
+
+<div class="p"><!----></div>
+Extra credit:
+
+<div class="p"><!----></div>
+In order to get a lognormal with a specified mean
+and variance, need to solve:
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow>
+<mtable align="right" width="80%">
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>m</mi></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow>
+<msup><mrow><mi>e</mi></mrow><mrow><mi>&mu;</mi><mo>+</mo>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">/</mo><mn>2</mn></mrow>
+</msup>
+</mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>v</mi></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow>
+<msup><mrow><mi>e</mi></mrow><mrow><mn>2</mn><mi>&mu;</mi><mo>+</mo>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</msup>
+<mo>&middot;</mo><mrow><mo>(</mo>
+<msup><mrow><mi>e</mi></mrow><mrow>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</msup>
+<mo>-</mo><mn>1</mn><mo>)</mo></mrow></mrow>
+</mtd></mtr>
+</mtable>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&sigma;</mi></mrow></math>.
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow>
+<mtable align="right" width="80%">
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>log</mi><mo stretchy="false">(</mo><mi>m</mi><mo stretchy="false">)</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mi>&mu;</mi><mo>+</mo>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">/</mo><mn>2</mn></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>&mu;</mi></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mi>log</mi><mo stretchy="false">(</mo><mi>m</mi><mo stretchy="false">)</mo><mo>-</mo>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">/</mo><mn>2</mn></mrow>
+</mtd></mtr>
+</mtable>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+
+<div class="p"><!----></div>
+Now substitute this value in for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> in the second equation:
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow>
+<mtable align="right" width="80%">
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>v</mi></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow>
+<msup><mrow><mi>e</mi></mrow><mrow><mn>2</mn><mo stretchy="false">(</mo><mi>log</mi><mo stretchy="false">(</mo><mi>m</mi><mo stretchy="false">)</mo><mo>-</mo>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">/</mo><mn>2</mn><mo stretchy="false">)</mo><mo>+</mo>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</msup>
+<mo>&middot;</mo><mrow><mo>(</mo>
+<msup><mrow><mi>e</mi></mrow><mrow>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</msup>
+<mo>-</mo><mn>1</mn><mo>)</mo></mrow></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow>
+<msup><mrow><mi>e</mi></mrow><mrow><mn>2</mn><mi>log</mi><mo stretchy="false">(</mo><mi>m</mi><mo stretchy="false">)</mo></mrow>
+</msup>
+<mo>&middot;</mo><mrow><mo>(</mo>
+<msup><mrow><mi>e</mi></mrow><mrow>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</msup>
+<mo>-</mo><mn>1</mn><mo>)</mo></mrow></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo stretchy="false">(</mo>
+<msup><mrow><mi>e</mi></mrow><mrow><mi>log</mi><mo stretchy="false">(</mo><mi>m</mi><mo stretchy="false">)</mo></mrow>
+</msup>
+
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo>&middot;</mo><mrow><mo>(</mo>
+<msup><mrow><mi>e</mi></mrow><mrow>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</msup>
+<mo>-</mo><mn>1</mn><mo>)</mo></mrow></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow>
+<msup><mrow><mi>m</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo>&middot;</mo><mrow><mo>(</mo>
+<msup><mrow><mi>e</mi></mrow><mrow>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</msup>
+<mo>-</mo><mn>1</mn><mo>)</mo></mrow></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>v</mi><mo stretchy="false">/</mo>
+<msup><mrow><mi>m</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow>
+<msup><mrow><mi>e</mi></mrow><mrow>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</msup>
+<mo>-</mo><mn>1</mn></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow><mi>v</mi><mo stretchy="false">/</mo>
+<msup><mrow><mi>m</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo>+</mo><mn>1</mn></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow>
+<msup><mrow><mi>e</mi></mrow><mrow>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</msup>
+</mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mi>log</mi><mo stretchy="false">(</mo><mi>v</mi><mo stretchy="false">/</mo>
+<msup><mrow><mi>m</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo>+</mo><mn>1</mn><mo stretchy="false">)</mo></mrow>
+</mtd></mtr>
+</mtable>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+
+<div class="p"><!----></div>
+Test this: if we start with 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi><mo>=</mo><mn>2</mn><mo>.</mo><mn>5</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo>=</mo><mn>3</mn></mrow></math>
+(values picked haphazardly to test):
+we get
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;mu&nbsp;=&nbsp;2.5
+&#62;&nbsp;sigmasq&nbsp;=&nbsp;3
+&#62;&nbsp;m&nbsp;=&nbsp;exp(mu&nbsp;+&nbsp;sigmasq/2)
+&#62;&nbsp;v&nbsp;=&nbsp;exp(2&nbsp;*&nbsp;mu&nbsp;+&nbsp;sigmasq)&nbsp;*&nbsp;(exp(sigmasq)&nbsp;-&nbsp;1)
+&#62;&nbsp;s2&nbsp;=&nbsp;log(v/m^2&nbsp;+&nbsp;1)
+&#62;&nbsp;s2
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;3
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;m2&nbsp;=&nbsp;log(m)&nbsp;-&nbsp;s2/2
+&#62;&nbsp;m2
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;2.5
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Appears to work.  Want a log-normal distribution
+with the same mean and variance as the gamma distribution
+that underlies the negative binomial with 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi><mo>=</mo><mn>4</mn></mrow></math>,
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi><mo>=</mo><mn>0</mn><mo>.</mo><mn>5</mn></mrow></math>.  Since (shape) 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo>=</mo><mn>0</mn><mo>.</mo><mn>5</mn></mrow></math>, (scale) 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>s</mi><mo>=</mo><mn>8</mn></mrow></math>, we have
+mean=
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>as</mi><mo>=</mo><mn>4</mn></mrow></math> and var=
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow><mi>as</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo>=</mo><mn>32</mn></mrow></math>.
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nsim&nbsp;=&nbsp;1e+05
+&#62;&nbsp;s3&nbsp;=&nbsp;log(32/4^2&nbsp;+&nbsp;1)
+&#62;&nbsp;s3
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;1.098612
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;m3&nbsp;=&nbsp;log(4)&nbsp;-&nbsp;s3/2
+&#62;&nbsp;m3
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.8369882
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;lnormvals&nbsp;=&nbsp;rlnorm(nsim,&nbsp;meanlog&nbsp;=&nbsp;m3,&nbsp;sdlog&nbsp;=&nbsp;sqrt(s3))
+&#62;&nbsp;mean(lnormvals)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;3.950413
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;var(lnormvals)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;31.08178
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;poislnormvals&nbsp;=&nbsp;rpois(nsim,&nbsp;lnormvals)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Redraw:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(table(factor(poislnormvals,&nbsp;levels&nbsp;=&nbsp;0:max(poislnormvals)))/nsim,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xlim&nbsp;=&nbsp;c(0,&nbsp;50))
+&#62;&nbsp;points(0:50,&nbsp;dnbinom(0:50,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k),&nbsp;cex&nbsp;=&nbsp;0.75,&nbsp;col&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab4A-021.png" alt="lab4A-021.png" />
+The lognormal-Poisson is actually (apparently) quite a different
+shape, despite having the same mean and variance (this is more
+apparent on a log scale):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;x2&nbsp;=&nbsp;as.numeric(table(factor(poislnormvals,&nbsp;levels&nbsp;=&nbsp;0:max(poislnormvals))))/nsim
+&#62;&nbsp;plot(0:max(poislnormvals),&nbsp;x2,&nbsp;log&nbsp;=&nbsp;"y")
+&#62;&nbsp;points(0:50,&nbsp;dnbinom(0:50,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k),&nbsp;cex&nbsp;=&nbsp;0.75,&nbsp;col&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab4A-022.png" alt="lab4A-022.png" />
+
+<div class="p"><!----></div>
+Note that the variance of the compounded distribution is
+(approximately) the variance of the underlying heterogeneity
+plus the heterogeneity of the Poisson distribution
+(which is equal to the mean of the Poisson).
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;var(lnormvals)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;31.08178
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;var(poislnormvals)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;34.65147
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+
+<br /><br /><hr /><small>File translated from
+T<sub><font size="-1">E</font></sub>X
+by <a href="http://hutchinson.belmont.ma.us/tth/">
+T<sub><font size="-1">T</font></sub>M</a>,
+version 3.70.<br />On 27 Sep 2005, 22:48.</small>
+</body></html>

@@ -1,0 +1,2888 @@
+%% TO DO:
+
+<<echo=FALSE,results=hide>>=
+source("chapskel.R")
+@ 
+
+\section{Summary}
+This chapter covers both the practical details and the broader
+philosophy of (1) reading data into \R\ and (2) doing 
+exploratory data analysis, in particular graphical analysis.
+To get the most out of the chapter you should already have
+some basic knowledge of \R's syntax and commands
+(see the \R\ supplement of the previous chapter).
+
+\section{Introduction}
+
+One of the basic tensions in all data analysis and modeling is 
+how much you have all your questions framed before you begin to
+look at your data.  In the classical statistical framework, you're
+supposed to lay out all your hypotheses before you start, run your
+experiments, come back to your office and test those (and only those)
+hypotheses.  Allowing your data to suggest new statistical tests
+raises the risk of ``fishing expeditions'' or ``data-dredging'' --- %
+indiscriminately scanning your data for patterns\footnote{``Bible
+  Codes'', where people find hidden messages in the
+  Bible, illustrate an extreme form of data-dredging.
+  Critics have pointed out that similar procedures will
+  also detect hidden messages in 
+  \emph{War and Peace} or \emph{Moby Dick} \citep{McKay+1999}.}.
+Data-dredging is a serious problem. Humans are notoriously good at
+detecting apparent
+patterns even when they don't exist.  Strictly speaking,
+interesting patterns that you find in your data after the fact should
+not be treated statistically, only used as input for the next round of
+observations and experiments%
+\footnote{Or you should apply a \emph{post hoc} procedure [see {\tt
+    ?TukeyHSD} and the {\tt multcomp} package in \R] that corrects for
+  the fact that you are testing a pattern that was not suggested in
+  advance --- however, even these procedures only apply corrections
+  for a specific set of possible comparisons, not all possible
+  patterns that you could have found in your data.}.  Most
+statisticians are leery of procedures like stepwise regression that
+search for the best predictors or combinations of predictors from
+among a large range of options, even though some have elaborate
+safeguards to avoid overestimating the significance of observed
+patterns \citep{Whittingham+2006}.  The worst part about using such
+techniques is that in order to use them
+you must be conservative and discard real
+patterns, patterns that you originally had in mind,
+because you are screening your data indiscriminately \citep{Nakagawa2004}.
+
+But these injunctions may be too strict for ecologists.  Unexpected
+patterns in the data can inspire you to ask new questions, and it is
+foolish not to explore your hard-earned data.
+\emph{Exploratory data analysis} 
+\citep[EDA:][]{Tukey1977,Hoaglin+1983,Hoaglin+1985,Cleveland1993} 
+is a set of graphical techniques for
+finding interesting patterns in data.
+EDA was developed in
+the late 1970s when computer graphics first became widely available.
+It emphasizes \emph{robust}
+and \emph{nonparametric} methods, which make fewer assumptions
+about the shapes of curves and the distributions of the data
+and hence are less sensitive to nonlinearity and outliers.
+Most of the rest of this book will focus
+on models that, in contrast to EDA,
+are parametric (i.e., they specify particular
+distributions and curve shapes) and mechanistic.
+These methods are more powerful and
+give more ecologically meaningful answers, but are also
+susceptible to being misled by unusual patterns in the data.
+
+The big advantages of EDA are that it gets you looking at and thinking
+about your data (whereas stepwise approaches are often substitutes for
+thought), and that it may reveal patterns that standard statistical
+tests would overlook because of their emphasis on specific models.
+However, EDA isn't a magic formula for interpreting your data without
+the risk of data dredging.  
+Only common sense and caution can keep you in the zone
+between ignoring interesting patterns and over-interpreting them.  It's
+useful to write down a list of the ecological patterns you're looking
+for and how they relate your ecological questions \emph{before} you
+start to explore your data, so that you can distinguish among (1)
+patterns you were initially looking for, (2) unanticipated patterns
+that answer the same questions in different ways, and (3) interesting
+(but possibly spurious) patterns that suggest new questions.
+
+The rest of this chapter describes how to get
+your data into \R\ and how to make some basic graphs
+in order to search for expected and unexpected patterns.
+The text covers both philosophy and some
+nitty-gritty details.
+The supplement at the end of the chapter gives a
+sample session and more technical details.
+
+\section{Getting data into \R}
+
+\subsection{Preliminaries}
+
+\paragraph{Electronic format}
+Before you can analyze your data you have to get them into \R.
+Data come in a variety of formats --- %
+in ecology, most are either plain text files (space- or comma-delimited) or
+Excel files.\footnote{Your computer may be set up to open comma-delimited
+({\tt .csv}) files in Excel, but underneath they are just text files.}
+\R\ prefers plain text
+files with ``white space'' (arbitrary numbers of
+tabs or spaces) or commas between columns.
+Text files are less structured and may take up more
+disk space than more specialized formats, but they
+are the lowest common denominator of file formats
+and so can be read by almost anything (and, if
+necessary, examined and adjusted in any
+text editor).
+Since plain text formats are readable with a wide
+variety of text editors, they are unlikely to be
+made obsolete by changes in technology
+(you could say they're already obsolete),
+and less likely to be made unusable
+by corruption of a few bits of the file; only
+hard copy is better\footnote{Unless your data
+are truly voluminous, you should also
+save a hard-copy, archival version of your data
+\citep{GotelliEllison2004}.}.
+
+\R\ is platform-agnostic.
+While text
+files do have very slightly different formats on Unix,
+Microsoft Windows, and Macintosh operating systems,
+\R\ handles these differences.
+If you later save data sets or functions in \R's own format
+(using {\tt save} to save and {\tt load} to load them),
+you will be able to exchange them freely across platforms.
+
+Many ecologists keep their data in Excel spreadsheets.  
+The \code{read.xls} function in the \code{gdata} package
+allows \R\ to read Excel files directly,
+but the best thing to do with an Excel file 
+(if you have access to a copy of Excel,
+or if you can open it in an alternative spreadsheet program) is to save
+the worksheet you want as a {\tt .csv}
+(comma-separated values) file.
+Saving as a {\tt .csv} file  will also force you to go into the worksheet
+and clean up any random cells that are outside
+of the main data table --- \R\ won't like these.  
+If your data are in some more exotic
+form (e.g. within a GIS or database system), you'll have to figure out how
+to extract them from that particular system into a text file.  There
+are ways of connecting \R\ directly with
+databases or GIS systems, but they're beyond the scope of this book.  If
+you have trouble exporting data or you expect to have large quantities
+of data (e.g. more than tens of thousands of observations) in one of
+these exotic forms, you should look for advice
+at the \R\ \emph{Data Import/Export manual}, 
+which is accessible through Help in the \R\ menus.
+
+
+\paragraph{Metadata}
+\emph{Metadata} is the information that describes
+the properties of a data set: the names of the variables,
+the units they were measured in, when and where the
+data were collected, etc.. \R\ does not have a structured
+system for maintaining metadata, but it does allow you
+to include a good deal of this metadata within your
+data file, and it is good practice to keep as much of
+this information as possible associated with the
+data file.
+Some tips on metadata in \R:
+\begin{itemize}
+\item{Column names are the first row of the data
+set. Choose names that compromise between convenience
+(you will be typing these names a lot) and clarity;
+\verb+larval_density+ or {\tt larvdens} are better than
+either {\tt x} or \verb+larval_density_per_m3_in_ponds+.
+Use underscores or dots to separate words in variable names,
+not spaces.}
+\item{\R\ will ignore any information 
+on a line following a \verb+#+.
+I usually use this comment character to include
+general metadata at the beginning of my data file,
+such as where and when the data were collected,
+what units it is measured in, and so forth --- anything
+that can't easily be encoded in the variable names.
+I also use comments before, or at the ends of,
+particular lines in the data set that might
+need annotation, such as the circumstances
+surrounding questionable data points.
+You can't use \verb+#+ to make a comment in the middle of a line:
+use a comment like \verb+# pH calibration failed+ at
+the end of the line to indicate that a particular
+field in that line is suspect.}
+\item{if you have other metadata that can't easily
+ be represented in plain-text format (such as a map),
+you'll have to keep it separately.
+You can reference
+the file in your comments, keep a separate file that
+lists the location of data and metadata, or use a system
+like Morpho (from \url{ecoinformatics.org}) to organize
+it.}
+\end{itemize}
+Whatever you do, make sure that you have some
+workable system for maintaining your metadata.
+Eventually, your \R\ scripts --- which document
+how you read in your data, transformed it, and
+drew conclusions from it --- will also become a part
+of your metadata.  As mentioned in Chapter~\ref{chap:intro}, this
+is one of the advantages of \R\ over (say)
+Excel: after you've done your analysis, \emph{if
+you were careful to document your work sufficiently 
+as you went along}, you
+will be left with a set of scripts that will 
+allow you to verify what you did; make minor modifications
+and re-run the analysis; and apply the same or
+similar analyses to future data sets.
+
+\paragraph{Shape}
+Just as important as electronic or paper format
+is the organization or \emph{shape} of your data.  Most of the time,
+\R\ prefers that your data have a single \emph{record} (typically
+a line of data values) for each individual observation. This basically
+means that your data should usually be in ``long'' (or
+``indexed'') format. For example, the first few lines of the
+seed removal data set look like this, with
+a line giving the number
+of seeds present for each station/date combination:
+<<echo=FALSE,results=hide>>=
+require(emdbook)
+data(SeedPred)
+data(SeedPred_wide)
+set.seed(1001)
+library(lattice)
+## set trellis to white fg, gray fill
+trellis.par.set(color=FALSE)
+## palette(gray(seq(0,0.9,len=10)))
+@ 
+
+<<echo=FALSE>>=
+long = subset(SeedPred,as.numeric(station)<8 & dist==25 & date<as.Date("1999-04-04"))[,
+                                                c("station","date","dist","species","seeds")]
+rownames(long) = 1:nrow(long)
+head(long)
+@ 
+Because each station has seeds of only one species and
+can only be at a single distance from the forest,
+these values are repeated for every date.
+During the first two weeks of the experiment no
+seeds of \code{psd} or \code{uva} were taken by predators,
+so the number of seeds remained at the initial value of 5.
+
+Alternatively, you will often come across data sets in ``wide'' format, like this:
+<<echo=FALSE>>=
+wide = head(subset(SeedPred_wide,as.numeric(station)<8 & dist==25)[,c(1,3,2,4,6)])
+rownames(wide) = 1:nrow(wide)
+wide
+@
+(I kept only the first two date columns in order
+to make this example narrow enough to fit on the page.)
+
+Long format
+takes up more room, especially if you have
+data (such as \code{dist} above, the distance
+of the station from the edge of the forest)
+that apply to each station independent of sample
+date or species (which therefore
+have to be repeated many times in the
+data set).  However, you'll find that this
+format is typically what statistical packages
+request for analysis.
+
+It is possible to read data into \R\ in wide format
+and then convert it to long format.
+\R\ has several different functions --- {\tt reshape} and {\tt stack}/{\tt unstack} in
+the base package, and {\tt melt}/{\tt cast}/{\tt recast} in
+the {\tt reshape} package%
+\footnote{If you don't know
+what a package is, go back and read about them in
+the \R\ supplement for Chapter~\ref{chap:intro}.} --- 
+that will let you switch data back and forth between wide
+and long formats.
+Because there are so many different ways 
+to structure data, and so many different ways you might want
+to aggregate or rearrange them, software tools designed
+to reshape arbitrary data are necessarily complicated
+(Excel's pivot tables, which are also designed
+to restructure data, are as complicated as \code{reshape}).
+\begin{itemize}
+\item{\code{stack} and \code{unstack} are simple but basic
+functions --- \code{stack} converts from wide to long
+format and \code{unstack} from long to wide; they aren't
+very flexible.}
+\item{{\tt reshape} is very flexible and preserves more information than
+{\tt stack}/{\tt unstack}, but its syntax
+is tricky: if \code{long} and \code{wide} are variables
+holding the data in the examples above, then
+<<results=hide>>=
+reshape(wide,direction="long",timevar="date",varying=4:5)
+reshape(long,direction="wide",timevar="date",idvar=c("station","dist","species"))
+@ 
+convert back and forth between them. In the first case (wide to long) we specify
+that the time variable in the new long-format data set should be \code{date}
+and that columns 4--5 are the variables to collapse.
+In the second case
+(long to wide) we specify that \code{date} is the variable to expand and
+that \code{station}, \code{dist} and \code{species} should be kept fixed
+as the identifiers for an observation.}
+\item{the \code{reshape} package contains the
+\code{melt}, \code{cast}, and \code{recast} functions, which are
+similar to \code{reshape} but sometimes easier to use: e.g.
+<<results=hide>>=
+library(reshape)
+recast(wide,formula=...~.,id.var=c("station","dist","species"))
+recast(long,formula=station+dist+species~...,id.var=c("station","dist","species","date"))
+@ 
+in the formulas
+above, \code{...} denotes ``all other variables'' and \code{.} denotes
+``nothing'', so the formula \verb+...~.+ means ``separate out by
+all variables'' (long format) and \verb!station+dist+species~...! means
+``separate out by station, distance, and species, put the values for
+each date on one line''
+}
+\end{itemize}
+In general you will 
+have to look carefully at the examples in the documentation
+and play around with subsets of your data until you get it reshaped
+exactly the way you want.  Alternatively, you can manipulate your data
+in Excel, either with pivot tables or by brute force (cutting and pasting).
+In the long run, learning to reshape data will pay off, but for a single
+project it may be quicker to use brute force.
+
+
+\subsection{Reading in data}
+\paragraph{Basic \R\ commands}
+
+The basic \R\ commands for reading in a data set, once
+you have it in a long-format text file, are 
+{\tt read.table} for space-separated data
+and {\tt read.csv} for comma-separated data.
+If there are no complications in your data,
+you should be simply be able to say (e.g.)
+<<eval=FALSE>>=
+data = read.table("mydata.dat",header=TRUE)
+@ 
+(if your file is actually called {\tt mydata.dat} and includes
+a first row with the column names) 
+to read your data in (as a \emph{data frame} --- 
+see p.~\pageref{sec:dataframe}) and assign
+it to the variable {\tt data}.
+
+There are several potential complications
+to reading in files, which are more
+fully covered in the \R\ supplement:
+(1) finding your data file on your
+computer system (i.e., telling \R\ where
+to look for it);
+(2) checking that every line in the file
+has the same number of variables, or \emph{fields} ---
+\R\ won't read it otherwise; and
+(3) making sure that \R\ reads all your
+variables as the right data types (discussed in the next section).
+
+\section{Data types}
+When you read data into a computer, the computer stores those data as
+some particular data \emph{type}.  This is partly for efficiency ---
+it's more efficient to store numbers as strings of bits rather than as
+human-readable character strings --- but its main purpose is to
+maintain a sort of metadata about variables, so the computer knows
+what to do with them. Some operations only make sense with particular
+types --- what should you get when you try to compute \code{2+"A"}?
+\code{"2A"}?  If you try to do something like this in Excel you get an error code --- %
+\verb+#VALUE!+;
+if you do it in \R\ you get the message \code{Error \ldots non-numeric
+  argument to binary operator}%
+\footnote{the {\tt +} symbol 
+is called a ``binary operator'' because it is used to combine two values}.
+
+Computer packages vary in how they deal with data. Some
+lower-level languages like C are \emph{strongly typed}; they insist
+that you specify exactly what type every variable should be, and
+require you to convert variables between types (say integer and real,
+or floating-point) explicitly.  Languages or packages like \R\ or
+Excel are looser, and try to guess what you have in mind and convert
+variables between types (\emph{coerce}) automatically as appropriate.
+For example, if you enter \code{3/25} into Excel, it automatically 
+converts the value to a date --- March 25 of the current year.
+
+\R\ makes similar guesses as it reads in your data.  By default, if
+every entry in a column is a valid number (e.g. \code{234},
+\code{-127.45}, \code{1.238e3} [computerese for 1.238 $\times 10^3$]),
+then \R\ guesses the variable is numeric.  Otherwise, it makes it a
+\emph{factor} --- an indexed list of values used to represent
+categorical variables, which I will describe in more detail shortly.
+Thus, any error in a numeric variable (extra decimal point, included
+letter, etc.) will lead \R\ to classify that variable as a factor
+rather than a number.  \R\ also has a detailed set of rules for
+dealing with missing values (internally represented as \code{NA}, for
+\textbf{N}ot \textbf{A}vailable).
+If you use missing-value codes (such
+as \code{*} or \code{-9999}) in your data set you have to tell \R\
+about it or it will read them naively as strings or numbers.
+
+While \R's standard rules for guessing about input data are pretty simple and
+only allow you two options (\code{numeric} or \code{factor}),
+there are a variety of ways for specifying more detail either as
+\R\ reads in your data or after it has read them in: these are covered
+in more detail in the accompanying material.
+
+\subsection{Basic data types}
+
+\R's basic (or \emph{atomic}) data types are {\tt integer}, {\tt
+  numeric} (real numbers), {\tt logical} ({\tt TRUE} or {\tt FALSE}),
+and {\tt character} (alphanumeric strings). (There are a few more, such
+as complex numbers, that you probably won't need.)
+At the most basic level, \R\ organizes data into \emph{vectors} of
+one of these types, which are just ordered sets of data.
+Here
+are a couple of simple (numeric and character) vectors:
+<<>>=
+1:5
+c("yes","no","maybe")
+@ 
+More complicated data types include dates ({\tt Date}) and factors 
+({\tt factor}).
+Factors are \R's way of dealing with categorical
+variables. A factor's underlying structure is a set of (integer)
+levels along with a set of the labels associated with each level.
+
+One advantage of using these more complex types, rather than
+converting your categorical variables to numeric codes, is that
+it's much easier to remember the meaning of the levels
+as you analyze your data: for example \code{north} and \code{south}
+rather than 0 and 1.
+Also, \R\ can often do the right things with your
+data automatically if it knows what types they are (this is an example
+of crude-vs.-sophisticated where a little more sophistication may be
+useful).  Much of \R's built-in statistical modeling software depends
+on these types to do the right analyses. For example, the command
+\verb+lm(y~x)+ (meaning ``fit a linear model of $y$ as a function of
+$x$'', analogous to SAS's {\tt PROC GLM}) will do an ANOVA if \code{x}
+is categorical (i.e., stored as a factor) or a linear regression if
+\code{x} is numeric.  If you want to analyze variation in population
+density among sites designated with integer codes (e.g. 101, 227,
+359), and haven't specified that \R\ should interpret the codes as
+categorical rather than numeric values, \R\ will try to fit a linear
+regression rather than doing an ANOVA.  Many of \R's plotting
+functions will also do different things depending on what type of data
+you give them.
+For example, \R\ can automatically plot date axes with
+appropriate labels.  To repeat, data types are a form of metadata; the
+more information about the meaning of your data that you can retain in
+your analysis, the better.
+
+\subsection{Data frames and matrices}
+\label{sec:dataframe}
+\R\ can organize data at a higher level than
+simple vectors.  
+A \emph{data frame} is a table of data that
+combines vectors (columns) of different types
+(e.g. character, factor, and numeric data).
+Data frames are a
+hybrid of two simpler data structures: \emph{lists},
+which can mix arbitrary types of data but have no
+other structure, and \emph{matrices}, which have
+rows and columns but usually contain only one
+data type (typically numeric).
+Treating the data frame as a list, there are a variety
+of different ways of extracting columns of data from
+the data frame to work with:
+<<results=hide>>=
+SeedPred[[2]]
+SeedPred[["species"]]
+SeedPred$species
+@ 
+all extract the second column (a factor containing
+species abbreviations) from the data frame \code{SeedPred}.
+You can also treat the data frame as a matrix and use
+square brackets \code{[]} to extract (e.g.) the
+second column
+<<results=hide>>=
+SeedPred[,2]
+SeedPred[,"species"]
+@ 
+or rows 1 through 10
+<<results=hide>>=
+SeedPred[1:10,]
+@ 
+(\code{SeedPred[i,j]} extracts the matrix element in row(s) \code{i}
+and column(s) \code{j}; leaving the columns or rows specification blank,
+as in \code{SeedPred[i,]} or \code{SeedPred[,j]}, takes
+row \code{i} (all columns) or column \code{j} (all rows) respectively).
+There are a few operations, such as transposing or
+calculating a variance-covariance matrix, that you can
+only do with a matrix (not with a data frame);
+\R\ will usually convert
+(\emph{coerce}) the data frame to a matrix automatically
+when it makes sense to, but  you may sometimes have to use \code{as.matrix}
+to manually convert a data frame to a matrix\footnote{Matrices
+and data frames can appear identical but behave
+differently.  If \code{x} is a data frame,
+either \code{colnames(x)} or \code{names(x)} will tell
+you the column names.
+If \code{x} has a column called \code{a},
+either \code{x\$a} or \code{x[["a"]]}
+or \code{x[,"a"]} will retrieve it.
+If \code{x} is a matrix, you must use
+\code{colnames(x)} to get the column names and \code{x[,"a"]} 
+to retrieve a column (the other commands will give errors).
+Use \code{is.data.frame} or \code{class} to tell
+matrices and data frames apart.}.
+
+\subsection{Checking data}
+Now suppose you've decided on appropriate types for all your
+data and told \R\ about it. Are the
+data you've read in actually correct, or are there still
+typographical or other errors?
+
+\paragraph{{\tt summary}}
+First check the results of {\tt summary}.
+For a numeric variable {\tt summary} will
+list the minimum, first quartile, median, mean,
+third quartile, and maximum.  For a factor it will
+list the numbers of observations with each of
+the first six factor levels, then the number
+of remaining observations. (Use \code{table} on
+a factor to see the numbers of observations at all levels.)
+It will list the number of \code{NA}s
+for all types.
+
+For example:
+<<>>=
+summary(SeedPred[,1:4])
+@ 
+(to keep the output short, I'm only looking at the first four columns
+of the data frame: \code{summary(SeedPred)} would summarize the whole thing).
+
+Check the following points:
+\begin{itemize}
+\item{Is there the right number of observations overall?
+Is there the right number of observations in each level for factors?}
+\item{Do the summaries of the numeric variables --- mean, median,
+etc. --- look reasonable? Are the minimum and maximum values
+about what you expected?}
+\item{Are there reasonable numbers of {\tt NA}s in each
+column? If not (especially if you have extra
+mostly-\code{NA} columns), you may want to go back
+a few steps and look at using \code{count.fields} or
+\code{fill=FALSE}
+to identify rows with extra fields \ldots}
+\end{itemize}
+
+\paragraph{\code{str}}
+The command \code{str} tells you about
+the \textbf{str}ucture of an \R\ variable: it
+is slightly less useful than \code{summary}
+for dealing with data, but it may come in handy
+later on for figuring out more complicated
+\R\ variables.  Applied to a data frame, it
+tells you the total number of observations (rows)
+and variables (columns) and prints out the names
+and classes of each variable along with the first
+few observations in each variable.
+<<>>=
+str(SeedPred)
+@ 
+
+\paragraph{\code{class}}
+The command \code{class} prints out
+the class (\code{numeric}, \code{factor}, \code{Date}, \code{logical}, etc.)
+of a variable.  \code{class(SeedPred)} gives
+\verb+"data.frame"+; \code{sapply(SeedPred,class)}
+applies \code{class} to each column of the data 
+individually.
+<<>>=
+class(SeedPred)
+sapply(SeedPred,class)
+@ 
+
+\paragraph{\code{head}}
+The \code{head} command just prints out
+the beginning of a data frame; by default
+it prints the first six rows, but 
+\code{head(data,10)} (for example)
+will print out the first 10 rows.
+<<echo=FALSE>>=
+oldwid = options(width=75)
+@ 
+<<>>=
+head(SeedPred)
+@ 
+<<echo=FALSE>>=
+options(width=65)
+@ 
+
+The \code{tail} command prints out the 
+end of a data frame.
+
+\paragraph{\code{table}}
+\code{table} is \R's command for cross-tabulation; it
+can be useful when reading in data for checking that
+you have appropriate numbers of observations in 
+different factor combinations.
+<<eval=FALSE>>=
+table(SeedPred$station,SeedPred$species)
+@ 
+<<echo=FALSE>>=
+t1 = table(SeedPred$station,SeedPred$species)
+head(t1)
+@ 
+(just the first six lines are shown):
+apparently, each station only has seeds
+of a single species.
+The \verb+$+ extracts variables from the data
+frame \code{SeedPred},
+and \code{table} says we want to count the
+number of instances of each combination of station
+and species: we could also do this with a single
+factor or with more than two.
+
+\paragraph{Dealing with NAs}
+
+Missing values are a nuisance, but a fact of life.
+Throwing out or ignoring missing values is tempting, but
+can be dangerous.
+Ignoring missing values can bias your analyses,
+especially if the pattern of missing values is not completely
+random.  
+\R\ is conservative by default,
+and assumes that, for example, \code{2+NA} equals
+\code{NA} --- if you don't know what the missing
+value is, then the sum of it and any other number
+is also unknown.
+Almost any calculation you make in \R\ will
+be contaminated by \code{NA}s, which is logical
+but annoying.
+Perhaps most difficult is that you can't just
+do what comes naturally and say (e.g.)
+\code{x = x[x!=NA]} to remove values that
+are \code{NA} from a variable, because even
+comparisons to \code{NA} result in \code{NA}!
+
+\begin{itemize}
+\item{You can use the special
+function \code{is.na} to count
+the number of \code{NA} values
+(\code{sum(is.na(x))}) or to throw out the \code{NA}
+values in a vector
+(\code{x = x[!is.na(x)]}).}
+\item{To convert \code{NA} values to a particular
+value, use \code{x[is.na(x)]=value};
+e.g. to set \code{NA}s to zero \code{x[is.na(x)]=0},
+or to set \code{NA}s to the mean value  \code{x[is.na(x)]=mean(x,na.rm=TRUE)}.
+\emph{Don't do this unless you have a very good,
+and defensible, reason.}}
+\item{\code{na.omit} will drop
+\code{NA}s from a vector (\code{na.omit(x)}),
+but it is also smart enough to do the right
+thing if \code{x} is a data frame instead,
+and throw out all the \emph{cases} (rows)
+where \emph{any} variable is \code{NA}; however,
+this may be too stringent if you are
+analyzing a subset of the variables.
+For example,
+you might have a really unreliable soil
+moisture meter that produces lots of
+\code{NA}s, but you don't necessarily need to throw
+away all of these data points while
+you're analyzing the relationship between
+light and growth.
+(\code{complete.cases} returns a logical
+vector that says which rows have no \code{NA}s;
+if \code{x} is a data frame, \code{na.omit(x)} is equivalent to
+\code{x[complete.cases(x),]}).}
+\item{Functions such as \code{mean},
+\code{var}, \code{sd}, \code{sum}
+(and probably others) have an optional
+\code{na.rm} argument: \code{na.rm=TRUE}
+drops \code{NA} values before doing the
+calculation. Otherwise if \code{x} contains
+any \code{NA}s, \code{mean(x)} will result
+in \code{NA} and \code{sd(x)} will give
+an error about missing observations.}
+\item{Calculations of
+covariance and correlation (\code{cov} and \code{cor})
+have more complicated options:
+\code{use="all.obs"},
+\code{use="complete.obs"}, or
+\code{use={}"pairwise.complete.obs"}.
+\code{all.obs} uses all of the data (but
+the answer will contain \code{NA}s
+every time either variable contains one);
+\code{complete.obs} uses only the
+observations for which \emph{none}
+of the variables are \code{NA} (but may
+thus leave out a lot of data);
+and \code{pairwise.complete.obs}
+computes the pairwise covariance/correlations
+using the observations where both
+of each particular pair of variables
+are non-NA (but may lead in some cases
+to incorrect estimates of the correlations).}
+\end{itemize}
+
+As you discover errors in your data, you may
+have to go back to your original data set
+to correct errors and then re-enter them into
+\R\ (using the commands you have saved, of course).
+Or you can change a few values in \R, e.g.
+<<eval=FALSE>>=
+SeedPred[24,"species"] = "mmu"
+@ 
+to change the species in the 24th observation
+from \code{psd} to \code{mmu}.
+Whatever you do,
+document this process as you go along, and always
+maintain your original data set in its original,
+archival, form, even including data you think are 
+errors (this is easier to remember
+if your original data set is in the form of
+field notebooks).  Keep a log of what you modify
+so conflicting versions of your data don't confuse you.
+
+\section{Exploratory data analysis and graphics}
+
+The next step in checking your data
+is to graph them, which leads on naturally to
+exploring patterns.
+Graphing is the best way to understand not only data,
+but also the models that you fit to data; as you
+develop models you should graph the
+results frequently to make sure you understand
+how the model is working.
+
+\R\ gives you complete control of all aspects of graphics 
+(Figure~\ref{fig:graphparms}) and lets you
+save graphics in a wide range of formats.  The only major
+nuisance of doing graphics in \R\ is that \R\ constructs
+graphics as though it were drawing on a static page,
+not by adding objects to a dynamic scene.
+You generally specify the positions of all graphics on
+the command line, not with the mouse (although the \code{locator}
+and \code{identify} functions can be useful). 
+Once you tell \R\ to draw a point, line, or
+piece of text there is no way to erase or move it.
+The advantage of this procedure, like logging your
+data manipulations, is that you have a complete record of
+what you did and can easily recreate the picture with new data.
+
+\R\ actually has two different coexisting graphics systems.
+The base graphics system is cruder and simpler, while the
+lattice graphics system (in the \code{lattice} package)
+is more sophisticated and complex. 
+Both can create scatterplots,
+box-and-whisker plots, histograms, and other
+standard graphical displays.
+Lattice graphics do more automatic processing of your data
+and produce prettier graphs, but
+the commands are harder to understand and customize.
+In the realm of 3D graphics, there are
+several more options, at different stages
+of development.  Base graphics and lattice graphics
+both have some 3D capabilities (\code{persp} in
+base, \code{wireframe} and \code{cloud} in lattice);
+the \code{scatterplot3d} package builds on base
+to draw 3D point clouds; the \code{rgl} package
+(still under development) allows you to rotate and zoom
+the 3D coordinate system with the mouse;
+and the \code{ggobi} package is an interface to
+a system for visualizing multidimensional point data.
+
+\subsection{Seed removal data: discrete numeric predictors,
+discrete numeric responses}
+
+As described in Chapter~\ref{chap:intro}, the seed removal data set
+from \cite{DuncanDuncan2000} gives information on the
+rate at which seeds were removed from experimental
+stations set up in a Ugandan grassland.
+Seeds of 8~species were set out at stations along two transects
+different distances from the forest and monitored
+every few days for more than 8~months.
+We have already seen a subset of these data in a brief example,
+but we haven't really examined the details of the data set.  
+There are a total of \Sexpr{nrow(SeedPred)} observations,
+each containing information on 
+the station number (\code{station}),
+distance in meters from the forest edge
+(\code{dist}), the species code (\code{species}%
+\footnote{
+\code{abz}=\emph{Albizia grandibracteata},
+\code{cd}=\emph{Celtis durandii},
+\code{cor}=\emph{Cordia abyssinica},
+\code{dio}=\emph{Diospyros abyssinica},
+\code{mmu}=\emph{Mimusops bagshawei},
+\code{pol}=\emph{Polyscias fulva},
+\code{psd}=\emph{Pseudospondias microcarpa},
+\code{uva}=\emph{Uvariopsis congensis}.}),
+the date sampled (\code{date}),
+and the number of seeds present (\code{seeds}).
+The remaining columns in the data set are derived
+from the first five: the
+cumulative elapsed time (in days) since 
+the seeds were put out
+(\code{tcum}); 
+the time interval (in days) since the previous observation
+(\code{tint}); the
+number of seeds removed since the previous observation
+(\code{taken}); and the
+number of seeds present at the previous 
+observation (\code{available}).
+
+\subsubsection{Decrease in numbers over time}
+
+The first thing to look at is
+the mean number of seeds remaining over time (Figure~\ref{fig:seedtime}).
+I also plotted the mean on a logarithmic scale; if seeds were removed
+at a constant \emph{per capita} rate (a reasonable null hypothesis),
+the means should decrease exponentially over time and the lines should
+be straight on a log scale.  (It's much easier to see differences from
+linearity than to tell whether a curve is decreasing faster or slower
+than exponentially.)  They are not: it looks like the seeds that remain
+after July are taken at a much slower rate.
+(See the \R\ supplement, p.~\pageref{suppl:numbervstime},
+for the code to create the figure.)
+
+<<echo=FALSE>>=
+attach(SeedPred,warn=FALSE)
+SeedPred_10 = subset(SeedPred,dist==10)
+SeedPred_25 = subset(SeedPred,dist==25)
+s10_means = tapply(SeedPred_10$seeds,list(SeedPred_10$date,SeedPred_10$species),mean,na.rm=TRUE)
+s10_dates = unique(SeedPred_10$date)
+s25_means = tapply(SeedPred_25$seeds,list(SeedPred_25$date,SeedPred_25$species),mean,na.rm=TRUE)
+s25_dates = unique(SeedPred_25$date)
+@ 
+\begin{figure}
+<<fig=TRUE,echo=FALSE,width=7>>=
+op = par(cex=1.5,las=1,bty="l",lwd=2)
+matplot(s10_dates,s10_means,type="b",axes=FALSE,col="black",pch=1:8,lty=1,log="y",
+        xlab="",ylab="Mean seeds remaining",ylim=c(0.05,15),cex=0.5,
+        xlim=c(10665,10950))
+mtext("Date",side=1,line=2.25,cex=1.5)
+matlines(s25_dates,s25_means,col="gray",pch=1:8,lty=1,type="b",cex=0.5)
+axis(side=2,at=c(0.05,0.5,5))
+axis.Date(side=1,s10_dates)
+box()
+par(xpd=NA)
+legend(10700,15,c("10 m","25 m"),col=c("black","gray"),pch=16,ncol=2)
+#t(outer(levels(SeedPred$species),c("10 m","25 m"),paste,sep=": ")),pch=rep(1:8,each=2),
+#       col=rep(c("black","gray"),8),ncol=4,cex=0.5)
+y.adj = c(abz=0,cd=0,cor=-0.2,dio=-0.25,mmu=0,pol=0,psd=-0.03,uva=0.2)
+text(rep(10930,length(levels(species))),
+     s10_means[nrow(s10_means),]+y.adj,levels(species),cex=0.5,adj=0)
+points(rep(10954,length(levels(species))),
+       s10_means[nrow(s10_means),]+y.adj,pch=1:8,cex=0.5,lwd=1)
+par(op)
+@ 
+\caption{Seed removal data: mean seeds remaining by species over time. 
+Functions: (main plot) \code{matplot}, \code{matlines};
+(annotation) \code{axis}, \code{axis.Date}, \code{legend}, \code{text}, \code{points}.}
+\label{fig:seedtime}
+\end{figure}
+
+Figure~\ref{fig:seedtime} also reveals differences among species
+larger than the differences between the two distances from
+the forest.  However, it also
+seems that some species may have a larger difference between 
+distances from the forests;
+\emph{C. durandii} (cd, $\triangle$) disappears 10 times faster near than
+far from the forest.
+Like all good graphics, the figure raises many questions
+(only some of which can be answered from the data at hand):
+is the change in disappearance rate indicated by the
+flattening out of the curves
+driven by the elapsed time since the seeds were set out,
+the season, or the declining density of seeds?
+Or is there variation within species,
+such that predators take all the tasty seeds at
+a station and leave the non-tasty ones?
+Is the change in rate a gradual decrease or an abrupt change?
+Does it differ among species?
+Are the overall differences in
+removal rate among species, between distances
+from the forest,
+and their interaction (i.e. the fact that cd appears
+to be more sensitive to differences in distance)
+real or just random fluctuations?  Are they related
+to seed mass or some other known characteristic of
+the species?
+
+<<echo=FALSE,eval=FALSE>>=
+bwplot(s10_means ~ species|cut(as.numeric(date),5),data=SeedPred)
+@ 
+\subsubsection{Number taken out of number available}
+
+Plotting the mean number remaining over time
+shows several facets of the data (elapsed time,
+species, distance from edge) and asks and answers
+important ecological questions, but it ignores
+another facet --- the variability or \emph{distribution} of the
+number of seeds taken.  To explore this facet,
+I'll now look at the patterns of the number
+of seeds taken as a function of the number
+available.
+
+The simplest thing is to plot the number
+taken between each pair of samples (on the $y$ axis) 
+as a function of the number available (on the $x$ axis).
+If \code{x} and \code{y} are numeric variables,
+\code{plot(x,y)} draws a scatterplot.
+Here we use
+\code{plot(SeedPred\$available,SeedPred\$taken)}.
+The \code{lattice}
+package equivalent would be
+\code{xyplot(taken\~{}available,data=SeedPred)}.
+The scatterplot turns out not to be very informative
+in this case (try it and see!);
+all the repeated points in the data overlap, so that all we see
+in the plot is that any number of seeds up to the number available can
+be taken.
+
+One quick-and-dirty way to get around this problem is to 
+use the \code{jitter} command, which adds a bit of random variation
+so that the data points don't all land in exactly the same place:
+Figure~\ref{fig:seeddistplot1}(a) shows the results, which
+are ugly but do give some idea of the patterns.
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=8>>=
+op = par(mfrow=c(1,2))
+par(cex=1.5,las=1,bty="l",lwd=2)
+par(mar=c(5,4,2,0)+0.1,mgp=c(2.5,1,0))
+plot(jitter(SeedPred$available),jitter(SeedPred$taken),xlab="Seeds available",ylab="Seeds taken",lwd=1)
+##
+corner.label2("a","topleft",inset=0.025)
+library(plotrix)
+par(mar=c(5,2,2,2)+0.1)
+with(subset(SeedPred,available>0),
+     sizeplot(available,taken,scale=0.6,
+              xlim=c(0.3,6),ylim=c(-0.5,5.5),axes=FALSE,
+              xlab="Seeds available",ylab="",col="gray",pow=0.4))
+t1 = with(subset(SeedPred,available>0),table(available,taken))
+axis(side=1,at=1:5)
+axis(side=2,at=0:5,labels=rep("",6))
+box()
+par(xpd=NA); corner.label2("b","topleft",inset=0.025); par(xpd=FALSE)
+text(row(t1)[t1>0],col(t1)[t1>0]-1,t1[t1>0],cex=0.5)
+@ 
+\caption{(a) Jittered scatterplot of number of seeds taken as a function of number
+of seeds available: all species and dates combined.
+(b) Bubble plot of combined seed removal data (\code{sizeplot}:
+(0,0) category dropped for clarity).}
+\label{fig:seeddistplot1}
+\end{figure}
+
+\code{sizeplot}, from the \code{plotrix} package, deals with
+repeated data points by making the the area of plotting symbols
+proportional to the number of observations
+falling at a particular point (Figure~\ref{fig:seeddistplot1}(b); in this case I've 
+used the \code{text} command to add text to
+the circles with the actual numbers from cross-tabulating
+the data by number available and number taken
+(\code{table(SeedPred\$available,SeedPred\$taken)}).
+More generally, \emph{bubble plots} superimpose a third variable
+on an $x$-$y$ scatterplot by changing symbol sizes: in \R, you
+can either use the \code{symbols} command, or just set
+\code{cex} to a vector in a \code{plot} command
+(e.g. \code{plot(x,y,cex=z)} plots $y$ vs. $x$ with
+symbol sizes proportional to $z$). 
+\code{sizeplot} is a special-case bubble plot; it
+counts the number of points with identical $x$ and $y$
+values and makes the area of the circle proportional to that number.
+If (as in this case) these $x$ and $y$ values come from a cross-tabulation,
+two other ways to plot the data are a \emph{mosaic
+plot} (e.g. \code{mosaicplot(~available+taken,data=SeedPred)})
+or a \emph{balloon plot} (\code{balloonplot} in the  \code{gplots} package:
+\code{balloonplot(table(SeedPred\$available,SeedPred\$taken))}.
+You could also try \code{dotchart} on the results
+of \code{table}; \emph{dot charts}
+are an invention of W. Cleveland that perform approximately
+the same function as bar charts.  (Try these and see
+for yourself.)
+
+\R\ is \emph{object-oriented},
+which in this context means that it will try
+to ``do the right thing'' when you ask it to do something
+with a variable.  For example, if you simply say
+\code{plot(t1)} \R\ knows that \code{t1} is a two-way table,
+and it will plot something reasonably sensible --- in this case
+the mosaic plot mentioned above.
+
+Barplots are another way to visualize the distribution
+of number of seeds taken.
+(Figure~\ref{fig:barplot}).
+The \code{barplot} command 
+can plot either a vector (as single bars)
+or a matrix (as stacked bars, or
+as grouped sets of bars).
+Here we want to plot groups of
+stacked bars, one group for each number of available seeds.
+The only remaining trick here is that \code{barplot} 
+plots each \emph{column} of the matrix as a group, whereas 
+we want our barplot grouped by number available, which
+are the \emph{rows} of our table.  We could go
+back and recalculate \code{table(taken,available)}, which would
+switch the order of rows and columns.
+However,
+it's easier to use the transpose command \code{t} to
+exchange rows and columns of the table.
+
+I also decided to put the plot on a logarithmic scale,
+since the data span a wide range of numbers of counts.
+Since the data contain zeros, taking logarithms of the
+raw data may cause problems; since they are
+count data, it is reasonable to add 1 as an offset.
+I decided to use logarithms base 10 (\code{log10})  rather
+than natural logarithms (\code{log}) since I find them easier
+to interpret.
+(Many of \R's plot commands, including \code{barplot}, have an
+argument \code{log} that can be used to specify that
+the x, y, or both axes are logarithmic (\code{log="x"}, \code{log="y"},
+\code{log="xy"} --- this has the additional advantage of
+plotting an axis with the original, more interpretable
+values labeled but unevenly spaced.  In this particular
+case the figure is slightly prettier the way I've done it.)
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE,height=6>>=
+op = par(cex=1.5,las=1,bty="l",lwd=2,mgp=c(2.5,1,0))
+cols = gray.colors(6,start=0.6)
+barplot(t(log10(t1+1)),beside=TRUE,legend=FALSE,
+        xlab="",
+        ylab="log10(1+# observations)",axes=FALSE,ylim=c(0,4),
+        col=cols)
+mtext(side=1,"Number of seeds available",line=2.25,cex=1.5)
+axis(side=2,at=0:3)
+par(xpd=NA)
+legend(0,4.25,0:5,fill=cols,
+       ncol=6,x.intersp=0.1,bty="n",cex=0.75)
+text(15,4.3,"Number taken",xpd=TRUE,adj=1,cex=0.75)
+par(op)
+@
+\caption{Bar plot of observations of
+number of seeds taken, subdivided by number available.}
+\label{fig:barplot}
+\end{figure}
+
+The main conclusions from Figures~\ref{fig:seeddistplot1} and \ref{fig:barplot}
+and the table, which have really shown
+essentially the same thing in four different ways, are that (1) the
+number of seeds taken increases as the number of seeds available
+increases (this is not surprising); 
+(2) the \emph{distribution} of number of seeds taken is
+bimodal (has two peaks) with one mode at zero (which is very common),
+and the maxima are at zero and at the total number of seeds available
+--- all or nothing --- which is slightly surprising; (3) the
+distribution of the number of seeds taken looks roughly constant as the
+number of seeds available increases.  Observation \#2 in particular
+starts to suggest some ecological questions: it makes sense for
+there to be a mode at zero (when seed predators don't find the seeds
+at all) and one away from zero (when they do), but why would seed
+predators take either few or many but not an intermediate number?
+Perhaps this pattern, which appears at the level of the whole data
+set, emerges from variability among low- and high-vulnerability sites
+or species, or perhaps it has something to do with the behavior
+of the seed predators.
+
+Yet another graphical approach would be to try to visualize these data
+in three dimensions, as a 3D barplot or ``lollipop plot'' (adding
+stems to a 3D scatterplot to make it easier to locate the points
+in space: Figure~\ref{fig:3dhist}).  3D graphics
+do represent a wide new range of opportunities for
+graphing data, but they are often misused and sometimes actually
+convey less information than a carefully designed 2D plot;
+it's hard to design a really good 3D plot. 
+To present 3D graphics in print you also have
+to pick a single viewpoint, although this is not an issue for
+exploratory graphics.  Finally, \R's 3D capabilities are
+less well developed than those of MATLAB or Mathematica
+(although the \code{rgl} package, which is
+used in Figure~\ref{fig:3dhist} and has been partially
+integrated with the \code{Rcmdr} and \code{vegan} packages,
+is under rapid development).
+A package called \code{ggobi} allows you to explore scatterplots of
+high-dimensional{\slash}multivariate data sets.
+
+\begin{figure}
+<<eval=FALSE,echo=FALSE>>=
+library(scatterplot3d)
+avail = row(t1)[t1>0]
+y = col(t1)[t1>0]-1
+z = log10(t1[t1>0])
+scatterplot3d(-avail,-y,z,type="h",
+              angle=50,pch=16)
+## or with RGL
+library(rgl)
+open3d(FOV=1)
+load("seedgridpos.RData")
+par3d(seedgridpos)
+plot3d(avail,y,z,lit=TRUE,
+       col.pt="gray",xlab="",ylab="",zlab="",type="s",
+       axes=FALSE,
+       size=0.5,
+       zlim=c(0,4))
+plot3d(avail,y,z,add=TRUE,type="h",
+       axes=FALSE,box=FALSE,size=4,col=gray(0.2))
+## don't draw bbox ...
+axes3d(edges=c("x+-","y--","z++"))
+## axes3d()
+grid3d(c("x+","y-","z"))
+text3d(8.75,5,2,"Frequency",adj=0.5,size=2)
+par3d(ignoreExtent=TRUE)
+text3d(3,6.5,-0.6,"Available",adj=0.5,size=2)
+text3d(-1,3.5,-0.6,"Taken",adj=0.5,size=2)
+## r1 = rgl.pop("bboxdeco")
+rgl.bbox(alpha=1,col=NA,front="cull",back="cull",
+         xat=1,xlab="",yat=-1,ylab="",zat=1,zlab="") ## HACK
+rgl.material(color="black",alpha=1)
+rgl.postscript(file="seed3d.eps")
+rgl.postscript(file="seed3d.pdf",fmt="pdf")
+rgl.close()
+@ 
+\includegraphics{seed3d}
+\caption{3D graphics: lollipop plot produced in \code{rgl}
+(\code{plot3d(...,type="s")} to plot spheres, followed
+by \code{plot3d(...,type="h")} to plot stems).}
+\label{fig:3dhist}
+\end{figure}
+\subsubsection{Fraction of seeds taken}
+It may make more sense to try to work with the \emph{fraction of
+seeds taken}, and to see how this varies with number available
+(is it constant?  or does the fraction of seeds taken increase
+with the density of seeds (predator attraction) or decrease
+(predator saturation) or vary among species?
+
+<<>>=
+frac.taken = SeedPred$taken/SeedPred$available
+@ 
+
+Plotting the fraction taken directly 
+(e.g. as a function of number available: 
+\verb+plot(SeedPred$available,frac.taken)+)
+turns out to be uninformative, since
+all of the possible values (e.g. 0/3, 1/3, 2/3, 1)
+appear in the data set and so there is lots of overlap:
+we could use \code{sizeplot} or \code{jitter} again,
+or we could compute the mean fraction taken as a function
+of species, date, and number of seeds available.
+
+Suppose we want to calculate the mean fraction taken 
+for each number of seeds available.
+The command
+<<>>=
+mean.frac.by.avail = tapply(frac.taken,available,mean,na.rm=TRUE)
+@
+computes the mean fraction taken (\code{frac.taken}) 
+for each different number of seeds available (\code{available}: \R\ temporarily
+converts \code{available} into a factor for this purpose).
+(The \code{tapply} command is discussed in more
+detail in the \R\ supplement.)
+
+We can also use \code{tapply} to calculate the standard errors,
+$\sigma/\sqrt{n}$:
+<<>>=
+n.by.avail = table(available)
+sd.by.avail = tapply(frac.taken,available,sd,na.rm=TRUE)
+se.by.avail = sd.by.avail/sqrt(n.by.avail)
+@ 
+
+I'll use a variant of \code{barplot},
+\code{barplot2} (from the \code{gplots} package) to plot these values
+with standard errors. \R\ does not supply error-bar plotting as a built-in function,
+but you can use the \code{barplot2} (\code{gplots} package)
+or \code{plotCI} (\code{gplots} or \code{plotrix} package) functions to
+add error bars to a plot: see the supplement.
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+library(gplots,warn.conflicts=FALSE)
+op = par(cex=1.5,las=1,bty="l",lwd=2,mgp=c(3,1,0))
+b = barplot2(mean.frac.by.avail[-1],plot.ci=TRUE,
+  ci.l=mean.frac.by.avail[-1]-se.by.avail[-1],
+  ci.u=mean.frac.by.avail[-1]+se.by.avail[-1],xlab="",
+  ylab="Fraction taken")
+mtext("Number of seeds available",side=1,line=2,cex=1.5)
+par(op)
+@
+\caption{Bar plot with error bars: mean fraction taken as
+a function of number available}
+\label{fig:barplot2}
+\end{figure}
+
+While a slightly larger fraction of available
+seeds is removed when 5~seeds are available, there
+is not much variation overall (Figure~\ref{fig:barplot2}).
+We can use \code{tapply} to cross-tabulate by
+species as well: the following commands would 
+show a barplot of the fraction taken for each
+combination of number available and species:
+<<>>=
+mean.frac.by.avail.sp = tapply(frac.taken,list(available,species),mean,na.rm=TRUE)
+mean.frac.by.avail.sp = na.omit(mean.frac.by.avail.sp)
+barplot(mean.frac.by.avail.sp,beside=TRUE)
+@ 
+
+It's often better to use a \emph{box plot}
+(or \emph{box-and-whisker plot}) to compare
+continuous data in different groups.
+Box plots show more information
+than bar plots, and show it in
+a robust form (see p.~\pageref{boxplotex}
+for an example).
+However, in this case the
+box plot is dominated by
+zeros and so is not very informative.
+
+One more general plotting strategy is to use
+\emph{small multiples} \citep{Tufte2001}, breaking the plot into
+an array of similar plots comparing patterns at different
+levels (by species, in this case).
+To make small multiples in base graphics,
+I would use \code{par=mfrow(c(r,c))} to
+divide the plot region up into a grid
+with \code{r} rows and \code{c} columns and then
+draw a plot for each level separately.
+The \code{lattice} package handles small multiples
+automatically, and elegantly.
+In this case, I used the command
+<<>>=
+nz = subset(SeedPred,taken>0)
+@ 
+to separate out the cases where at least 1~seed
+was removed, and then
+<<>>=
+barchart(table(nz$available,nz$species,nz$taken),stack=FALSE)
+@ 
+to plot bar charts showing the distribution
+of the number of seeds taken for each number available,
+subdivided by species.
+(\code{barchart(...,stack=FALSE)} is the \code{lattice} equivalent
+of \code{barplot(...,beside=TRUE)}.)
+In other contexts, the \code{lattice} package
+uses a vertical bar \code{|} to denote 
+a small-multiple plot.
+For example, \verb+bwplot(frac.taken~available|species)+,
+would draw an array of box plots,
+one for each species, of the fraction of seeds taken as a function of the
+number available (see p.~\pageref{frogpredboxplot} for an example).
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+## trellis.par.set(bar.fill=new.bar.fill)
+trellis.par.set(canonical.theme(color=FALSE))
+nz = subset(SeedPred,taken>0)
+print(barchart(table(nz$available,nz$species,nz$taken),stack=FALSE,
+               xlab="Frequency"))
+##op = par(mfrow=c(3,3),mar=c(2,2,1,1))
+##frac.taken.by.species = split(frac.taken,Species)
+##invisible(sapply(frac.taken.by.species,hist,xlab="",ylab="",main="",
+##       col="gray")) ## ,ylim=c(0,15)))
+##par(op)
+@ 
+\caption{Small multiples: bar plots of
+number of seeds taken by number available and
+species. (\code{barchart(~frac.taken|species)})}
+\label{fig:multbar}
+\end{figure}
+
+Figure~\ref{fig:multbar} shows that the all-or-nothing distribution
+shown in Figure~\ref{fig:barplot} is not just an artifact of lumping
+all the species together, but holds up at the individual species
+level.  The patterns are slightly different, since in
+Figure~\ref{fig:barplot} we chose to handle the large number of zero
+cases by log-transforming the number of counts (to compress the range
+of number of counts), while here we have just dropped the zero cases.
+Nevertheless, it is still more likely that a small or large fraction
+of the available seeds will disappear, rather than an intermediate
+fraction.
+
+We could ask many more questions
+about these data.
+\begin{itemize}
+\item{Is the length of time available for removal important?
+although most stations were checked every 7~days, the interval
+ranged from 3 to 10 (\code{table(tint)}).  Would separating
+the data by \code{tint}, or standardizing to 
+a removal rate (\code{tint}/\code{taken}), show any new patterns?}
+\item{Do the data contain more information about the effects of distance
+from the forest?  Would any of 
+Figures~\ref{fig:seeddistplot1}--\ref{fig:multbar}
+show different patterns if we separated the data by distance?}
+\item{Do the seed removal patterns vary \emph{along} the
+transects (remember that the stations are spaced every 5~m along
+two transects)? Are neighboring stations more likely to be visited
+by predators?
+Are there gradients in removal rate from one end of the 
+transect to the other?}
+\end{itemize}
+
+However, you may be getting tired of seeds by now.
+The remaining examples in this chapter show more kinds of graphs
+and more techniques for rearranging data.
+
+<<echo=FALSE>>=
+detach(SeedPred)
+@
+
+\subsection{Tadpole predation data}
+
+\label{sec:frogpred}
+The next example data set describes the survival of tadpoles
+of an African treefrog, \emph{Hyperolius spinigularis}, in
+field predation trials conducted in large tanks. \cite{VoneshBolker2005}
+present the full details of the experiment; the
+goal was to understand the tradeoffs 
+that \emph{H. spinigularis} face 
+between avoiding predation in the egg
+stage (eggs are attached to tree leaves above ponds,
+and are exposed to predation by other frog species
+and by parasitoid flies) and in the larval stage (tadpoles
+drop into the water and are exposed to predation by many
+aquatic organisms including larval dragonflies).
+In particular, juveniles may face a trade-off 
+between hatching earlier (and hence smaller) to avoid egg predators
+and surviving as tadpoles, since smaller tadpoles
+are at higher risk from aquatic predators.%
+\footnote{In fact, the study found that
+smaller, earlier-hatched tadpoles manage to compensate for
+this risk by growing faster through the size range in which
+they are vulnerable to aquatic predators.}
+Here, we're just going to look at the data as an
+example of dealing with continuous predictor variables
+(i.e., exploring how predation risk varies with tadpole size and density).
+
+Since reading in these data is straightforward,
+we'll take a shortcut and use the \code{data} command
+to pull the data into \R\ from the \code{emdbook} package.
+There are three data sets corresponding to three different
+experiments:
+\begin{itemize}
+\item{\code{ReedfrogPred}: results of a factorial experiment
+that quantified the number of tadpoles surviving for 16 weeks
+(\code{surv}: \code{survprop} gives the proportion surviving)
+with and without predators (\code{pred}), with three different tadpole
+densities (\code{density}), at two different initial
+tadpole sizes (\code{size});}
+\item{\code{ReedfrogSizepred}: data from a more detailed experiment on the
+effects of size (\code{TBL}, for tadpole body length)
+on survival over 3 days (\code{Kill}, number killed out of 10);}
+\item{\code{ReedfrogFuncresp}: data from a more detailed experiment on the
+effects of initial tadpole density (\code{Initial})
+on the number killed over 14 days (\code{Killed}).}
+\end{itemize}
+
+\subsubsection{Factorial predation experiment (\code{ReedfrogPred})}
+
+\label{boxplotex}
+What are the overall effects of predation, size, density,
+and their interactions on survival?
+Figure~\ref{fig:hspinexp1} uses 
+\verb!boxplot(propsurv~size*density*pred)! to display
+the experimental results
+(\code{bwplot} is the \code{lattice} equivalent of
+\code{boxplot}).
+Box plots show more information
+than barplots. 
+In general, you should prefer boxplots
+to barplots unless you are particularly
+interested in comparing values to zero
+(barplots are anchored at zero, which emphasizes
+this comparison).
+
+Specifically, the line in the middle
+of each box represents the median; the ends of the
+boxes (``hinges'') are the first and third quartiles (approximately:
+see \code{?boxplot.stats} for gory details); the ``whiskers''
+extend to the most extreme data point in either direction that is within
+a factor of 1.5 of the hinge; any points beyond the whiskers
+(there happen to be none in Figure~\ref{fig:hspinexp1}) are
+considered outliers and are plotted individually.
+It's clear from the picture
+that predators significantly lower survival (not surprising).
+Density and tadpole size also have effects, and may interact
+(the effect of tadpole size in the predation treatment appears larger
+at high densities).%
+\footnote{An analysis of variance on the 
+arcsine-square root transformed proportion surviving
+(Table~1 in \cite{VoneshBolker2005}) identifies significant
+effects of density, predator, density $\times$ predator and
+size $\times$ predator interactions (i.e. density and size
+matter only when predators are present), but not a significant
+density $\times$ size $\times$ predator interaction. Either
+the apparent increase in size effect at high densities in
+the presence of a predator is by chance alone, or the
+statistical test was not powerful enough to distinguish
+it from chance.}  The order of the factors in the
+boxplot formula doesn't really change the answers, but
+it does change the order in which the bars are presented,
+which emphasizes different comparisons.  In general,
+you should organize barplots and other graphics to focus
+attention on the most important or most interesting question:
+in this case, the effect of predation is so big and obvious
+that it's good to separate predation from no-predation
+first so we can see the effects of size and density.
+I chose \code{size*density*pred} to emphasize the effects
+of size by putting the big- and small-tadpole bars within
+a density treatment next to each other;  \code{density*size*pred}
+would emphasize the effects of density instead.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=8>>=
+data(ReedfrogPred)
+gcols = gray(c(0.9,0.7,0.4))
+op = par(cex=1.5,las=1,bty="l",lwd=2)
+b = boxplot(propsurv~size*density*pred,data=ReedfrogPred,axes=FALSE,
+  col=rep(rep(gcols,each=2),2),ylab="Proportion surviving")
+axis(side=2)
+axis(side=1,labels=FALSE,at=1:12)
+staxlab(side=1,at=1:12,labels=gsub("\\.[^.]*$","",b$names),nlines=2)
+text(3.5,0.5,"no pred",cex=1.5)
+text(9.5,1,"pred",cex=1.5,xpd=NA)
+legend(1,0.2,fill=gcols,c(10,25,35),ncol=3,cex=0.7,bty="n")
+text(1,0.23,"density",adj=0)
+box()
+par(op)                                                                  
+@ 
+\caption{Results of factorial experiment on
+\emph{H. spinigularis} predation: \newline
+% can't use \verb in caption
+\code{boxplot(propsurv\~{}size*density*pred,data=ReedfrogPred)}.}
+\label{fig:hspinexp1}
+\end{figure}
+
+Boxplots are also implemented
+in the \code{lattice} package:
+<<eval=FALSE>>=
+bwplot(propsurv~density|pred*size,data=ReedfrogPred,horizontal=FALSE)
+@ 
+\label{frogpredboxplot}
+gives a boxplot.  Substituting \code{dotplot} for \code{bwplot}
+would produce a dot-plot instead, which shows the precise value for
+each experimental unit --- good for relatively small data sets like
+this one, although in this particular example
+several points fall on top of each other in the treatments
+where there was high survival.
+%% try out C. Romero - style "sizeplot"?
+
+\subsubsection{Effects of density and tadpole size}
+
+Once the factorial experiment had established
+the qualitative effects of density and tadpole
+size on predation, Vonesh ran more
+detailed experiments to explore the ecological
+mechanisms at work: how, precisely, do density
+and size affect predation rate, and what can
+we infer from these effects about tadpole life
+history choices?
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=8>>=
+library(splines)
+data(ReedfrogFuncresp)
+data(ReedfrogSizepred)
+ltys = c(1,3,2,4)
+op = par(mfrow=c(1,2))
+par(cex=1.5,las=1,bty="l",lwd=2,mgp=c(2.5,1,0),mar=c(5,3.4,4,2)+0.1)
+attach(ReedfrogFuncresp,warn=FALSE)
+plot(Initial,Killed,xlim=c(0,120),  ylab="Number killed",
+     xlab="Initial density",axes=FALSE)
+axis(side=2)
+axis(side=1,at=seq(0,120,by=40))
+box()
+lines(lowess(Initial,Killed),lty=ltys[1])
+lines(predict(smooth.spline(Initial,Killed,df=5),x=0:100),lty=ltys[2])
+##lm1 = lm(Killed ~ ns(Initial, df = 5), data = ReedfrogSizepred)
+##lm2 = lm(Killed ~ ns(Initial), data = ReedfrogSizepred)
+##lmq = lm(Killed ~ Initial+I(Initial^2), data = ReedfrogSizepred)
+##lines(predict(lm1,newdata=data.frame(Initial=1:100)),lty=2)
+## lines(predict(lmq,newdata=data.frame(Initial=1:100)),lty=4)
+meanvals = tapply(Killed,Initial,mean)
+lines(unique(Initial),meanvals,lty=ltys[3])
+## abline(lm(Killed ~ Initial, data = ReedfrogSizepred),lty=3)
+corner.label2("a","topleft",inset=0.025)
+par(xpd=NA)
+legend(55,15,
+       c("lowess","spline","means"),
+       lty=ltys,
+       bty="n",xjust=0,yjust=1,
+       y.intersp=0.8)
+par(xpd=FALSE)
+detach(ReedfrogFuncresp)
+attach(ReedfrogSizepred,warn=FALSE)
+## TEST ME: FONT
+sizeplot(TBL,Kill,xlab="Tadpole Size (TBL in mm)",ylab="Number killed",
+         xlim=c(0,40),scale=1)
+corner.label2("b","topleft",inset=0.025)
+##lines(lowess(TBL,Kill))
+## lines(lowess(TBL,Kill,f=0.6))
+##lm1 = lm(Kill ~ ns(TBL, df = 3), data = ReedfrogSizepred)
+## lines(predict(lm1,newdata=data.frame(TBL=0:40)))
+meanvals = tapply(Kill,TBL,mean)
+lines(unique(TBL),meanvals,lty=ltys[3])
+detach(ReedfrogSizepred)
+@ 
+\caption{\emph{H. spinigularis} 
+tadpole predation by dragonfly larvae as a function of
+(a) initial density of tadpoles (b) initial size of tadpoles.}
+\label{fig:frogcurves}
+\end{figure}
+
+Figure~\ref{fig:frogcurves} shows the relationship between
+(a) initial density and (b) tadpole size and the number
+of tadpoles killed by aquatic predators.  The first relationship
+shows the predator \emph{functional response} --- how the
+total number of prey eaten increases, but saturates,
+as prey density increases.
+The second relationship demonstrates a \emph{size refuge} --- small
+tadpoles are protected because they are hidden or ignored
+by predators, while large tadpoles are too big to
+be eaten or big enough to escape predators.
+
+Questions about the functional relationship between two
+continuous variables are very common in ecology; we're asking
+how one ecological variable affects another. 
+Chapter~\ref{chap:determ} will present a wide variety
+of plausible mathematical functions to describe such
+relationships.
+When we do exploratory data analysis, on the
+other hand, we want ways of ``connecting the dots'' that are
+plausible but that don't make too many assumptions. 
+Typically we're
+interested in smooth, continuous functions.
+For example, we
+think that a small change in initial density
+should not lead to an abrupt change in the number
+of tadpoles eaten.  
+
+The pioneers of exploratory data analysis invented several recipes
+to describe such smooth relationships.
+\begin{itemize}
+\item{\R\ incorporates two slightly different
+versions of \emph{robust locally weighted regression}
+(\code{lowess} and \code{loess}).
+This algorithm runs
+linear or quadratic regressions on successive chunks of the
+data to produce a smooth curve.
+\code{lowess} has an adjustable smoothness parameter
+(in this case the proportion of points included in the
+``neighborhood'' of each point when smoothing) that lets
+you choose curves ranging
+from smooth lines that ignore a lot of
+the variation in the data to wiggly lines that
+pass through every point: in Figure~\ref{fig:frogcurves}a,
+I used the default value (\code{lines(lowess(Initial,Killed))}).}
+\item{Figure~\ref{fig:frogcurves}a also shows a \emph{spline} fit to the
+data which uses a series of cubic curves to fit
+the data.  Splines also have a smoothing parameter,
+the \emph{degrees of freedom} or number of different
+piecewise curves fitted to the data; in this case
+I set the degrees of freedom to 5 (the default here
+would be 2) to get a slightly more wiggly
+curve (\code{smooth.spline(Initial, Killed,df = 5)}).}
+\item{Simpler possibilities include just
+drawing a straight line between the mean values
+for each initial density (using \code{tapply(Killed,Initial,mean)}
+to calculate the means and \code{unique(Initial)} to get the
+non-repeated values of the initial density), or
+plotting the results of a linear or quadratic
+regression of the data (not shown: see the \R\ supplement).
+I plotted straight lines between the
+means in Figure~\ref{fig:frogcurves}b
+because local robust regression and splines worked poorly.
+}
+\end{itemize}
+
+
+To me, these data present fewer intriguing possibilities than the
+seed removal data --- primarily because they represent the results
+of a carefully targeted experiment, designed to answer a very specific
+question, rather than a more general set of field observations.
+The trade-off is that there are fewer loose ends; in the end we were actually
+able to use the detailed information about the shapes of the curves
+to explain why small tadpoles experienced higher survival,
+despite starting out at an apparent disadvantage.
+
+\subsection{Damselfish data}
+\label{sec:damsel}
+
+The next example comes from Schmitt \emph{et al.}'s 
+(\citeyear{Schmitt+1999}) work on
+a small reef fish, the three-spot damselfish
+(\emph{Dascyllus trimaculatus}), in French
+Polynesia. Like many reef fish, \emph{Dascyllus}'s local
+population dynamics are \emph{open}. 
+Pelagic larval fish immigrate from outside
+the area, settling when they arrive
+on sea anemones.
+Schmitt \emph{et al.}
+were interested in understanding how the combination of larval
+supply (settler density), density-independent mortality,
+and density-dependent mortality determines local population
+densities.
+
+The data are observations of the numbers of settlers found on
+previously cleared anemones after settlement pulses and observations
+of the number of sub-adults recruiting (surviving after 6~months) in
+an experiment where densities were artificially manipulated.
+
+The settlement
+data set, \code{DamselSettlement}, includes 600 observations
+at 10 sites, across 6 different settlement pulses
+in two years.  Each observation 
+records the site at which settlement was observed
+(\code{site}), the month (\code{pulse})
+and the number (\code{obs}) and
+density per 0.1 m$^2$ (\code{density})
+of settling larvae.
+The first recruitment data set,
+\code{DamselRecruitment}, gives the
+anemone area in 0.1 m$^2$ (\code{area}),
+the initial number of settlers introduced
+(\code{init}), and the number of recruits
+(sub-adults surviving after 6 months: \code{surv}).
+The second recruitment
+data set, \code{DamselRecruitment\_sum}, gives information on the recruitment
+according to target densities (the densities the experimenters
+were trying to achieve), rather than the actual experimental
+densities, and are summarized by category.
+It includes the target settler density
+(\code{settler.den}), the mean
+recruit density in that category after 6~months
+(\code{surv.den}), and the standard error
+of recruit density (\code{SE}).
+
+\subsubsection{Density-recruitment experiment}
+
+The relationship between settler density and recruit density
+(Figure~\ref{fig:dascsurv}) is ecologically interesting, but
+does not teach us many new graphical or data analysis tricks.
+I did plot the $x$ axis on a log scale, which shows the low-density
+data more clearly but makes it harder to
+see whether the curve fits any of the standard ecological
+models (for example, purely density-independent survival
+would produce a straight line on a regular (linear) scale).
+Nevertheless, we can see that the number recruiting at
+high densities levels off (evidence of density-dependent
+survival) and there is even a suggestion of overcompensation --- a
+decreasing density of recruits at extreme densities.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+data(DamselRecruitment)
+data(DamselRecruitment_sum)
+attach(DamselRecruitment,warn=FALSE)
+init.dens = init/area*1000
+surv.dens = surv/area*1000
+detach(DamselRecruitment)
+op = par(lwd=2,cex=1.5,las=1,bty="l",mgp=c(2.5,1,0)) 
+par(lwd=1)
+plot(init.dens,surv.dens,cex=0.5,
+  xlab=expression(paste("Initial density",({}/0.1*m^2))),
+         ylab="Recruit density (6 months)",log="x",axes=FALSE)
+par(lwd=2)
+axis(side=2,at=c(0,5,10))
+axis(side=1,at=c(0.5,5,50,500))
+box()
+plotCI(DamselRecruitment_sum$settler.den,DamselRecruitment_sum$surv.den,
+ DamselRecruitment_sum$SE,
+   add=TRUE,pch=16,col="darkgray",gap=0)
+lines(lowess(init.dens,surv.dens))
+par(xpd=NA)
+legend("topleft",c("actual","target","lowess"),
+       cex=1,
+       pt.cex=c(0.5,1,1),
+       pch=c(1,16,NA),lty=c(NA,1,1),
+       lwd=c(1,2,2),bty="n",
+       merge=TRUE,col=c("black","darkgray","black"))
+par(op)
+@ 
+\caption{Recruit (sub-adult) \emph{D. trimaculatus} density after 6 months, as
+a function of experimentally manipulated settler density.
+Black points show actual densities and survivorship; gray points
+with error bars show the recruit density,
+$\pm$ 1 SE, by the target density category; line is a \code{lowess} fit.}
+\label{fig:dascsurv}
+\end{figure}
+
+\paragraph{Settlement data}
+
+The reef fish data also provide us with information
+about the variability in settlement density across
+space and time.   Schmitt \emph{et al.} lumped all of these
+data together, to find out how the distribution
+of settlement density affects the relative importance
+of density-independent and density-dependent factors
+(Figure~\ref{fig:dascset1}). 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+data(DamselSettlement)
+attach(DamselSettlement,warn=FALSE)
+op = par(lwd=2,cex=1.5,las=1,bty="l",mar=c(4,4,2,1)+0.1) 
+hist(density[density<200],main="",breaks=c(0,seq(1,201,by=4)),col="gray",
+        xlab="",
+        ylab="Probability density")
+box()
+lines(density(density[density<200],from=0))
+mtext(side=1,expression(paste("Settler density",({}/0.1*m^2))),
+        at=100,line=2.5,cex=1.5) 
+detach(DamselSettlement)
+par(op)
+@
+\caption{Overall distribution of settlement density
+of \emph{D.trimaculatus} across space and time
+(only values $<200/(0.1 \mbox{m}^2)$;
+\Sexpr{sum(DamselSettlement$density>200)} values excluded).}
+\label{fig:dascset1}
+\end{figure}
+
+Figure~\ref{fig:dascset1} shows a histogram of the settlement
+densities.
+Histograms 
+(\code{hist} in basic graphics or
+\code{histogram} in lattice graphics) 
+resemble barplots but are
+designed for continuous rather than discrete
+distributions.
+They break the data up into
+evenly spaced categories and
+plot the number or proportion of data points that fall
+into each bin.  You can use histograms for discrete
+data, if you're careful to set the breaks
+between integer values (e.g. at \code{seq(0,100,by=0.5)}),
+but \code{plot(table(x))} or \code{barplot(table(x))}
+are generally better.
+Although histograms are familiar to most ecologists,
+\emph{kernel density estimators} \citep[\code{density}:][]{MASS},
+which produce a smooth estimate of the probability density
+rather than breaking the counts into discrete categories,
+are generally better than histograms --- especially
+for large data sets.
+While any form of binning (including kernel density estimation)
+requires some choice about how finely vs. coarsely
+to subdivide or smooth the data,
+density estimators have a better theoretical basis and
+hence less \emph{ad hoc} rules about how much to smooth.
+It is also simpler to superimpose densities graphically
+to compare distributions.  The only case where I prefer
+histograms to densities is when I am interested in the 
+distribution near a boundary such as zero, when density
+estimation can produce artifacts.
+Estimating the density and adding it to Figure~\ref{fig:dascset1}
+was as simple as \code{lines(density(setdens))}.
+
+The zero-settlement events are shown as a separate
+category by using \code{breaks=c(0,seq(1,200,by=4))}.  
+Rather than plot the number of counts in  each category, the probability
+\emph{density} is shown, so that the area in each bar is proportional
+to the number of counts.  
+Perhaps the most striking feature of the histogram
+is the large number of zeros: this aspect is downplayed by
+the original histogram in \cite{Schmitt+1999}, which plots
+the zero counts separately but failed to increase the height
+of the bar to compensate for its narrower width.  The zero
+counts seem to fall into a separate category; ecologically,
+one might wonder why there are so many zeros, and whether
+there are any covariates that would predict where and when
+there were no settlers. Depending on your ecological interests,
+you also might want to replot the histogram without the
+zeros to focus attention on the shape of the rest of the
+distribution.
+
+The histogram also shows that the distribution is very
+wide (one might try plotting a histogram of $\log(1+x)$
+to compress the distribution). 
+In fact, I actually excluded the 8 largest
+values from the histogram.  (\R's histogram function does
+not have a convenient way to lump ``all larger values'' into
+the last bar, as in Schmitt et al.'s original figure.) 
+The first part of the distribution
+falls off smoothly (once we ignore the zeros), but there are
+enough extremely large values to make us ask both what is
+driving these extreme events and what effects they may be
+having.
+
+Schmitt \emph{et al.} did not explore the distribution
+of settlement across time and space.  We could use
+<<eval=FALSE>>=
+bwplot(log10(1+density)~pulse|site,data=DamselSettlement,
+              horizontal=FALSE)
+@ 
+to plot box-and-whisker plots of settlement divided by pulse, with
+small multiples for each site, for the damselfish settlement data.
+We can also use a \emph{pairs plot} (\code{pairs})
+or \emph{scatterplot matrix} (\code{splom} in the
+\code{lattice} package) to explore the structure of
+multivariate data (many predictor variables,
+many response variables, or both: Figure~\ref{fig:splom}).
+The pairs plot shows a table of $x$-$y$ plots, one for
+each pair of variables in the data set.
+In this case, I've used it to show the correlations
+between settlement to a few of the different sites
+in Schmitt et al.'s data set (each site contains multiple
+reefs where settlement is counted): because the
+\code{DamselSettlement} data set is in long form, we
+first have to reshape it so that we have a separate
+variable for each site:
+<<eval=FALSE>>=
+library(reshape)
+x2 = melt(DamselSettlement,measure.var="density")
+x3 = cast(x2,pulse+obs~...)
+@ 
+
+The first few rows and columns of the reshaped data set look like this:
+\begin{verbatim}
+  pulse obs Cdina_density Hin_density Hout_density ...
+1     1   1           2.7         0.0            0 ...
+2     1   2           2.7         0.0            0 ...
+3     1   3           2.7         0.0            0 ...
+4     1   4           2.7         3.6            0 ...
+\end{verbatim}
+and we can now use \code{pairs(log10(1+x3[,3:5]))}
+(or \code{splom(log10(1+x3[,3:5]))} to use \code{lattice}
+graphics) to produce the scatterplot matrix (Figure~\ref{fig:splom}).
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=8,height=8>>=
+library(reshape)
+x2 = melt(DamselSettlement,measure.var="density")
+x3 = cast(x2,pulse+obs~...)
+print(splom(log10(1+x3[,3:5]),groups=x3$pulse,pch=as.character(1:6),col=1,cex=2,
+            xlab=""))
+##  pairs(log10(1+x3[,3:5]),cex.labels=1)
+@
+\caption{Scatterplot matrix of settlement to three selected reefs
+(logarithm($1+x$) scale), with points
+numbered according to pulse:
+\code{splom(log10(1+x3[,3:5]),groups=x3\$pulse,pch=as.character(1:6))}
+}
+\label{fig:splom}
+\end{figure}
+
+\subsection{Goby data}
+
+We can explore the effect of density on survival
+in more detail with another data set on reef fish survivorship, this one
+on the marine gobies \emph{Elacatinus prochilos} 
+and \emph{E. evelynae} 
+in St. Croix \citep{Wilson2004}.
+Like damselfish, larval marine gobies also immigrate
+to a local site, although these species settle
+on coral heads rather than on anemones.
+Wilson experimentally
+manipulated density in a series of experiments across several years;
+she replaced fish as they died in order to maintain the 
+local density experienced by focal individuals%
+\footnote{Unlike
+the rest of the data sets in the book, I did not include
+this one in the \code{emdbook} package, since all the analyses have
+not yet been published. I will include them as
+soon as they become available; please feel free to contact me
+(BMB) in the meanwhile if you would like access to them.}.
+
+Previous experiments and observations suggested
+that patch reefs with higher natural settlement rate
+have lower mortality rates, once one accounts for the effects of
+density.  Thus reefs with
+high natural settlement rates were deemed to be
+of putatively high ``quality'', and the natural
+settlement rate was taken as an index of quality
+in subsequent experiments in which density was
+manipulated.
+
+Reading from a comma-separated file,
+specifying that the first four columns are
+factors and the last four numeric:
+<<>>=
+gobydat = read.csv("GobySurvival.csv",
+                colClasses=
+                c(rep("factor",4),
+                  rep("numeric",4)))
+@ 
+Left to its own devices, \R\ would have
+guessed that the first two columns (experiment
+number and year) were numeric rather than factors.
+I could then have converted them back to factors
+via \code{gobydat\$exper=factor(gobydat\$exper)} and
+\code{gobydat\$year=factor(gobydat\$year)}.
+
+\R\ has an \code{attach} command that gives
+direct access to the columns in a data frame:
+if we say
+<<>>=
+attach(gobydat)
+@ 
+we can then refer to \code{year}, \code{exper},
+\code{d1} rather than \code{gobydat\$year},
+\code{gobydat\$exper}, \code{gobydat\$d1} and so forth.
+\code{attach} can make your code easier to read,
+but it can also be confusing: see p.~\pageref{attach}
+for some warnings.
+
+For each individual monitored, the data give
+the experiment number (\code{exper}: 5~separate experiments
+were run between 2000 and 2002) and information
+about the year and location of the experiment
+(\code{year}, \code{site});
+information about the location (coral head: \code{head})
+of each individual and the corresponding
+density (\code{density}) and quality (\code{qual})
+of the coral head; and
+the fate of the individual --- the last day
+it was observed (\code{d1}) and the first day it
+was \emph{not} seen (\code{d2}, set to 70 if the
+fish was present on the last sampling day
+of the experiment.
+(In survival analysis
+literature, individuals that are still
+alive when the study ends are called 
+\emph{right-censored}).  Since juvenile gobies of these species
+rarely disperse, we will assume that
+a fish that disappears has died.
+
+Survival data are challenging to explore graphically,
+because each individual provides only a single discrete
+piece of information (its time of death or disappearance,
+which we will approximate in this case by the average
+between the last time it was observed and the first
+time it was not observed):
+<<>>=
+meansurv = (d1+d2)/2
+@ 
+
+For visualization purposes, it will be useful to define
+low- and high-density and low- and high-quality
+categories. We will use the \code{ifelse(val,a,b)} command 
+to assign value \code{a} if \code{val} is \code{TRUE} or
+\code{b} if \code{val} is \code{FALSE}),
+and the \code{factor} command to make sure
+that level \code{low} is listed before \code{high}
+even though it is alphabetically after it.
+
+<<>>=
+dens.cat = ifelse(density>median(density),"high","low")
+dens.cat = factor(dens.cat,levels=c("low","high"))
+qual.cat = ifelse(qual>median(qual),"high","low")
+qual.cat = factor(qual.cat,levels=c("low","high"))
+@ 
+
+Figure~\ref{fig:goby1} shows an \code{xyplot}
+of the mean survival value, jittered and
+divided into low- and high-quality categories,
+with linear-regression lines added to each
+subplot.  There is some mild evidence that
+mean survival declines with density at
+low-quality sites, but much of the
+pattern is driven by the fish with
+\code{meansurv} of $>40$ (which are
+all fish that survived to the end of the
+experiment) and by the large cluster of
+short-lived fish at low quality
+and high densities ($>10$).
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+print(xyplot(jitter(meansurv,factor=2)~jitter(density,2)|qual.cat,
+             xlab=list(label="Density",cex=1.5),
+             ylab=list(label="Mean survival time",cex=1.5),
+             scales=list(cex=1.5),
+             panel=function(x,y,...) {
+               panel.xyplot(x,y,...)
+               panel.lmline(x,y)
+             }))
+@ 
+\caption{Mean survival time as a function
+of density, divided by quality (background
+settlement) category.}
+\label{fig:goby1}
+\end{figure}
+
+Let's try calculating and plotting the mortality rate over time,
+and the proportion surviving over time 
+(the \emph{survival curve}), instead.
+
+Starting by taking all the data together, we would
+calculate these values by first
+tabulating the number of individuals disappearing
+in each time interval:
+<<>>=
+survtab = table(meansurv); survtab
+@ 
+To calculate the number of individuals that disappeared
+on or after a given time,
+reverse the table (\code{rev}) and take its cumulative sum
+(\code{cumsum}): 
+<<>>=
+csurvtab = cumsum(rev(survtab));csurvtab
+@ 
+Reversing the vector again sorts it into order of
+increasing time:
+<<>>=
+csurvtab = rev(csurvtab)
+@ 
+To calculate the proportional mortality
+at each time step, divide the number disappearing
+by the total number still present (I have rounded
+to 2 digits):
+<<eval=FALSE>>=
+survtab/csurvtab
+@ 
+<<echo=FALSE>>=
+round(survtab/csurvtab,2)
+@ 
+
+<<echo=FALSE>>=
+intcat = interaction(qual.cat,dens.cat)
+cattab = table(intcat)
+survtab = table(meansurv,intcat)
+## reverse order
+survtab = survtab[nrow(survtab):1,]
+## get cumulative sum: this is number surviving until day x
+csurvtab = apply(survtab,2,cumsum)
+## divide by total number in category
+cnsurvtab = sweep(csurvtab,2,cattab,"/")
+days = as.numeric(rownames(csurvtab))
+fracmort = survtab/csurvtab
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=8>>=
+op = par(mfrow=c(1,2))
+par(mar=c(5,4,2,2.5)+0.1)
+par(lwd=2,cex=1.5,las=1,bty="l",mgp=c(2.5,1,0))
+matplot(days[days<20],fracmort[days<20,],xlab="",
+        ylab="Proportional mortality",type="l",col=1)
+mtext(side=1,"Time (days)",cex=1.5,line=2)
+corner.label2("a","topleft",inset=0.025)
+matplot(days,cnsurvtab,type="s",xlab="",
+        ylab="Fraction surviving",xlim=c(0,40),
+        log="y",col=1)
+mtext(side=1,"Time (days)",cex=1.5,line=2)
+corner.label2("b","topleft",inset=0.025,bg="white")
+par(xpd=NA)
+legend(c(5,par("usr")[2]),c(0.3,1.05),
+       c("high qual/high density",
+         "low qual/low density",
+         "high qual/low density",
+         "low qual/high density"),
+       lty=c(4,1,2,3),col=1,cex=0.75,bty="n")
+par(xpd=FALSE)
+par(op)
+@ 
+\caption{Goby survival data: proportional mortality and
+fraction surviving over time, for different quality/density
+categories}
+\label{fig:goby2}
+\end{figure}
+
+Figure~\ref{fig:goby2} plots the proportion dying
+and survival curves by quality/density category.
+The plot of proportion dying is very noisy, but does
+suggest that the disappearance rate starts relatively
+high ($\approx 50\%$ per observation period) and then
+decreases (the end of the experiment gets \emph{very}
+noisy, and was left off the plot).
+The survival curve is clearer.
+Since it is plotted on a logarithmic scale, the
+leveling-off of the curves is an additional
+indication that the mortality rate decreases
+with time (constant mortality would lead to 
+exponential decline, which would appear 
+as a straight line on a logarithmic graph).
+As expected, the low quality, high density
+treatment has the lowest proportion surviving,
+with the other three treatments fairly closely
+clustered and not in the expected order
+(we would expect the high quality, low density
+treatment to have the highest survivorship).
+
+<<echo=FALSE>>= 
+detach(gobydat)
+@ 
+
+\enlargethispage{10pt}
+
+\section{Conclusion}
+
+This chapter has given an overview and examples
+of how to get data into \R\ and start plotting
+it in various ways to ask ecological questions. I have
+overlooked a variety of special-case kinds of data
+(e.g. circular data such as directional data or daily
+event times; highly multivariate data; spatial data
+and maps; compositional data, where the sum of proportions
+in different categories adds to 1.0);
+Table~\ref{tab:graphsum} gives some ideas
+for handling these data types, but you may
+also have to search elsewhere, for example
+using \code{RSiteSearch("circular")} to look
+for information on circular statistics.
+
+%% FIXME: ragged right last column?
+\begin{table}
+\begin{tabular}{p{1.3in}p{1.3in}>{{\raggedright}}p{2.9in}}
+\textbf{Predictors} & \textbf{Response} & \textbf{Plot choices} \\
+\hline
+single categorical & 
+single categorical &
+\code{table}, \code{barplot} , \code{dotchart}, \code{barchart} [L],
+\code{dotplot} [L]
+ \\
+multiple categorical &
+single categorical &
+as above, plus 
+\code{mosaicplot}, 
+small multiples (\code{par(mfrow)}/\code{par(mfcol)} or
+\code{lattice} plots),
+\code{sizeplot} [\code{plotrix}]
+or 3D histogram [\code{scatterplot3d}, \code{rgl}]
+\\
+circular &  categorical & \code{rose.diag} [\code{CircStats}] \\
+circular &  continuous & \code{polar.plot} [\code{plotrix}] \\
+none & compositional &
+\code{barplot(...,beside=FALSE)},
+\code{barchart(...,stack=TRUE)} [L],
+\code{ternaryplot} [\code{vcd}],
+\code{triax.plot} [\code{plotrix}] \\
+single categorical &
+multiple continuous &
+\code{stars} \\
+none or single categorical &
+single continuous &
+\code{boxplot}, \code{bwplot} [L],
+violin plots (\code{bwplot(...,panel=panel.violin)} [L],
+\code{vioplot} [\code{vioplot}],
+\code{stripplot} [L], \code{barplot2} [\code{gplot}] for error bars
+\\
+continuous+categorical &
+single continuous &
+scatterplot (\code{plot} , \code{xyplot} [L])
+with categories indicated by plotting symbols (\code{pch}),
+color (\code{col}), size (\code{cex}) or
+(in \code{lattice}) \code{groups} argument \\
+single continuous &
+single continuous &
+\code{plot} , \code{xyplot} [L];
+\code{lowess}, \code{supsmu}, \code{smooth.spline} for
+curves; \code{plotCI} [\code{gplots} or \code{plotrix}]
+for error bars \\
+multiple continuous &
+multiple continuous &
+conditioning plots (\code{coplot}
+or \code{lattice} plots),
+3D scatter- or lollipop plots 
+(\code{cloud} [L],
+ \code{scatterplot3d} [\code{scatterplot3d}] 
+or \code{plot3d} [\code{rgl}] \\
+continuous (time or 1D space) & continuous &
+\code{plot}/\code{xyplot} with
+\code{type="l"} or \code{type="b"} \\
+continuous (2D space) & continuous &
+\code{image}, \code{contour}, \code{persp},
+\code{kde2d} [\code{MASS}],
+\code{wireframe} [L],
+\code{surface3d} [\code{rgl}], \code{maps} package,
+\code{maptools} package,
+\code{sp} package
+\end{tabular}
+\caption{Summary of graphical procedures.
+Square brackets denote functions in packages; 
+[\code{L}] denotes functions in the \code{lattice} package.}
+\label{tab:graphsum}
+\end{table}
+
+\newpage
+\section{\R\ supplement}
+
+All of the \R\ code in this supplement is available
+from \url{http://www.zoo.ufl.edu/bolker/emdbook} in
+an electronic format that will be easier to cut and
+paste from, in case you want to try it out for yourself
+(you should).
+
+\subsection{Clean, reshape, and read in data}
+
+To let \R\ know where your data files are located, you have a few choices:
+\begin{itemize}
+\item{spell out the {\em path}, or file location, explicitly. (Use
+a single forward slash to separate folders
+(e.g. \verb+"c:/Users/bolker/My Documents/R/script.R"+):
+this works on all platforms.)}
+\item{use \code{filename=file.choose()}, which
+will bring up a dialog box to let you choose the
+file and set \code{filename}. This works on all
+platforms, but is only useful on Windows and MacOS).}
+\item{Use menu commands
+to change your working directory to wherever the files are located:
+\code{File/Change dir} (Windows) or 
+\code{Misc/Change Working Directory} (Mac).}
+\item{Change your working directory to wherever the file(s) are located
+using the \code{setwd} (\textbf{set} \textbf{w}orking \textbf{d}irectory)
+function, e.g. \verb+setwd("c:/temp")+}
+\end{itemize}
+Changing your working directory is more efficient
+in the long run, if you save all the
+script and data files for a particular project in the same directory
+and switch to that directory when you start work.
+
+The seed removal data were originally stored in two separate Excel
+files, one for the 10~m transect and one for the 25~m transect:
+After a couple of preliminary errors I decided to include
+\code{na.strings=" "} (to turn blank cells into \code{NA}s)
+and \code{comment=""} (to deal with a \verb+#+ character in
+the column names --- although I could also have edited the
+Excel file to remove it):
+<<>>=
+dat_10 = read.csv("duncan_10m.csv",na.strings="?",comment="")
+dat_25 = read.csv("duncan_25m.csv",na.strings="?",comment="")
+@
+
+\code{str} and \code{summary} originally showed that I had some extra columns
+and rows: row 160 of \verb+dat_10+, and columns
+40--44 of \verb+dat_25+, were junk. I could have gotten rid of them this way:
+<<eval=FALSE>>=
+dat_10 = dat_10[1:159,]
+dat_25 = dat_25[,1:39]
+@
+(I could also have used \emph{negative} indices to drop specific rows/columns:
+\verb+dat_10[-160,]+ and \verb+dat_25[-(40:44),]+ would have
+the same effect).
+%\footnote{\code{which(apply(is.na(dat_25),2,all))}
+%runs \code{is.na} on the whole data set: uses \code{all} on each column (since
+%\code{MARGIN} is 2), and sees \code{which} columns qualify}
+
+Now we reshape the data, specifying
+\code{id.var=1:2} to preserve the first two columns,
+station and species, as identifier variables:
+<<>>=
+library(reshape)
+dat_10_melt = melt(dat_10,id.var=1:2)
+@ 
+
+Convert the third column to a date, using \code{paste}
+to append 1999 to each date (\code{sep="."} separates
+the two pasted strings with a period):
+<<>>=
+date_10 = paste(dat_10_melt[,3],"1999",sep=".")
+@ 
+  
+Then use
+\code{as.Date} to convert the string to a date
+(\verb+%d+ means day, \verb+%b%+ means three-letter month
+abbreviation, and \verb+%Y%+ means four-digit year;
+check \code{?strptime} for more date format details).
+<<>>=
+dat_10_melt[,3] = as.Date(date_10,format="X%d.%b.%Y")
+@ 
+
+Finally, rename the columns.
+<<>>=
+names(dat_10_melt) = c("station","species","date","seeds")
+@ 
+
+Do the same for the 25-m transect data:
+<<>>=
+dat_25_melt = melt(dat_25,id.var=1:2)
+date_25 = paste(dat_25_melt[,3],"1999",sep=".")
+dat_25_melt[,3] = as.Date(date_25,format="X%d.%b.%Y")
+names(dat_25_melt) = c("station","species","date","seeds")
+@ 
+
+We've finished cleaning up and reformatting the data.
+Now we would like to calculate some derived quantities:
+specifically, \code{tcum} (elapsed time from the first sample),
+\code{tint} (time since previous sample), \code{taken} (number removed
+since previous sample), and \code{available} (number available at
+previous sample).  We'll split the data frame up into a 
+separate chunk for each station:
+<<>>=
+split_10 = split(dat_10_melt,dat_10_melt$station)
+@
+
+Now go through, and for each chunk, calculate the cumulative
+time by subtracting the first date from all the dates;
+the time interval by taking the difference of successive
+dates (with \code{diff}) and putting an \code{NA} at the
+beginning;
+the number of seeds lost by taking the
+\emph{negative} of the difference of successive numbers
+of seeds; and the number of seeds available at the previous
+time by prepending \code{NA} and dropping the last element.
+Then put the new derived variables together with the
+original data and re-assign it.
+
+\code{for} loops are a general way of executing similar
+commands many times.  A \code{for} loop runs for every
+value in a vector.
+\begin{verbatim}
+for (var in vec) {
+  commands
+}
+\end{verbatim}
+runs the \R\ commands inside the curly brackets once
+for each element of \code{vec}, each time setting the
+variable \code{var} to the corresponding element of
+\code{vec}.  The most common use of \code{for} loops
+is to run a set of commands \code{n} times by making
+\code{vec} equal  \code{1:n}.
+
+For example, the \code{for} loop
+below executes each statement inside the
+curly brackets \code{\{\}}, setting \code{i} to each
+value between 1 and the number of stations:
+<<>>=
+for (i in 1:length(split_10)) {
+  x = split_10[[i]]
+  tcum = as.numeric(x$date-x$date[1])
+  tint = as.numeric(c(NA,diff(x$date)))
+  taken = c(NA,-diff(x$seeds))
+  available = c(NA,x$seeds[-nrow(x)])
+  split_10[[i]] = data.frame(x,tcum,tint,taken,available)
+}
+@ 
+
+Now we want to stick all of the little bits of the
+data frame back together.  \code{rbind} (for \textbf{r}ow
+\textbf{bind}) combines columns, but normally we would
+say \code{rbind(x,y,z)}
+to combine three matrices (or data frames) with the 
+same number of columns.  If, as in this case,
+we have a \emph{list} of matrices that we want
+to combine, we have
+to use \code{do.call("rbind",list} to
+to apply \code{rbind} to the list:
+<<>>=
+dat_10 = do.call("rbind",split_10)
+@ 
+
+This trick is useful whenever you have 
+individuals or stations that have data recorded
+only for the first observation of the individual.
+In some cases you can also do these manipulations
+by working with the data in wide format.
+
+Do the same for the 25-m data (not shown):
+<<echo=FALSE>>=
+split_25 = split(dat_25_melt,dat_25_melt$station)
+for (i in 1:length(split_25)) {
+  x = split_25[[i]]
+  tcum = as.numeric(x$date-x$date[1])
+  tint = as.numeric(c(NA,diff(x$date)))
+  taken = c(NA,-diff(x$seeds))
+  available = c(NA,x$seeds[1:(nrow(x)-1)])
+  split_25[[i]] = data.frame(x,tcum,tint,taken,available)
+}
+dat_25 = do.call("rbind",split_25)
+@ 
+
+Create new data frames with an extra column that
+gives the distance from the forest
+(\code{rep} is the \R\ command to \textbf{rep}eat
+values); then stick them together.
+<<>>=
+dat_10 = data.frame(dat_10,dist=rep(10,nrow(dat_10)))
+dat_25 = data.frame(dat_25,dist=rep(25,nrow(dat_25)))
+SeedPred = rbind(dat_10,dat_25)
+@
+
+Convert station and distance from numeric to factors:
+<<>>=
+SeedPred$station = factor(SeedPred$station)
+SeedPred$dist = factor(SeedPred$dist)
+@
+
+Reorder columns:
+<<>>=
+SeedPred = SeedPred[,c("station","dist","species","date","seeds",
+                         "tcum","tint","taken","available")]
+SeedPred_wide = reshape(SeedPred[order(SeedPred$date),],
+                         direction="wide",timevar="date",idvar=c("station","dist","species"),
+                         drop=c("tcum","tint","taken","available"))
+@
+
+<<echo=FALSE>>=
+rm("available","taken","tcum","tint","t1")  ## clean up
+@ 
+
+<<echo=FALSE,eval=FALSE>>=
+## don't need to do this every time
+save("SeedPred",file="SeedPred.rda")
+save("SeedPred_wide",file="SeedPred_wide.rda")
+@ 
+
+\subsection{Plots: seed data}
+\subsubsection{Mean number remaining with time}
+\label{suppl:numbervstime}
+Attach the seed removal (predation) data:
+<<>>=
+attach(SeedPred)
+@ 
+
+\label{attach}
+Using \code{attach} can make your code
+easier to read, since you don't have
+to put \code{SeedPred\$} in front of
+the column names, but
+it's important to realize that
+attaching a data frame makes a local copy of the
+variables.
+Changes that you make to these variables are
+\emph{not} saved in the original data frame,
+which can be very confusing.
+Therefore, it's best to use \code{attach} only after
+you've finished modifying your data.
+%This way of working
+%also has the advantage of leaving your original data set untouched, no
+%matter how you might change it temporarily.
+\code{attach} can also be confusing if you have columns
+with the same name in two different attached data frames:
+use \code{search} to see where \R\ is looking for
+variables.
+It's best to attach just one data frame at a time --- %
+and make sure to \code{detach} it when you finish.
+
+Separate out the 10~m and 25~m transect data from
+the full seed removal data set:
+<<>>=
+SeedPred_10 = subset(SeedPred,dist==10)
+SeedPred_25 = subset(SeedPred,dist==25)
+@ 
+
+The \code{tapply} (for \textbf{t}able  \textbf{apply}, pronounced ``t apply'')
+function splits a vector into groups according to
+the list of factors provided, then \emph{applies} a function (e.g.
+\code{mean} or \code{sd}) to each group.
+To split the data on numbers of seeds present by \code{date} and \code{species}
+and take the mean (\code{na.rm=TRUE} says to drop \code{NA} values):
+<<>>=
+s10_means = tapply(SeedPred_10$seeds,list(SeedPred_10$date,SeedPred_10$species),mean,na.rm=TRUE)
+s25_means = tapply(SeedPred_25$seeds,list(SeedPred_25$date,SeedPred_25$species),mean,na.rm=TRUE)
+@ 
+
+\code{matplot} (``\textbf{mat}rix \textbf{plot}'') plots the columns of a matrix
+together against a single $x$ variable.  Use it
+to plot the 10~m data on a log scale (\code{log="y"}) with both lines and points
+(\code{type="b"}), in black (\code{col=1}), with plotting characters 1 through 8,
+with solid lines (\code{lty=1}).  Use \code{matlines} 
+(``\textbf{mat}rix \textbf{lines}'') to add the 25~m data in gray.
+(\code{lines} and \code{points} are the base graphics commands to add
+lines and points to an existing graph.)
+<<>>=
+matplot(s10_means,log="y",type="b",col=1,pch=1:8,lty=1)
+matlines(s25_means,type="b",col="gray",pch=1:8,lty=1)
+@ 
+
+\subsubsection{Seed data: distribution of number taken vs. available}
+
+Jittered plot:
+<<>>=
+plot(jitter(SeedPred$available),jitter(SeedPred$taken))
+@ 
+
+Bubble plot: this differs from Figure~\ref{fig:seeddistplot1}
+because I don't exclude cases where there are no seeds available.
+(I use \code{xlim} and \code{ylim} to extend the axes slightly.)
+\code{scale} and \code{pow} can be tweaked to change the size
+and scaling of the symbols.
+
+To plot the numbers in each category, I use \code{text},
+\code{row} to get row numbers, and \code{col} to get
+column numbers; I subtract 1 from the row and column numbers
+to plot values starting at zero.
+<<>>=
+library(plotrix)
+sizeplot(SeedPred$available,SeedPred$taken,scale=0.5,pow=0.5,xlim=c(-2,6),ylim=c(-2,5))
+t1 = table(SeedPred$available,SeedPred$taken)
+text(row(t1)-1,col(t1)-1,t1)
+@ 
+
+Or you can use \code{balloonplot} from the \code{gplots} package:
+<<eval=FALSE>>=
+library(gplots)
+balloonplot(t1)
+@ 
+
+Finally, the default mosaic plot, either using the 
+default \code{plot} command on the existing tabulation
+<<>>=
+plot(t1)
+@ 
+or using \code{mosaicplot} with a formula
+based on the columns of \code{SeedPred}:
+<<>>=
+mosaicplot(~available+taken,data=SeedPred)
+@ 
+
+Bar plot:
+<<>>=
+barplot(t(log10(t1+1)),beside=TRUE,xlab="Available",ylab="log10(1+# observations)")
+@ 
+or
+<<>>=
+barplot(t(t1+1),log="y",beside=TRUE,xlab="Available",ylab="1+# observations")
+@ 
+
+Bar plot of mean fraction taken:
+<<>>=
+mean.frac.by.avail = tapply(frac.taken,available,mean,na.rm=TRUE)
+n.by.avail = table(available)
+se.by.avail = tapply(frac.taken,available,sd,na.rm=TRUE)/sqrt(n.by.avail)
+barplot2(mean.frac.by.avail,plot.ci=TRUE,
+  ci.l=mean.frac.by.avail-se.by.avail,
+  ci.u=mean.frac.by.avail+se.by.avail,xlab="Number available",ylab="Fraction taken")
+@
+
+Bar plot of mean fraction taken \emph{by species} --- in this
+case we use \code{barplot}, saving the $x$ locations of the bars
+in a variable \code{b}, and then add the confidence intervals
+with \code{plotCI}.
+<<>>=
+library(plotrix)
+frac.taken = SeedPred$taken/SeedPred$available
+mean.frac.by.avail.by.species = tapply(frac.taken,list(available,species),mean,na.rm=TRUE)
+n.by.avail.by.species = table(available,species)
+se.by.avail.by.species = tapply(frac.taken,list(available,species),sd,na.rm=TRUE)/sqrt(n.by.avail.by.species)
+b = barplot(mean.frac.by.avail.by.species,beside=TRUE)
+plotCI(b,mean.frac.by.avail.by.species,se.by.avail.by.species,add=TRUE,pch=".",gap=FALSE)
+@ 
+
+3D plots:
+using \code{t1} from above, define the $x$, $y$, and $z$
+variables for the plot:
+<<>>=
+avail = row(t1)[t1>0]
+taken = col(t1)[t1>0]-1
+freq = log10(t1[t1>0])
+@ 
+
+The \code{scatterplot3d} library is a little bit
+simpler to use, but less interactive --- once the
+plot is drawn you can't change the viewpoint.
+Plot \code{-avail} and \code{-taken} to reverse the order
+of the axes and use \code{type="h"} 
+(originally named for a ``high density'' plot in
+\R's 2D graphics) to draw lollipops:
+<<>>=
+library(scatterplot3d)
+scatterplot3d(-avail,-taken,freq,type="h",
+              angle=50,pch=16)
+@ 
+
+With the \code{rgl} library:
+first plot spheres (\code{type="s"})
+hanging in space:
+<<>>=
+library(rgl)
+plot3d(avail,taken,freq,lit=TRUE,
+       col.pt="gray",type="s",
+       size=0.5,
+       zlim=c(0,4))
+@ 
+Then add stems and grids to the plot:
+<<>>=
+plot3d(avail,taken,freq,add=TRUE,type="h",size=4,col=gray(0.2))
+grid3d(c("x+","y-","z"))
+@ 
+Use the mouse to move the viewpoint until
+you like the result.
+<<echo=FALSE>>=
+rgl.close()
+@ 
+
+\subsubsection{Histogram/small multiples}
+
+Using lattice graphics, as in the text:
+<<>>=
+histogram(~frac.taken|species,xlab="Fraction taken")
+@ 
+or with base graphics:
+<<>>=
+op = par(mfrow=c(3,3))
+for (i in 1:length(levels(species))) {
+  hist(frac.taken[species==levels(species)[i]],xlab="Fraction taken",main="",
+       col="gray")
+}
+par(op)
+@ 
+\code{op} stands for ``old parameters''.
+Saving the old parameters in this
+way and using \code{par(op)} at the end of the plot restores the original
+graphical parameters.
+
+Clean up:
+<<>>=
+detach(SeedPred)
+@ 
+
+\subsection{Tadpole data}
+
+As mentioned in the text, reading in the data was fairly easy in
+this case: \code{read.table(...,header=TRUE)} and \code{read.csv}
+worked without any tricks.  I take a shortcut, therefore, to
+load these datasets from the \code{emdbook} library:
+
+<<>>=
+data(ReedfrogPred)
+data(ReedfrogFuncresp)
+data(ReedfrogSizepred)
+@
+
+\subsubsection{Boxplot of factorial experiment}
+The boxplot is fairly easy:
+<<>>=
+graycols = rep(rep(gray(c(0.4,0.7,0.9)),each=2),2)
+boxplot(propsurv~size*density*pred,data=ReedfrogPred,col=graycols)
+@ 
+
+Play around with the order of the factors to see how
+useful the different plots are.
+
+\code{graycols} specifies the colors of
+the bars to mark the different density treatments.
+\code{gray(c(0.4,0.7,0.9))} produces a vector of colors;
+\code{rep(gray(c(0.4,0.7,0.9)),each=2)} repeats each color
+twice (for the big and small treatments within each
+density treatment; and \code{rep(rep(gray(c(0.4,0.7,0.9)),each=2),2)}
+repeats the whole sequence twice (for the no-predator and
+predator treatments).
+
+\subsubsection{Functional response values}
+I'll \code{attach} the functional response data:
+<<>>=
+attach(ReedfrogFuncresp,warn=FALSE)
+@ 
+
+A simple $x$-$y$ plot, with an extended $x$ axis and some
+axis labels:
+<<>>=
+plot(Initial,Killed,xlim=c(0,100),ylab="Number killed",xlab="Initial density")
+@
+
+Adding the \code{lowess} fit (\code{lines} is the
+general command for adding lines to a plot: \code{points}
+is handy too):
+<<>>=
+lines(lowess(Initial,Killed))
+@ 
+
+Calculate mean values and corresponding initial densities,
+add to the plot with a different line type:
+<<>>=
+meanvals = tapply(Killed,Initial,mean)
+densvals = unique(Initial)
+lines(densvals,meanvals,lty=3)
+@ 
+
+Fit a spline to the data using the \code{smooth.spline} command:
+
+<<>>=
+lms = smooth.spline(Initial,Killed,df = 5)
+@ 
+
+To add the spline curve to the plot, I have to use \code{predict}
+to calculate the predicted values for a range of initial densities,
+then add the results to the plot:
+<<>>=
+ps = predict(lms,x=0:100)
+lines(ps,lty=2)
+@ 
+
+Equivalently, I could use the \code{lm} function
+with \code{ns} (\textbf{n}atural \textbf{s}pline), which
+is a bit more complicated to use in this case but
+has more general uses:
+<<>>=
+library(splines)
+lm1 = lm(Killed ~ ns(Initial, df = 5), data = ReedfrogSizepred)
+p1 = predict(lm1,newdata=data.frame(Initial=1:100))
+lines(p1,lty=2)
+@ 
+
+Finally, I could do linear or quadratic regression
+(I need to use \verb!I(Initial^2)! to tell \R\ I really
+want to fit the square of the initial density); adding
+the lines to the plot would follow the procedure above.
+<<>>=
+lm2 = lm(Killed ~ Initial, data = ReedfrogSizepred)
+lmq = lm(Killed ~ Initial+I(Initial^2), data = ReedfrogSizepred)
+@ 
+
+Clean up:
+<<>>=
+detach(ReedfrogFuncresp)
+@ 
+
+The (tadpole size) vs. (number killed) plot follows similar
+lines, although I did use \code{sizeplot} because there
+were overlapping points.
+
+\subsection{Damsel data}
+
+\subsubsection{Survivors as a function of density}
+
+Load and attach data:
+<<>>=
+data(DamselRecruitment)
+data(DamselRecruitment_sum)
+attach(DamselRecruitment)
+attach(DamselRecruitment_sum)
+@
+
+Plot surviving vs. initial density; use
+\code{plotCI} to add the summary data
+by target density; and add a \code{lowess}-smoothed
+curve to the plot:
+<<>>=
+plot(init.dens,surv.dens,log="x")
+plotCI(settler.den,surv.den,SE,
+   add=TRUE,pch=16,col="darkgray",gap=0)
+lines(lowess(init.dens,surv.dens))
+@
+
+Clean up:
+<<>>=
+detach(DamselRecruitment)
+detach(DamselRecruitment_sum)
+@
+
+\subsubsection{Distribution of settlement density}
+
+Plot the histogram (normally one would specify \code{freq=FALSE}
+to plot probabilities rather than counts, but the uneven
+\code{breaks} argument makes this happen automatically).
+<<>>=
+attach(DamselSettlement)
+hist(density[density<200],breaks=c(0,seq(1,201,by=4)),col="gray",
+        xlab="",
+        ylab="Prob. density")
+lines(density(density[density<200],from=0))
+@
+
+Some alternatives to try:
+<<>>=
+hist(log(1+density))
+hist(density[density>0],breaks=50)
+@
+(you can use \code{breaks} to specify particular breakpoints,
+or to give the total number of bins to use).
+
+If you really want to lump all the large values together:
+<<>>=
+h1 = hist(density,breaks=c(0,seq(1,201,by=4),500),plot=FALSE)
+b= barplot(h1$counts,space=0)
+axis(side=1,at=b,labels=h1$mids)
+@
+(use \code{hist} to calculate the number of counts in 
+each bin, but don't plot anything; use \code{barplot}
+to plot the values (ignoring the uneven width of the bins!),
+with \code{space=0} to squeeze them together).
+
+Box and whisker plots:
+<<>>=
+bwplot(log10(1+density)~pulse|site,data=DamselSettlement,
+              horizontal=FALSE)
+@
+
+Other variations to try:
+<<>>=
+densityplot(~density,groups=site,data=DamselSettlement,xlim=c(0,100))
+bwplot(density~site,horizontal=FALSE,data=DamselSettlement)
+bwplot(density~site|pulse,horizontal=FALSE,data=DamselSettlement)
+bwplot(log10(1+density)~site|pulse,data=DamselSettlement,
+             panel=panel.violin,
+             horizontal=FALSE)
+boxplot(density~site*pulse)
+@
+
+Scatterplot matrices: first reshape the data.
+<<>>=
+library(reshape)
+x2 = melt(DamselSettlement,measure.var="density")
+x3 = cast(x2,pulse+obs~...)
+@
+
+Scatterplot matrix of columns 3 to 5 (sites \code{Cdina},
+\code{Hin}, and  \code{Hout}) (\code{pairs}):
+<<>>=
+pairs(log10(1+x3[,3:5]))
+@ 
+
+Scatterplot matrix of columns 3 to 5 (sites \code{Cdina},
+\code{Hin}, and  \code{Hout}) (\code{splom}):
+<<>>=
+splom(log10(1+x3[,3:5]),groups=x3$pulse,pch=as.character(1:6),col=1)
+@
+
+<<>>=
+detach(DamselSettlement)
+@
+
+\subsection{Goby data}
+
+Plotting mean survival by density subdivided by quality
+category:
+
+<<>>=
+attach(gobydat)
+xyplot(jitter(meansurv,factor=2)~jitter(density,2)|qual.cat,
+             xlab="Density",ylab="Mean survival time")
+@ 
+The default amount of jittering is too small, so
+\code{factor=2} doubles it --- see \code{?jitter} for details.
+
+\subsubsection{Lattice plots with superimposed lines and curves}
+
+In order to add ``extras'' like extra points,
+linear regression lines, or loess fits to 
+\code{lattice} graphics, you have to write
+a new panel function, combining a
+a default lattice panel function 
+(usually called \code{panel.xxx},
+e.g. \code{panel.xyplot},
+\code{panel.densityplot}, etc.)
+with components
+from \code{?panel.functions}.
+For example, here is a panel function that
+plots an $x$-$y$ plot and adds
+a linear regression line is:
+<<>>=
+panel1 = function(x,y) {
+  panel.xyplot(x,y)
+  panel.lmline(x,y)
+}
+@ 
+Then call the original lattice function
+with the new panel function:
+<<>>=
+xyplot(jitter(meansurv,factor=2)~jitter(density,2)|qual.cat,
+             xlab="Density",ylab="Mean survival time",
+             panel=panel1)
+detach(gobydat)
+@ 
+
+\subsubsection{Plotting survival curves}
+
+First set up categories for different combinations of
+quality and density by using \code{interaction},
+and count the number of observations in each
+combination.
+<<>>=
+intcat = interaction(qual.cat,dens.cat)
+cattab = table(intcat)
+@ 
+
+Tabulate the number disappearing at each
+time in each category:
+<<>>=
+survtab = table(meansurv,intcat)
+@ 
+
+Reverse order and calculate the cumulative
+sum by column (margin 2):
+<<>>=
+survtab = survtab[nrow(survtab):1,]
+csurvtab = apply(survtab,2,cumsum)
+@ 
+
+Divide each column (survival curve per
+category) by the total number for that
+category:
+<<>>=
+cnsurvtab = sweep(csurvtab,2,cattab,"/")
+@ 
+
+Calculate the fraction disappearing at
+each time:
+<<>>=
+fracmort = survtab/csurvtab
+@ 
+
+Extract the time coordinate:
+<<>>=
+days = as.numeric(rownames(csurvtab))
+@ 
+
+Plot survival curves by category:
+<<>>=
+matplot(days,cnsurvtab,type="s",xlab="Time (days)",
+        ylab="Proportion of cohort surviving",
+        log="y")
+@ 
+
+

@@ -1,0 +1,3125 @@
+<<echo=FALSE>>=
+source("chapskel.R")
+library(emdbook)
+@
+
+%\todo{add other Bayesian refs: Ellison, books, etc.}
+
+\section*{Summary}
+This chapter continues to review the math you need to fit models to
+data, moving forward from functions and curves to probability
+distributions.  The first part discusses ecological variability 
+in general terms, then reviews basic probability theory and some
+important applications, including Bayes' Rule and its application in
+statistics.  The second part reviews how to analyze and understand
+probability distributions. The third
+part provides a bestiary of probability distributions, finishing with
+a short digression on some ways to extend these basic distributions. 
+
+\section{Introduction: why does variability matter?}
+
+For many ecologists and statisticians, noise is just a nuisance --- it
+gets in the way of drawing conclusions from the data.  The traditional
+statistical approach to noise in data was to assume that all variation in
+the data was normally distributed, or transform the data until it was,
+and then use classical  methods 
+based on the normal distribution to draw
+conclusions.  
+Some scientists turned to nonparametric statistics,
+%which rely only on relative ranks of the data in different categories
+which assume only
+that the shape of the data distribution is the same in
+all categories and provide tests of
+differences in the means or ``location parameters''
+among categories.
+%models may be less powerful,
+%and they 
+Unfortunately, classical nonparametric approaches
+make it much harder to draw quantitative conclusions
+from data (rather than simply rejecting or failing to reject null
+hypotheses about differences between groups).
+
+In the 1980s, as they acquired better computing tools,
+ecologists began to use more sophisticated models of variability
+such as generalized linear models (see Chapter~\ref{chap:std}).
+Chapter~\ref{chap:determ} 
+illustrated a wide range of 
+deterministic functions that correspond
+to eterministic models of the underlying ecological processes.
+This chapter will illustrate
+a wide range of models for the stochastic
+part of the dynamics.
+In these models, variability 
+isn't just a nuisance, but actually
+tells us something
+about ecological processes.
+For example,
+census counts that follow a negative binomial
+distribution (p.~\pageref{sec:negbinom})
+tell us there is some form of environmental
+variation or aggregative response among
+individuals that we haven't taken into
+account \citep{ShawDobson1995}.
+
+Remember from Chapter~\ref{chap:intro} that 
+what we treat as ``signal'' (deterministic)
+and what we treat as ``noise'' (stochastic)
+depends on the question.
+The same ecological variability, such as spatial
+variation in light, might be treated as random variation by
+a forester interested in the net biomass increment of
+a forest stand and as a deterministic driving factor by
+an ecophysiologist interested in the photosynthetic response of
+individual plants.  
+
+Noise affects ecological data in two different ways --- as
+\emph{measurement error} and as \emph{process noise} 
+(this will become
+important in Chapter~\ref{chap:dyn} when we deal with dynamical
+models).
+Measurement error is the variability or ``noise'' in our measurements,
+which makes it hard to 
+estimate parameters and make inferences
+about ecological systems.
+Measurement error leads to large confidence intervals and low statistical
+power.
+Even if we can eliminate measurement error,
+process noise or process error (often so-called
+even though it isn't technically an ``error'', but a
+real part of the system) still exists.
+Variability affects any ecological system.
+For example, we can observe
+thousands of individuals to determine the average mortality
+rate with great accuracy.  The fate of a
+group of a few individuals, however, 
+depends both on the variability in mortality
+rates of individuals and on the \emph{demographic stochasticity} 
+that determines whether a particular individual lives or dies (``loses the coin
+toss'').
+Even though we know the average
+mortality rate perfectly, our predictions are still uncertain.
+\emph{Environmental stochasticity} --- spatial and temporal variability 
+in (e.g.) mortality rate caused by variation in the environment
+rather than by the inherent randomness of individual fates --- also
+affects the dynamics.
+%% cite Fox?
+%(The dichotomy between measurement error and process error is not
+%exactly the same as that between problems of inference and prediction,
+%but it is related.)
+Finally, even if we 
+can minimize measurement error by careful measurement
+and minimize process noise by 
+studying a large population 
+in a constant environment (i.e. low levels of demographic and
+environmental stochasticity), 
+ecological systems can still amplify variability
+in surprising ways \citep{BjornstadGrenfell2001}.
+For example, a tiny bit of demographic
+stochasticity at the beginning of an epidemic
+can trigger huge variation in epidemic dynamics
+\citep{RandWilson1991}.
+Variability also feeds back to change
+the mean behavior
+of ecological systems.  For example,
+in the damselfish system described in Chapter~\ref{chap:explore}
+the number of recruits in any given
+cohort is the number of settlers
+surviving density-dependent mortality,
+but the average number of recruits
+is \emph{lower} than expected
+from an average-sized cohort
+of settlers because large cohorts
+suffer disproportionately high mortality
+and contribute relatively little to the average.
+This widespread phenomenon follows from
+\emph{Jensen's inequality}
+\citep{RuelAyres1999,Inouye2005}.
+
+\section{Basic probability theory}
+
+In order to understand stochastic terms in
+ecological models, you'll have to (re)learn some
+basic probability theory.
+To define a probability, we first have to
+identify the \emph{sample space},
+the set of all the possible
+outcomes that could occur.
+Then the probability
+of an event $A$ is the frequency
+with which that event occurs.
+A few probability rules are
+all you need to know:
+%\newcommand{\prob}{\mbox{Prob}} % defined in book preamble
+\begin{enumerate}
+\item{If two events are \emph{mutually exclusive}
+(e.g., ''individual is male'' and ''individual is female'')
+then the probability
+that either occurs 
+(the probability of $A$ \emph{or} $B$,
+or $\prob(A \cup B)$)
+is the sum of their 
+individual probabilities: e.g.
+$\prob(\mbox{male or female}) = 
+\prob(\mbox{male})+\prob(\mbox{female})$.
+
+We use this rule, for example, 
+in finding the
+probability that an outcome is within a certain
+numeric range by adding up the probabilities of all
+the different (mutually exclusive) values in
+the range: for a discrete variable,
+for example, $P(3 \le X \le 5)=
+P(X=3)+P(X=4)+P(X=5)$.
+}
+\item{If two events $A$ and $B$ are not mutually
+exclusive --- the 
+\emph{joint probability} that they
+occur together, $\prob(A \cap B)$, is greater than zero --- %
+then we have to correct the rule for combining
+probabilities to account for double-counting:
+$$
+\prob(A \cup B) = \prob(A) + \prob(B) - \prob(A \cap B).
+$$
+For example if we are tabulating the color
+and sex of animals,
+$\prob(\mbox{blue or male}) = 
+\prob(\mbox{blue}) +
+\prob(\mbox{male}) -
+\prob(\mbox{blue male})$)
+}
+\item{The probabilities of all possible
+outcomes of an observation or
+experiment add to 1.0.
+($\prob(\mbox{male})+\prob(\mbox{female})=1.0$.)
+
+We will need this rule to understand the form
+of probability distributions, which often
+contain a \emph{normalization constant}
+to make sure that the sum of the probabilities of
+all possible outcomes is 1.
+}
+\item{
+The \emph{conditional probability} of
+$A$ \emph{given} $B$, $\prob(A|B)$, is
+the probability that
+$A$ happens if we know or assume $B$ happens.
+The conditional probability equals 
+\begin{equation}
+\prob(A|B) = \prob(A \cap B)/\prob(B).
+\label{eq:cprob}
+\end{equation}
+For example:
+\begin{equation}
+\prob(\mbox{individual is blue|individual is male})= 
+\frac{\prob(\mbox{individual is a blue male})}{\prob(\mbox{individual is male})}.
+\end{equation}
+By contrast, we may also refer to the probability
+of $A$ when we make no assumptions about $B$ as
+the \emph{unconditional}
+probability of $A$.
+$\prob(A)=\prob(A|B) + \prob(A|\mbox{not } B)$.
+
+Conditional probability is central
+to understanding \emph{Bayes' Rule} (p.~\pageref{bayesrule}).
+}
+\item{If the conditional probability
+of $A$ given $B$, $\prob(A|B)$,
+equals
+the unconditional probability of
+$A$, then $A$ is
+\emph{independent} of $B$.
+Knowing about $B$ provides no information
+about the probability of $A$.
+Independence implies that
+\begin{equation}
+\prob(A \cap B)   =  \prob(A) \prob(B),
+\end{equation}
+which follows from multiplying
+both sides of (\ref{eq:cprob}) by 
+$\prob(B)$.
+The probabilities of combinations
+of independent events are multiplicative.
+
+Multiplying probabilities of independent
+events, or adding independent log-probabilities
+($\log(\prob(A \cap B))  =  \log(\prob(A))+
+\log(\prob(B))$ if $A$ and $B$ are independent),
+is how we find the combined probability
+of a series of observations.
+}
+\end{enumerate}
+
+We can immediately use
+these rules to think about the distribution
+of seeds taken in the seed removal experiment (Chapter~\ref{chap:explore}).
+The most obvious pattern in the data is
+that there are many zeros, probably corresponding
+to times when no predators visited the
+station.  
+The sample space for seed disappearance --- is
+the number of seeds taken, from 0 to $N$ (the number available).
+Suppose that when a predator
+\emph{did} visit the station,
+with probability $v$, it had
+an equal probability of taking
+any of the possible number of seeds
+(a uniform distribution from 0 to $N$).
+Since the probabilities must add to 1,
+this probability ($\prob(x\mbox{ taken}|\mbox{predator visits})$) is $1/(N+1)$
+(0 to $N$ represents $N+1$ different possible events).
+What is the unconditional probability of $x$
+seeds being taken?
+
+If $x>0$, then there is only one
+possible type of event --- the predator
+visited and took $x$ seeds --- with
+overall probability $v/(N+1)$
+(Figure~\ref{fig:zi}, left).
+
+If $x=0$, then there are two mutually
+exclusive possibilities. 
+Either the predator didn't visit (probability $1-v$), or
+it visited (probability $v$) and
+took zero seeds (probability $1/(N+1)$),
+so the overall probability
+is 
+\begin{equation}
+\underbrace{(1-v)\vphantom{\frac{1}{N}}}_{\text{didn't visit}} + 
+\left(\underbrace{v\vphantom{\frac{1}{N}}}_{\text{visited}} 
+\times \underbrace{\frac{1}{N+1}}_{\text{took zero seeds}}\right) = 1-v+\frac{v}{N+1}.
+\end{equation}
+
+Now make things a little more complicated
+and suppose that when a predator visits,
+it decides independently
+whether or not to take each seed.  If the seeds
+of a given species are all identical, so that
+each seed is taken with the same probability
+$p$, then this process results in a binomial
+distribution.  Using the rules above, the
+probability of $x$ seeds being taken when
+each has probability $p$ is $p^x$.  It's
+also true that $N-x$ seeds are \emph{not}
+taken, with probability $(1-p)^{N-x}$.
+Thus the probability is proportional to
+$p^x \cdot (1-p)^{N-x}$.
+To get the
+probabilities of all possible outcomes to
+add to 1, though, we have to 
+multiply by a normalization constant
+$N!/(x!(N-x)!)$\footnote{$N!$ means $N \cdot (N-1) \cdot \ldots \cdot 2 \cdot 1$, and is
+referred to as ``$N$ factorial''.},
+or $\binom{N}{x}$.
+(It's too bad we can't just ignore
+these ugly normalization factors, which are
+always the least intuitive parts of probability
+formulas, but we really need them in order
+to get the right answers.
+Unless you are doing advanced calculations, however,
+you can usually just take the formulas for the
+normalization constants for granted, without
+trying to puzzle out their meaning.)
+
+Now adding the ``predator may or may not
+visit'' layer to this formula, we have
+a probability
+\begin{equation}
+\underbrace{(1-v)\vphantom{B()}}_{\text{didn't visit}}+
+\left(\underbrace{v\vphantom{B()}}_{\text{visited}}\cdot
+\underbrace{\mbox{Binom}(0,p,N)}_{\text{took zero seeds}}\right) = (1-v)+v (1-p)^N 
+\end{equation}
+if $x=0$ ($\binom{N}{0}=1$, so the normalization constant disappears
+from the second term),
+or
+\begin{equation}
+\underbrace{v\vphantom{B()}}_{\text{visited}} \cdot 
+\underbrace{\mbox{Binom}(x,p,N)}_{\text{took $>0$ seeds}} = v \binom{N}{x} p^x (1-p)^{N-x}
+\end{equation} if $x>0$
+(Figure~\ref{fig:zi}, right).
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op <- par(cex=1.5,las=1,bty="l",lwd=2,mfrow=c(1,2))
+ziunif = function(x,p,v,N) {
+  ifelse(x==0,(1-v)+v/(N+1),v/(N+1))
+}
+zibinom = function(x,p,v,N) {
+  ifelse(x==0,(1-v)+v*dbinom(0,prob=p,size=N),
+         v*dbinom(x,prob=p,size=N))
+}
+N=5
+p=0.4
+v=0.7
+barplot(ziunif(0:N,p,v,N),main="Zero-inflated uniform",
+        xlab="Taken",ylab="Probability",names=0:5)
+barplot(zibinom(0:N,p,v,N),main="Zero-inflated binomial",
+        xlab="Taken",ylab="Probability",names=0:5)
+
+par(op)
+@ 
+\caption{Zero-inflated distributions.
+Left, zero-inflated uniform: right, zero-inflated
+binomial.
+Number of seeds $N=\Sexpr{N}$, probability of predator visit $v=\Sexpr{v}$,
+binomial probability of individual seed predation $p=\Sexpr{p}$.}
+\label{fig:zi}
+\end{figure}
+
+This distribution is called the
+\emph{zero-inflated binomial} \citep{Inouye1999,Tyre+2003}.
+With only a few simple probability rules, we have
+derived a potentially useful distribution that might
+describe the pattern of seed predation better than
+any of the standard distributions we'll see later
+in this chapter.
+
+\section{Bayes' Rule}
+
+%% fix transition???
+With the simple probability rules defined above
+we can also derive, and understand, \emph{Bayes' Rule}.
+Most of the time we will use Bayes' Rule to
+go from the likelihood $\prob(D|H)$,
+the probability of observing a particular
+set of data $D$ given that a hypothesis $H$
+is true (p.~\pageref{likedef}),
+to the information we really want, $\prob(H|D)$ --- %
+the probability of
+our hypothesis $H$ in light of our data $D$.
+%(For example, in the
+Bayes' Rule is just a recipe for turning around
+a conditional probability:
+\begin{equation}
+P(H | D) = \frac{P(D|H) P(H)}{P(D)}.
+\end{equation}
+Bayes' Rule is general --- $H$ and $D$ can
+be any events, not just hypothesis and data --- but
+it's easier to understand Bayes' Rule when we
+have something concrete to tie it to.
+\label{bayesrule}
+Deriving Bayes' Rule is almost as easy
+as remembering it.
+Rule \#4 on p.~\pageref{eq:cprob} applied to
+$P(H|D)$ implies
+\begin{equation}
+P(D \cap H) = P(H|D) P(D),
+\end{equation}
+while applying it to $P(D|H)$ tells
+us
+\begin{equation}
+P(H \cap D) = P(D|H) P(H).
+\end{equation}
+But $P(H \cap D) = P(D \cap H)$
+so
+\begin{equation}
+P(H | D) P(D)  =  P(D | H) P(H)
+\end{equation}
+and therefore
+\begin{equation}
+P(H | D)  =  \frac{P(D | H) P(H)}{P(D)}.
+\label{eq:bayes1}
+\end{equation}
+
+Equation (\ref{eq:bayes1})
+says that the probability of the
+hypothesis given (in light of) the data
+is equal to the probability of the
+data given the hypothesis (the
+\emph{likelihood} associated with
+$H$), times the probability of the
+hypothesis, divided by the probability
+of the data.  There are two problems
+here: we don't know
+the probability of the hypothesis,
+$P(H)$ (isn't that what we're trying
+to figure out in the first place?),
+and we don't know
+the unconditional probability of the 
+data, $P(D)$.
+
+
+\begin{figure}
+\begin{center}
+<<echo=FALSE,fig=TRUE>>=
+r <- 0
+d <- acos(r)
+scale <- c(0.5,0.3)
+npoints <- 100
+centre <- c(0.5,0.5)
+a <- seq(0, 2 * pi, len = npoints)
+m <- matrix(c(scale[1] * cos(a + d/2) + centre[1], 
+              scale[2] * cos(a - d/2) + centre[2]), npoints, 2)
+e <- 0.05
+hyp_pts = matrix(c(0.37,1.04,
+  1+e,0.8+e,
+  1,-e,
+  0.4,-e,
+  -e,0.25),
+  byrow=TRUE,ncol=2)
+lab.pts = matrix(c(0.091,0.255,0.597,0.557,
+  0.869,0.709,0.549,0.511,
+  0.170,0.22,
+  ##y
+  0.865,0.613,
+  0.932,0.698,0.191,0.477,
+  0.087,0.277,0.077,0.31),
+  ncol=2)
+##hyp_pts <- hyp_pts[c(5,1:4),]
+## lab.pts <- lab.pts[c(5,1:4),]
+par(mar=c(0.2,0.2,0.2,0.2))
+plot(1,1,type="n",xlim=c((-e),1+e),ylim=c(-e,1+e),ann=FALSE,
+     xlab="",ylab="",axes=FALSE,xaxs="i",yaxs="i")
+box()
+polygon(m,col="lightgray",lwd=2)
+polygon(c(-e,0.5,0.4,-e),c(0.25,0.5,-e,-e),density=8,angle=0,
+        col="darkgray")
+lines(m,lwd=2)
+segments(rep(0.5,nrow(hyp_pts)),rep(0.5,nrow(hyp_pts)),
+         hyp_pts[,1],hyp_pts[,2])
+##text(lab.pts[,1],lab.pts[,2],1:10)
+for(i in 1:5) {
+  r = 2*i-1
+  r2 = 2*i
+  text(lab.pts[r,1],lab.pts[r,2], substitute(H[x],
+                                list(x=i)),adj=0,cex=2)
+  text(lab.pts[r2,1],lab.pts[r2,2], substitute(D*intersect("","","")*H[x],
+                                list(x=i)),adj=0,cex=2)
+}
+@ 
+\end{center}
+\caption{Decomposition of the 
+unconditional probability
+of the observed data ($D$) into the sum of the probabilities of
+the intersection of the data with each possible
+hypothesis ($\sum_{j=1}^N D \cap H_j$).
+The entire gray ellipse in the middle represents $D$.
+Each wedge (e.g. the hashed area $H_5$) represents an
+alternative hypothesis.
+The ellipse is divided into ``pizza slices''
+(e.g. $D \cap H_5$, hashed and colored area).
+The area of each slice corresponds
+to $D \cap H_j$,
+the joint probability of the data $D$ (ellipse)
+\emph{and} the particular hypothesis $H_j$
+(wedge).
+}
+\label{fig:bayes1}
+\end{figure}
+
+Let's think about the second problem first---our
+ignorance of $P(D)$.
+We can calculate an unconditional probability
+for the data if we have
+a set of \emph{exhaustive},
+\emph{mutually exclusive} hypotheses:
+in other words, we assume that one, and only one,
+of our hypotheses is true.
+Figure~\ref{fig:bayes1} shows a geometric
+interpretation of Bayes' Rule.
+The gray ellipse
+represents $D$, the set of all
+possibilities that could lead to the observed data.
+
+If one of the hypotheses must be true, then
+the unconditional probability of observing
+the data is the sum of the probabilities of
+observing the data under 
+any of the possible hypotheses,
+For $N$ different hypotheses
+$H_1$ to $H_N$,
+\begin{eqnarray}
+P(D) & = & \sum_{j=1}^N P(D \cap H_j) \nonumber \\
+     & = & \sum_{j=1}^N P(H_j) P(D|H_j). \label{eq:bayes2}
+\end{eqnarray}
+In words, the unconditional probability of the
+data is the sum of the likelihood of each hypothesis
+($P(D|H_j)$)
+times its unconditional probability ($P(H_j)$).
+In Figure~\ref{fig:bayes1}, summing the
+area of overlap of each of the large wedges (the hypotheses
+$H_j$) with the gray ellipse ($H_j \cap D$) provides the area
+of the ellipse ($D$).
+
+Substituting (\ref{eq:bayes2}) into (\ref{eq:bayes1})
+gives the full form of Bayes' Rule for a particular
+hypothesis $H_i$ when it is one of a mutually exclusive set
+of hypotheses $\{ H_j \}$. 
+The probability of the truth of $H_i$ in light of the data is
+\begin{equation}
+P(H_i | D)  =  \frac{P(D | H_i) P(H_i)}{\sum_j P(H_j) P(D|H_j)}
+\end{equation}
+
+In Figure~\ref{fig:bayes1}, having observed the data $D$
+means we know that reality lies somewhere in the gray ellipse.
+The probability that hypothesis~5 is true (i.e., that
+we are somewhere in the hashed area) is equal to the
+area of the hashed/colored ``pizza slice'' divided by
+the area of the ellipse.
+Bayes' Rule breaks this down
+further by supposing that we know how to calculate the likelihood
+of the data for each hypothesis --- the ratio of the
+pizza slice divided by the area of the entire wedge
+(the area of the pizza slice [$D \cap H_5$]
+divided by the hashed wedge [$H_5$]).  Then we can
+recover the area of each slice by multiplying the
+likelihood by the prior (the area of the wedge)
+and calculate both $P(D)$ and $P(H_5|D)$.
+
+Dealing with the second problem, our ignorance of
+the unconditional or
+\emph{prior} probability of the hypothesis $P(H_i)$,
+is more difficult.
+In the next section we will simply
+assume that we have other information about this probability,
+and we'll revisit the problem shortly in the context of
+Bayesian statistics.
+But first, just to practice with Bayes' Rule, we'll explore
+two simpler examples that use Bayes' Rule to manipulate
+conditional probabilities.
+
+\subsection{False positives in medical testing}
+<<echo=FALSE>>=
+probI=1e-6
+probfp=1e-3
+@
+
+Suppose the unconditional probability of a random person sampled
+from the population being infected ($I$) with
+some deadly but rare disease is one
+in a million: $P(I)=10^{-6}$.  There is a test for this
+disease that never gives a false negative result: if you have the disease, you
+will definitely test positive ($P(+|I) = 1$).
+However, the test does occasionally give
+a false positive result.
+One person in 100 who doesn't have the disease (is
+uninfected, $U$) will test positive anyway 
+($P(+|U) = 10^{-2}$).  
+This sounds like a pretty good test.
+Let's compute
+the probability that someone who tests positive is
+actually infected.
+
+Replace $H$ in Bayes' rule with ``is infected'' ($I$) and $D$ with
+``tests positive'' ($+$).
+Then
+\begin{equation}
+P(I|+) = \frac{P(+|I) P(I)}{P(+)}.
+\end{equation}
+We know $P(+|I)=1$ and $P(I)= 10^{-6}$, but we don't know
+$P(+)$, the unconditional probability of testing positive.
+Since you are either infected ($I$) or uninfected
+($U$), so these events are mutually exclusive,
+\begin{equation}
+P(+) = P(+ \cap I) + P(+ \cap U).
+\end{equation}
+Then
+\begin{equation}
+P(+) = P(+|I) P(I) + P(+|U) P(U)
+\end{equation}
+because $P(I \cap +) =  P(+|I) P(I)$  (eq. \ref{eq:cprob}).
+We also know that $P(U)=1-P(I)$,
+so
+\begin{equation}
+\begin{split}
+P(+) & = P(+|I) P(I) + P(+|U) (1-P(I)) \\
+     & = 1 \times 10^{-6} + 10^{-2} \times (1-10^{-6}) \\
+     & = 10^{-6} + 10^{-2} + 10^{-8} \\
+     & \approx 10^{-2}.
+\end{split}
+\end{equation}
+Since $10^{-6}$ is ten thousand times smaller
+than $10^{-2}$, and $10^{-8}$ is even tinier,
+we can neglect them for now.
+
+Now that we've done the hard work of computing the
+denominator, we can put it together with the numerator:
+\begin{equation}
+\begin{split}
+P(I|+) & =  \frac{P(+|I) P(I)}{P(+)} \\
+ & \approx \frac{1 \times 10^{-6}}{10^{-2}} \\
+ & = 10^{-4}
+\end{split}
+\end{equation}
+Even though false positives are unlikely, the chance 
+that you are infected if you
+test positive is still only 1 in 10,000!  
+For a sensitive test 
+(one that produces few false negatives)
+for a rare disease, the probability that a positive
+test is detecting a true infection is 
+approximately $P(I)/P(\mbox{false positive})$, which can be
+surprisingly small.
+
+This false-positive issue also comes up in forensics cases (DNA
+testing, etc.).
+Assuming that a positive test is significant
+is called the \emph{base rate fallacy}.
+It's important to think carefully about the sample
+population and the true probability of being guilty (or at
+least having been present at the crime scene) conditional on having
+your DNA match DNA found at the crime scene.
+
+\subsection{Bayes' Rule and liana infestation}
+
+A student of mine used Bayes' Rule as
+part of a simulation
+model of liana (vine) dynamics in a tropical forest.
+He wanted to know the probability that a newly emerging sapling
+would be in a given ``liana class'' ($L_1$=liana-free, 
+$L_2$--$L_3$=light to moderate infestation, $L_4$=heavily
+infested with lianas).  This probability depends on
+the number of trees nearby that
+are already infested ($N$).  We have measurements of infestation
+of saplings from the field, and for each one
+we know the number of nearby infestations.
+Thus if we calculate the fraction of individuals
+in liana class $L_i$ with $N$ nearby infested trees,
+we get an estimate of $\prob(N|L_i)$.  We also know
+the overall fractions in each liana class, $\prob(L_i)$.
+When we add a new tree to the model, we know the
+neighborhood infestation $N$ from the model.
+Thus we can figure out what we want to know, $\prob(L_i|N)$,
+by using Bayes' Rule to calculate
+\begin{equation}
+\prob(L_i|N) = \frac{\prob(N|L_i) \prob(L_i)}%
+{\sum_{j=1}^4 \prob(N|L_j) \prob(L_j)}.
+\end{equation}
+For example, suppose we find that a new tree
+in the model has 3~infested neighbors.
+Let's say that 
+the probabilities of each liana class (1 to 4)
+having 3 infested neighbors are
+$\prob(N|L_i) = \{ 0.05, 0.1, 0.3, 0.6 \}$
+and that the
+unconditional probabilities of being in each liana
+class are $L_i = \{0.5, 0.25, 0.2, 0.05 \}$.  
+Then the probability
+that the new tree is heavily infested (i.e. is in class $L_4$) is
+\begin{equation}
+\frac{0.6 \times 0.05}%
+{(0.05 \times 0.5) + (0.1 \times 0.25) + (0.3 \times 0.2) + (0.6 \times 0.05)}
+=
+\Sexpr{round((0.6*0.05)/(0.05*0.5+0.1*0.25+0.3*0.2+0.6*0.05),2)}.
+\end{equation}
+We would expect that
+a new tree with several infested neighbors
+has a much higher probability of heavy infestation
+than the overall (unconditional) probability of 0.05.
+Bayes' Rule allows us to quantify this guess.
+
+\subsection{Bayes' Rule in Bayesian statistics}
+
+So what does Bayes' Rule have to do with Bayesian statistics?
+
+Bayesians translate likelihood into information about parameter
+values using Bayes' Rule as given above.  The problem is that we
+have the likelihood $\lik(\mbox{data}|\mbox{hypothesis})$, the probability of observing the data
+given the model (parameters):
+what we want is $\prob(\mbox{hypothesis}|\mbox{data})$.
+After all, we already know what the data are!
+
+\subsubsection{Priors}
+
+In the disease testing and the liana examples, we knew
+the overall, unconditional probability of disease or
+liana class in the
+population.  When we're doing Bayesian statistics,
+however, we interpret $P(H_i)$ instead
+as the \emph{prior probability} of a hypothesis, our
+belief about the probability of a particular hypothesis 
+\emph{before} we see the data.  
+Bayes' Rule is the formula for updating the
+prior in order to compute the \emph{posterior probability} of each
+hypothesis, our belief about the probability of the hypothesis 
+\emph{after} we see the data.
+Suppose 
+I have two hypotheses $A$ and $B$ and
+have observed some data $D$ with likelihoods $\lik_A=0.1$
+and $\lik_B=0.2$.
+In other words, the probability of
+$D$ occurring if hypothesis $A$ is true ($P(D|A)$) is 10\%, while the
+probability of $D$ occurring if hypothesis $B$ is true 
+($P(D|B)$) is
+20\%.  If I assign the two hypotheses equal prior
+probabilities ($0.5$ each), then Bayes' Rule says the
+posterior probability of $A$ is 
+\begin{equation}
+P(A|D) = \frac{0.1 \times 0.5}{0.1 \times 0.5 + 0.2 \times 0.5}= \frac{0.1}{0.3} = 
+\frac{1}{3}
+\end{equation}
+and the posterior probability of $B$ is 2/3.
+However, if I had prior information that said
+$A$ was twice as probable ($\prob(A)=2/3$, $\prob(B)=1/3$)
+then the probability of $A$ given the data
+would be 0.5 (do the calculation).
+It is in principle possible to get whatever answer you want,
+by rigging the prior: if you assign
+$B$ a prior probability of 0, then no data will \emph{ever} convince you
+that $B$ is true (in which case you probably shouldn't
+have done the experiment in the first place).
+Frequentists claim that this possibility makes Bayesian
+statistics open to cheating
+\citep{Dennis1996}: however, every Bayesian analysis
+must clearly state the prior probabilities it uses.
+If you have good reason to believe that the prior probabilities
+are not equal, from previous studies of the same or similar
+systems, then arguably you should \emph{use} that information
+rather than starting as frequentists do from the ground up
+every time.
+(The frequentist-Bayesian debate is one of
+the oldest and most virulent controversies in 
+statistics
+\citep{Ellison1996,Dennis1996}: I can't possibly do it justice here.)
+
+However, it is a good idea to try so-called
+\emph{flat} or \emph{weak} or \emph{uninformative} priors --- priors
+that assume you have little information about which hypothesis
+is true --- as a part
+of your analysis, even if you do have prior information
+\citep{Edwards1996}.
+You may have noticed in the first example above
+that when we set the prior probabilities equal,
+the posterior probabilities were just equal
+to the likelihoods divided by the sum of the
+likelihoods.  Algebraically if all the $P(H_i)$
+are equal to the same constant $C$,
+\begin{equation}
+P(H_i | D)  =  
+\frac{P(D | H_i) C}{\sum_j  P(D|H_j) C} =
+ \frac{\lik_i}{\sum_j \lik_j}
+\end{equation}
+where $\lik_i$ is the likelihood of hypothesis $i$.
+
+You may think that setting all the priors equal
+would be an easy way to eliminate the
+subjective nature of Bayesian statistics and
+make everybody happy.  Two examples, however,
+will demonstrate that it's not that easy
+to say what it means to be completely
+``objective'' or ignorant of the
+right hypothesis.
+\begin{itemize}
+\item{\emph{partitioning hypotheses}:
+suppose we find a nest missing eggs
+that might have been taken by
+a raccoon, a squirrel, or a snake (only).
+The three hypotheses
+``raccoon'' ($R$), ``squirrel''
+($Q$), and ``snake'' ($S$)
+are our mutually exclusive and exhaustive
+set of hypotheses for the identity
+of the predator.  
+If we have no other information
+(for example about the local densities
+or activity levels of different predators),
+we might choose equal prior probabilities
+for all three hypotheses.
+Since there are three mutually exclusive
+predators, $\prob(R)=\prob(Q)=\prob(S)=1/3$.
+Now a friend
+comes and asks us whether we really believe
+that mammalian predators are twice
+as likely to eat the eggs as reptiles
+($\prob(R)+\prob(Q)=2\prob(S)$)
+(Figure~\ref{fig:discprior}). What do we do?
+We might solve this particular problem
+by setting the probability for snakes
+(the only reptiles) to 0.5, the probability
+for mammals ($\prob(R \cup Q)$) to 0.5, and the
+probability for raccoons and squirrels 
+equal ($\prob(R)=\prob(Q)=0.25$), but this simple
+example suggests that such pitfalls
+are ubiquitous.
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE,echo=FALSE>>=
+op <- par(cex=1.5,las=1,bty="l",lwd=2,yaxs="i")
+gcols <- gray(c(0.2,0.8))
+b1 <- barplot(t(matrix(c(1/3,1/3,1/3,1/4,1/4,1/2),ncol=2)),beside=TRUE,
+              xlab="Predator",ylab="Probability",space=c(0.2,2),
+              col=gcols,yaxs="i")
+axis(side=1,at=colMeans(b1),c("raccoon","squirrel","snake"))
+segments(b1[1,1],0.4,b1[2,2],0.4)
+text((b1[1,1]+b1[2,2])/2,0.45,"mammalian")
+par(xpd=NA)
+legend(2,0.57,c("by species","by group"),
+       ncol=2,fill=gcols,bty="n")
+par(op)
+@
+\end{center}
+\caption{The difficulty of defining an uninformative prior
+for discrete hypotheses.
+Dark gray bars are priors that assume predation by
+each species is equally likely; light gray bars divide
+predation by group first, then by species within group.}
+\label{fig:discprior}
+\end{figure}
+}
+\item{\emph{changing scales}:
+\begin{figure}
+\begin{center}
+<<echo=FALSE,fig=TRUE,width=8>>=
+minx <- 10
+maxx <- 100
+dx <- maxx-minx
+dlx <- log(maxx/minx)
+dlx10 <- log10(maxx/minx)
+xlim <- c(0,110)
+Lxlim <- c(9,110)
+op <- par(cex=2,las=1,bty="l",lwd=2,mfrow=c(1,2),
+          mar=c(5,4,3,0.5)+0.1,yaxs="i")
+curve(ifelse(x>minx & x<maxx,1/dx,0),from=xlim[1],to=xlim[2],
+      xlab="Mass",ylab="Probability density",ylim=c(0,0.04),main="linear scale",type="s",
+      cex.main=1.5,xlim=c(0,100),n=400,axes=FALSE)
+axis(side=1,at=c(10,100))
+axis(side=2,at=c(0,0.02,0.04))
+box()
+curve(ifelse(x>minx & x<maxx,1/x*1/dlx,0),from=xlim[1],to=xlim[2],
+      lty=2,n=400,add=TRUE)
+legend("topright",c("uniform","log-uniform"),lty=1:2)
+curve(ifelse(x>log(minx) & x<log(maxx),1/dlx,0),
+      from=log(Lxlim[1]),to=log(Lxlim[2]),
+            ylim=c(0,1.2),
+      xlab="Log mass",ylab="",axes=FALSE,lty=2,main="log scale",type="s",
+      cex.main=1.5,n=400)
+curve(ifelse(x>log(minx) & x<log(maxx),exp(x)/dx,0),from=log(Lxlim[1]),to=log(Lxlim[2]),
+      add=TRUE,n=400)
+axis(side=1,
+     at=log(c(10,100)),
+     labels = paste("log(",c(10,100),")",sep=""))
+axis(side=2,at=c(0,0.5,1))
+box()
+par(op)
+@ 
+\end{center}
+\caption{The difficulty
+of defining an uninformative prior
+on continuous scales.  If we assume that
+the probabilities are uniform on one scale
+(linear or logarithmic), they
+must be non-uniform on the other.}
+\label{fig:contprior}
+\end{figure}
+a similar problem arises with
+continuous variables.
+Suppose we believe that the
+mass of a particular bird
+species is between \Sexpr{minx} and \Sexpr{maxx} g, and
+that no particular value is any more likely than other:
+the prior distribution is uniform, or flat.
+That is, the probability
+that the mass is in some range of width $\Delta m$ is 
+constant: $\prob(\mbox{mass}=m) = 1/\Sexpr{maxx-minx} \Delta m$
+(so that $\int_{\Sexpr{minx}}^{\Sexpr{maxx}} \prob(m) \, dm = 1$:
+see p.~\pageref{sec:contdens} for more on probability densities).
+
+But is it sensible to assume that
+the probability that a species' mass
+is between 10 and 20 is the same as the probability
+that it is between 20 and 30, or should it
+be the same as the probability that it is between
+20 and 40 --- that is, would it make more
+sense to think of the mass distribution on a logarithmic scale?
+If we say that the probability distribution is
+uniform on a logarithmic scale, then a
+species is \emph{less} likely
+to be between 20 and 30 than it is to 
+be between 10 and 20.\footnote{
+If the probability is uniform between $a$ and $b$ on the
+usual, linear scale ($\prob(\mbox{mass}=m) = 1/(b-a) \, dm$),
+then on the log scale it is
+$\prob(\log \mbox{mass}=M) = 1/(b-a) e^{M} \, dM$
+[if we change variables to 
+log mass $M$, then $dM=d(\log m)=1/m \, dm$,
+so $dm = m \, dM = e^M \, dM$].
+Going the other way, a log-uniform assumption
+gives $\prob(\mbox{mass}=m) = 1/(log(b/a) m) dm$ on
+the linear scale.
+%% 1/(log(b)-log(a)
+}
+Since changing the scale is not really
+changing anything about the world, just the way
+we describe it, this change in the prior is
+another indication that it's harder than we
+think to say what it means to be ignorant.
+In any case, many Bayesians think that researchers
+try too hard to pretend ignorance, and that
+one really should use what is known about the
+system. \cite{Crome+1996} compare extremely
+different priors in a conservation context to
+show that their data really are (or should be)
+informative to a wide spectrum of stakeholders, regardless
+of their perspectives.
+% 1/(b-a) dx;
+% int_a^b 1/(b-a) \,dx =  (b-a)/(b-a)=1
+% x = log y;
+% dx = 1/y dy
+% 1/(b-a)/y dy
+% 1/(b-a) * \log y \right|_a^b
+}
+\end{itemize}
+
+%% Toshi: empirical Bayes??
+
+\subsubsection{Integrating the denominator}
+
+The other challenge with Bayesian statistics, which is purely
+technical and does not raise any deep conceptual issues,
+is the problem of adding up 
+the denominator $\sum_j P(H_j) P(D|H_j)$ in Bayes' rule.
+If the set of hypotheses (parameters) is continuous,
+then the denominator is 
+$\int P(h) P(D|h) \, dh$ where $h$ is a particular
+parameter value.
+
+For example, the binomial distribution says that
+the likelihood of obtaining 2 heads in 3 (independent,
+equal-probability) coin flips
+is $\binom{3}{2} p^2 (1-p)$, a function of
+$p$.  The likelihood for $p=0.5$ is therefore
+\Sexpr{dbinom(2,prob=0.5,size=3)}, but to get
+the posterior probability we have to divide
+by the probability of getting 2 heads in 3 flips
+for \emph{any} value of $p$.
+Assuming a flat prior,
+the denominator is $\int_0^1 \binom{3}{2} p^2 (1-p) \, dp=0.25$,
+so the posterior probability density of $p=0.5$
+is $0.375/0.25=1.5$\footnote{This value is a probability
+density, not a probability, so it's OK for it to
+be greater than 1: probability density will be
+explained on p.~\pageref{sec:contdens}.}.
+
+<<echo=FALSE,results=hide>>=
+integrate(function(p)dbinom(2,prob=p,size=3),lower=0,upper=1)
+@ 
+
+For the binomial case and other simple probability distributions,
+it's easy to sum or integrate the denominator either
+analytically or numerically.  
+If we only care about the \emph{relative} probability
+of different hypotheses, we don't need to
+integrate the denominator because it has the
+same constant value for every hypothesis.
+
+Often, however, we do want to know the absolute
+probability.
+Calculating the unconditional probability of the data
+(the denominator for Bayes' Rule)
+can be extremely difficult
+for more complicated problems.
+Much of current
+research in Bayesian statistics focuses on ways to
+calculate the denominator.  We will revisit this
+problem in Chapters~\ref{chap:lik} and~\ref{chap:opt},
+first integrating the denominator by brute-force
+numerical integration, then
+looking briefly at a sophisticated
+technique for Bayesian analysis called
+Markov chain Monte Carlo.
+
+\subsection{Conjugate priors}
+
+Using so-called \emph{conjugate priors}
+makes it easy to do the math for Bayesian analysis.
+Imagine that we're flipping coins
+(or measuring tadpole survival or counting numbers of different
+morphs in a fixed sample) and that we 
+use the binomial distribution to model the data.
+For a binomial with 
+a per-trial probability of $p$
+and $N$ trials,
+the probability of $x$ successes
+is proportional (leaving out the normalization constant) to $p^x (1-p)^{N-x}$.
+Suppose that instead of
+describing the probability of $x$ successes
+with a fixed per-trial probability $p$ and number of trials $N$
+we wanted to describe the probability of a given per-trial probability $p$
+with fixed $x$ and $N$.
+We would get $\prob(p)$ proportional to $p^x (1-p)^{N-x}$ --- \emph{exactly
+the same formula}, but with a different proportionality
+constant and a different interpretation.  Instead of a discrete
+probability distribution over a sample space of
+all possible numbers of successes ($0$ to $N$), now we have
+a continuous probability distribution over all
+possible probabilities (all values between 0 and 1). 
+The second distribution, for $\prob(p)$, is called the
+Beta distribution (p.~\pageref{sec:beta})
+and it is the conjugate prior for the binomial distribution.
+
+Mathematically, conjugate
+priors have the same structure as the probability distribution
+of the data.
+They lead to a posterior distribution
+with the same mathematical form as the prior,
+although with different parameter values.
+Intuitively, you get a conjugate prior
+by turning the likelihood around to ask about the
+probability of a parameter instead of the probability
+of the data.
+
+We'll come back to conjugate priors and how to use them
+in Chapters~\ref{chap:lik} and \ref{chap:opt}.
+
+
+\section{Analyzing probability distributions}
+
+You need the same kinds of skills and intuitions about
+the characteristics of probability distributions that
+we developed in Chapter~\ref{chap:determ} for
+mathematical functions.
+ 
+\subsection{Definitions}
+\paragraph{Discrete}
+A probability distribution is the set of probabilities
+on a sample space or set of outcomes.
+Since this book is about modeling quantitative data,
+we will always be dealing with sample spaces
+that are numbers --- the number or amount
+observed in some measurement of an ecological
+system.
+The simplest
+distributions to understand are 
+\emph{discrete} distributions whose outcomes
+are a set of integers: most of the discrete distributions
+we'll deal with describe counting or sampling
+processes and have ranges that include some
+or all of the non-negative integers.
+
+A discrete distribution is most easily described
+by its distribution function, which is just a formula
+for the probability 
+that the outcome of an experiment or observation
+(called a \emph{random variable}) $X$ is equal
+to a particular value $x$
+($f(x)=\prob(X=x)$).  
+A distribution can also be described by its
+cumulative distribution function $F(x)$
+(note the uppercase $F$), which
+is the probability that the random variable
+$X$ is less than or equal to a particular value $x$
+($F(x)=\prob(X\le x$).  Cumulative distribution functions
+are most useful for frequentist calculations
+of tail probabilities, e.g. the probability of
+getting $n$ or more heads in a series of coin-tossing
+experiments with a given trial probability.
+
+% I'll use the binomial distribution, 
+% the probability of a given number of ``hits''
+% or ``successes'' in a fixed number of
+% independent, equiprobable trials, as
+% an example in the . With $N$ trials with
+% a probability of $p$ of success in each one, 
+% the binomial probability distribution
+% for the number of successes $k$ is
+% is $\binom{N}{k} p^k (1-p)^{N-k}$ (for $x$ between
+% 0 and $N$).
+% I'll also refer to the Poisson distribution,
+% which describes the distribution
+% of the number of ``events'' (animals counted,
+% hurricanes, matings) when each event is independent
+% and there is no upper limit on the number
+% of events (p.~\pageref{sec:poisson}).
+
+
+\paragraph{Continuous}
+\label{sec:contdens}
+A probability distribution over a continuous range 
+(such as all real numbers, or the non-negative real numbers)
+is called a \emph{continuous} distribution.
+%Continuous distributions have a similar definition
+%to discrete distributions.
+The cumulative distribution function
+of a continuous distribution
+($F(x)=\prob(X \le x)$ is easy to define and understand %
+--- it's just the probability that the continuous
+random variable $X$ is smaller than a particular
+value $x$ in any given observation or experiment --- but the
+probability \emph{density function} (the analogue
+of the distribution function for a discrete distribution)
+is more confusing,
+since the probability of any precise value is
+zero.  You may imagine that a measurement of (say) pH
+is \emph{exactly} 7.9, but in fact what you have observed
+is that the pH is between 7.82 and 7.98 --- if your
+meter has a precision of $\pm$ 1\%.
+Thus continuous probability distributions are expressed
+as probability \emph{densities} rather than
+probabilities --- the probability that random variable
+$X$ is between $x$ and $x+\Delta x$, divided by
+$\Delta x$ ($\prob(7.82 < X < 7.98)/0.16$, in this case).  
+Dividing by $\Delta x$
+allows the observed probability density to
+have a well-defined
+limit as precision increases and $\Delta x$ shrinks to zero.
+Unlike probabilities, 
+Probability densities 
+can be larger than 1 
+(Figure~\ref{fig:probdists}).
+For example, if
+the pH probability distribution is uniform on the interval [7,7.1]
+but zero everywhere else, its probability density is 10.
+In practice, we will mostly be concerned with
+\emph{relative} probabilities or likelihoods,
+and so the maximum density values and whether they
+are greater than or less than 1 won't matter much.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=8>>=
+op=par(mfrow=c(2,2),mgp=c(2.5,1,0),mar=c(3.2,4.3,1,1),bty="l",las=1,
+  cex=1.5,yaxs="i")
+plot(0:5,dbinom(0:5,size=5,prob=0.3),
+     main="",
+     xlab="",
+     ylab="Probability",type="h",lwd=4,
+     axes=FALSE,ylim=c(0,0.4))
+axis(side=1)
+axis(side=2,at=c(0,0.4))
+
+box()
+plot(0:5,pbinom(0:5,size=5,prob=0.3),
+     main="",type="h",lwd=4,
+     xlab="",
+     ylab="Cumulative\nprobability",ylim=c(0,1),axes=FALSE)
+box()
+axis(side=1)
+axis(side=2,at=c(0,1))
+curve(dexp(x,1.5),from=0,to=6,ylab="Probability density",
+      main="",xaxs="i",yaxs="i",axes=FALSE,ylim=c(0,1.5))
+axis(side=1,at=c(0,6))
+axis(side=2,at=c(0,1.5))
+box()
+curve(pexp(x,1.5),from=0,to=6,ylab="Cumulative\nprobability",
+      main="",xaxs="i",yaxs="i",axes=FALSE,ylim=c(0,1))
+axis(side=1,at=c(0,6))
+axis(side=2,at=c(0,1))
+box()
+par(op)
+@ 
+\caption{Probability, probability density,
+and cumulative distributions.
+Top: discrete (binomial: $N=5$, $p=0.3$)
+probability and cumulative probability distributions.
+Bottom: continuous (exponential: $\lambda=1.5$)
+probability density and cumulative probability distributions.}
+\label{fig:probdists}
+\end{figure}
+
+
+\subsection{Means (expectations)}
+The first thing you usually want to know about a distribution
+is its average value, also called its mean or expectation.
+
+In general the expectation operation,
+denoted by $E[\cdot]$ (or a bar over a variable,
+such as $\bar x$) gives the ``expected value'' of a set of data, or a
+probability distribution, which in the simplest case
+is the same as its (arithmetic) mean value.
+For a set of $N$ data values written down 
+separately as $\{x_1,x_2,x_3, \ldots x_N\}$,
+the formula for the mean is familiar:
+\begin{equation}
+E[x] = \frac{\sum_{i=1}^N x_i}{N}.
+\end{equation}
+
+Suppose we have the data tabulated instead,
+so that for each possible value of $x$
+(for a discrete distribution)
+we have a count of the number of observations
+(possibly zero, possibly more than 1), which
+we call $c(x)$.  Summing over all of the
+possible values of $x$, we have
+\begin{equation}
+E[x] = \frac{\sum_{i=1}^N x_i}{N}
+ = \frac{\sum c(x) x}{N} = \sum \left(\frac{c(x)}{N}\right) x
+= \sum \prob(x) x
+\end{equation}
+where $\prob(x)$ is the discrete probability distribution
+representing this particular data set.
+More generally, you can think of $\prob(x)$ as representing
+some particular theoretical probability distribution
+which only approximately matches
+any actual data set.
+
+We can compute the mean of a continuous distribution
+as well.  First, let's think about grouping (or ``binning'') the values
+in a discrete distribution into categories of size $\Delta x$.
+Then if $p(x)$, the density of counts in bin $x$,
+is $c(x)/\Delta x$, 
+the formula for the mean becomes $\sum p(x) \cdot x \Delta x$.
+If we have a continuous distribution with $\Delta x$ very small, this
+becomes $\int p(x) x \, dx$.
+(This is in fact the definition of an integral.)
+For example, an exponential distribution $p(x) = \lambda \exp(-\lambda
+x)$ has an expectation or
+mean value of $\int \lambda \exp(-\lambda x) x \, dx=1/\lambda$.
+(You don't need to know how to do this integral analytically,
+although the \R\ supplement will show a little bit about numerical
+integration in \R.)
+
+\subsection{Variances (expectation of $X^2$)}
+The mean is the expectation of the random variable $X$ itself,
+but we can also ask about the expectation of functions of $X$.
+The first example is the expectation of $X^2$. We just
+fill in the value $x^2$ for $x$ in all of the formulas above:
+$E[x^2]=\sum \prob(x) x^2$
+for a discrete distribution, or
+$\int p(x) x^2 \, dx$ for a continuous distribution.
+(We are \emph{not} asking for
+$\sum \prob(x^2) x^2$.)
+The expectation of $x^2$ is a component of the variance,
+which is the expected value of $(x-E[x])^2$
+or $(x-\bar x)^2$, or the expected squared deviation
+around the mean.  (We can also show that
+% \begin{eqnarray*}
+% E[(x-E[x])^2] & =  & E[x^2-2xE[x]+(E[x])^2] \\
+%  & = & E[x^2]-E[2xE[x]]+E[E[x]^2] \\
+%  & = & E[x^2]-2 E[x] \cdot E[x] +E[x]^2 \\
+%  & = & E[x^2]-2 (E[x])^2 +(E[x])^2 \\
+%  & = & E[x^2]-(E[x])^2 
+% \end{eqnarray*}
+\begin{equation}
+E[(x-\bar x)^2] = E[x^2] - (\bar x)^2
+\end{equation}
+by using  the rules for expectations 
+that (1) $E[x+y]=E[x]+E[y]$ and
+(2) if $c$ is a constant, $E[cx]=cE[x]$.
+The right-hand formula formula is simpler to compute than
+$E[(x-\bar x)^2]$, but more subject to roundoff error.)
+
+Variances are easy to work with because they
+are additive (we will show later
+that $\mbox{Var}(a+b)=\mbox{Var}(a)+\mbox{Var}(b)$
+if $a$ and $b$ are uncorrelated), but harder
+to compare with means since their units are
+the units of the mean squared.
+Thus we often use instead the \emph{standard deviation} of a distribution,
+($\sqrt{\mbox{Var}}$),
+which has the same units as $X$.
+
+Two other summaries related to the
+variance are the \emph{variance-to-mean} ratio
+and the \emph{coefficient of variation} (CV),
+which is the ratio of the standard deviation to
+the mean.  The variance-to-mean ratio has
+units equal to the mean; it is primarily
+used to characterize discrete sampling
+distributions and compare them to the
+Poisson distribution, which has a
+variance-to-mean ratio of 1.
+The CV is more
+common, and is useful when you want
+to describe variation that is proportional
+to the mean.  For example, if you have
+a pH meter that is accurate to $\pm 10\%$,
+so that a true pH value of $x$ will give
+measured values that are normally distributed
+with $2 \sigma = 0.1 x$\footnote{Remember that
+the 95\% confidence limits of the normal
+distribution are approximately $\mu \pm 2 \sigma$.},
+then $\sigma = 0.05 x$
+and the CV is 0.05.
+
+\subsection{Higher moments} 
+
+The expectation of 
+$(x-E[x])^3$ tells you the \emph{skewness} of
+a distribution or a data set, which indicates whether
+it is asymmetric around its mean.
+The expectation $E[(x-E[x])^4]$ measures the
+\emph{kurtosis}, the ``pointiness'' or
+``flatness'', of a distribution.
+These are called the third and fourth
+\emph{central moments} of the distribution.
+In general, the $n^{\mbox{th}}$ moment
+is $E[x^n]$, and the $n^{\mbox{th}}$ central moment
+is $E[(x-\bar x)^n]$; the mean
+is the first moment, and
+the variance is the second central moment.
+We won't be too concerned with these summaries
+(of data or distributions), but they do come up sometimes.
+% ignore expectations over arbitrary distributions
+%    since they're only needed here for JE
+%serve to introduce the more general idea of
+%taking the expectation of a function over a distribution.
+% Instead of taking the expectation of $x$ (the mean)
+% or $(x-E[x])^2$ (the variance), suppose we take
+% the expectation of some arbitrary function $g(x)$
+% (for example the Michaelis-Menten function) over
+% a probability distribution $P(x)$ or a density function $p(x)$:
+% \begin{equation}
+% E[g(x),P(x)] = \sum_{i=1}^N P(x) g(x)
+% \end{equation}
+% or
+% \begin{equation}
+% E[g(x),p(x)] = \int p(x) g(x) \, dx.
+% \end{equation}
+
+\subsection{Median and mode}
+The median and mode
+are two final properties of probability distributions
+that are not related to moments.
+The \emph{median} of a distribution is the point which
+divides the area of the probability density in
+half, or the point at which the cumulative
+distribution function is equal to 0.5.
+It is often useful for describing data,
+since it is \emph{robust} --- outliers change
+its value less than they change the mean ---
+but for many distributions it's more complicated
+to compute than the mean.
+The \emph{mode} is the ``most likely value'',
+the maximum of the probability distribution
+or density function.
+For symmetric distributions
+the mean, mode, and median are all equal;
+for right-skewed distributions, in
+general mode $<$ median $<$ mean.
+
+\subsection{The method of moments}
+Suppose you know the theoretical values of the moments
+(e.g. mean and variance) of a distribution
+and have calculated the sample values
+of the moments
+(by calculating $\bar x = \sum x/N$
+and $s^2= \sum (x-\bar x)^2/N$: don't worry
+for the moment about whether the denominator
+in the sample variance should be $N$ or $N-1$).
+Then there is a simple way to estimate the parameters
+of a distribution, called the \emph{method
+of moments}: just match the sample values up
+with the theoretical values.  For the normal
+distribution, where the parameters of the
+distribution are just the mean and the variance,
+this is trivially simple: $\mu=\bar x$,
+$\sigma^2=s^2$.  For a distribution like the
+negative binomial, however (p.~\pageref{sec:negbinom}), it involves
+a little bit of algebra.  The negative
+binomial has parameters $\mu$ (equal to the
+mean, so that's easy) and $k$; the theoretical variance
+is $\sigma^2=\mu(1+\mu/k)$.
+Therefore, setting $\mu=\bar x$, $s^2 \approx \mu(1+\mu/k)$,
+and solving for $k$, we calculate the method-of-moments
+estimate of $k$:
+\begin{equation}
+\begin{split}
+\sigma^2 & =  \mu(1+\mu/k) \\
+s^2 & \approx  \bar x (1+\bar x/k) \\
+\frac{s^2}{\bar x} - 1 & \approx \frac{\bar x}{k} \\
+k & \approx \frac{\bar x}{s^2/\bar x - 1}
+\end{split}
+\end{equation}
+\label{negbinom-moments}
+
+The method of moments is very simple but is biased
+in many cases;
+it's a good way to get a first estimate of the
+parameters of a distribution, but for serious work
+you should follow it up with a maximum likelihood
+estimator (Chapter~\ref{chap:lik}).
+
+\section{Bestiary of distributions}
+
+The rest of the chapter presents brief introductions to
+a variety of useful probability distributions, including
+the mechanisms behind them and some of their basic properties.
+Like the bestiary in Chapter~\ref{chap:determ}, you can skim
+this bestiary on the first reading.
+The appendix of \citet{Gelman+1996} contains a useful table,
+more abbreviated than these descriptions but covering a wider
+range of functions.  The book by \citet{Evans+2000} is also 
+useful.
+
+% NOT mentioning Johnson and Kotz, too much for this audience
+
+% The book goes over mathematical properties, equations, etc. in some
+% detail, but I want to hit a few highlights of the kinds of places
+% these models might be appropriate.  The \emph{phenomenological}
+% (``gee, this fits the wiggles in my data'') vs. \emph{mechanistic}
+% (``this distribution is generated by the same sorts of processes as I
+% think might be happening in my system'') distinction holds, just as
+% for the ecological functions discussed in lecture 4.
+
+\subsection{Discrete models}
+% You can see Phil Pollett's Java applets that illustrate these distributions,
+% and dynamically show you the effects of changing the parameters,
+% at
+% \url{http://www.maths.uq.edu.au/~pkp/teaching/PlotProb/}.
+
+\subsubsection{Binomial}
+
+The binomial is probably the easiest distribution to understand.
+It applies when you have samples with 
+a fixed number of subsamples or ``trials'' in each one, 
+and each trial can have one of two values (black/white, heads/tails,
+alive/dead, species A/species B), and the probability of
+``success'' (black, heads, alive, species A)
+is the same in every trial.
+If you flip a coin 10 times ($N=10$)
+and the probability of a head in each coin flip is $p=0.7$
+then the probability of getting 7 heads ($k=7$) will
+will have a binomial distribution with
+parameters $N=10$ and $p=0.7$\footnote{\cite{GelmanNolan2002}
+point out that it is not physically possible to
+construct a coin that is biased when flipped --- although
+a spinning coin can be biased.
+\cite{Diaconis+2004} even tested a coin made of
+balsa wood on one side and lead on the other to establish
+that it was unbiased.}
+Don't confuse the trials (subsamples), and the probability
+of success in each trial, with the number of samples and
+the probabilities of the
+number of successful trials in each sample.  In the seed predation
+example, a trial is an individual seed and the trial probability
+is the probability that an individual seed is taken, while a
+sample is the observation of a particular station
+at a particular time and the binomial probabilities are the probabilities
+that a certain total number of seeds disappears from the station.
+You can derive the part of the distribution
+that depends on $x$, $p^x (1-p)^{N-x}$, by multiplying
+the probabilities of $x$ independent successes with probability
+$p$ and $N-x$ independent failures with probability $1-p$.  The
+rest of the distribution function, $\binom{N}{x}=N!/(x!(N-x)!)$,
+is a \emph{normalization constant} that we can justify either with
+a combinatorial argument about the number of different ways of
+sampling $x$ objects out of a set of $N$ (Appendix), or
+simply by saying that we need a factor in front of the
+formula to make sure the probabilities add up to 1.
+
+The variance of the binomial is $N p(1-p)$.  Like most discrete
+sampling distributions (e.g. the binomial, Poisson, negative
+binomial), this variance depends on the number of samples per trial
+$N$.  When the number of samples per trial increases the variance also
+increases, but the coefficient of variation
+($\sqrt{Np(1-p)}/(Np)=\sqrt{(1-p)/(Np)}$) decreases.  The dependence
+on $p(1-p)$ means the binomial variance is small when $p$ is close to
+0 or 1 (and therefore the values are scrunched up near 0 or $N$), and
+largest when $p=0.5$.  The coefficient of variation, on the other hand, is
+largest for small $p$.
+
+When $N$ is large and $p$ isn't too close to 0 or 1
+(i.e. when $Np$ is large), then the binomial
+distribution is approximately normal (Figure~\ref{fig:probdisttab}).
+
+A binomial distribution with only one trial ($N=1$) is called
+a \emph{Bernoulli} trial.
+
+You should only use the binomial in fitting data when there
+is an upper limit to the number of possible successes.
+When $N$ is large and $p$ is small, so that the probability
+of getting $N$ successes is small,
+the binomial approaches the
+Poisson distribution, which is covered in the next section
+(Figure~\ref{fig:probdisttab}).
+
+<<echo=FALSE>>=
+multdiscplot = function(x,parvec,parname="prob",dfun="dbinom",col,
+  displ=0.2,xlab="x",ylab="Probability",lwd=7,axes=TRUE,...) {
+  op = par(lend=2)
+  tmpfun = function(p) {
+      params = c(list(...),x=list(x),p=p)
+      names(params)[length(params)]=parname
+      do.call(dfun,params)
+    }
+  vals=sapply(parvec,tmpfun)
+  n =length(parvec)
+  xoff = seq(-displ*n/2,displ*n/2,length=n)
+  plot(range(x)+range(xoff),range(vals),type="n",xlab=xlab,ylab=ylab,
+       axes=axes)
+  for (i in 1:length(parvec)) {
+    points(x-xoff[i],vals[,i],col=col[i],type="h",lwd=lwd)
+  }
+  par(op)
+}
+
+multdiscplot2 = function(x,parmat,parnames=c("mu","size"),
+  dfun="dnbinom",col,displ=0.2,xlab="x",ylab="Probability",lwd=7,...) {
+  op = par(lend=2)
+  n =nrow(parmat)
+  vals = matrix(nrow=length(x),ncol=nrow(parmat))
+  for (i in 1:n) {
+    params = c(list(...),x=list(x),p1=parmat[i,1],p2=parmat[i,2])
+    lp = length(params)
+      names(params)[(lp-1):lp] = parnames
+      vals[,i] = do.call(dfun,params)
+    }
+  xoff = seq(-displ*n/2,displ*n/2,length=n)
+  plot(range(x)+range(xoff),range(vals),type="n",xlab=xlab,ylab=ylab)
+  for (i in 1:n) {
+    points(x-xoff[i],vals[,i],col=col[i],type="h",lwd=lwd)
+  }
+  par(op)
+}
+
+@ 
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+op <- par(lwd=2,cex=1.5,las=1,bty="l",mgp=c(3,1,0),yaxs="i")
+## palette(gray((0:8)/8))
+multdiscplot(0:10,parvec=c(0.1,0.5,0.9),size=10,col=gray((0:3)/3),lwd=5,
+             xlab="# of successes",displ=0.1)
+par(xpd=NA)
+text(c(1,5,9),
+     c(0.42,0.27,0.42),
+     paste("p=",c(0.1,0.5,0.9),sep=""),
+     col=gray((0:3)/3))
+#legend(2,0.5,paste("N=10, p=",c(0.1,0.5,0.9),sep=""),
+#       lty=1,lwd=5,col=gray((0:3)/3))
+par(xpd=TRUE)
+par(op)
+@                    
+\caption{Binomial distribution.
+Number of trials ($N$) equals 10 for all distributions.}
+\label{fig:binom}
+\end{figure}
+
+\emph{Examples:} number of surviving individuals/nests out of an
+initial sample; number of infested/infected animals, fruits, etc. in a
+sample; number of a particular class (haplotype, subspecies, etc.) in
+a larger population.
+
+\textbf{Summary:} \\
+\begin{tabular}{ll}
+range & discrete, $0 \le x \le N$ \\
+distribution & $\binom{N}{x} p^x (1-p)^{N-x}$ \\
+\R & \code{dbinom}, \code{pbinom}, \code{qbinom}, \code{rbinom} \\
+parameters & $p$ [real, 0--1], probability of success [\code{prob}] \\
+ & $N$ [positive integer], number of trials [\code{size}] \\
+ mean & $Np$ \\
+ variance & $Np(1-p)$ \\
+ CV & $\sqrt{(1-p)/(Np)}$ \\
+Conjugate prior & Beta 
+\end{tabular}
+
+\subsubsection{Poisson}
+\label{sec:poisson}
+The Poisson distribution gives the distribution of the number of
+individuals, arrivals, events, counts, etc., in a given time/space/unit
+of counting effort if each event is independent
+of all the others.  The most common definition of
+the Poisson has only one parameter, the average
+density or arrival rate, $\lambda$, which equals the
+expected number of counts in a sampling unit.
+An alternative parameterization gives a density
+\emph{per unit sampling effort} and then
+specifies the mean as the product of the density
+per sampling effort $r$ times the sampling effort $t$,
+$\lambda=rt$.  This parameterization emphasizes
+that even when the population density is constant,
+you can change the Poisson distribution
+of counts by sampling more extensively --- for longer times
+or over larger quadrats.
+
+The Poisson distribution has no upper limit, although values
+much larger than the mean value are highly improbable.
+This characteristic provides a rule for choosing between the binomial
+and Poisson.  If you expect to observe a ``ceiling'' on the number of
+counts, you should use the binomial; if you expect the number of
+counts to be effectively unlimited, even if it is theoretically
+bounded (e.g. there can't really be an infinite number of
+plants in your sampling quadrat), use the Poisson.
+
+The variance of the Poisson is equal to its mean. 
+However, the \emph{coefficient of variation} (CV=standard deviation/mean) 
+decreases as the mean increases, 
+so in that sense the Poisson distribution becomes more
+regular as the expected number of counts increases.
+The Poisson distribution \emph{only makes sense
+for count data}.  Since the CV is unitless,
+it should not depend on the units we use to express the data;
+since the CV of the Poisson is 1/$\sqrt{\mbox{mean}}$,
+that means that if we used a Poisson distribution
+to describe data on measured lengths, we could reduce the CV by a factor of
+10 by changing from meters to centimeters (which would
+be silly).
+
+For $\lambda<1$ the Poisson's mode is at zero.
+When the expected number of counts
+gets large (e.g. $\lambda>10$) the Poisson becomes
+approximately normal (Figure~\ref{fig:probdisttab}).
+
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+par(lwd=2,cex=1.5,las=1,bty="l",mgp=c(2.5,1,0),yaxs="i")
+pvec = c(0.8,3,12)
+multdiscplot(0:20,parvec=pvec,parname="lambda",
+             dfun="dpois",col=gray((0:3)/3),lwd=3,
+             xlab="# of events",displ=0.1)
+## construct legend by hand
+## legend(10,0.4,
+##        c(expression(lambda==0.8),
+##          expression(lambda==3),
+##          expression(lambda==12)),
+##        lwd=3,col=1:3,lty=1)
+text(c(1.15,2.7,10.2),
+     c(0.42,0.26,0.15),
+        c(expression(lambda==0.8),
+          expression(lambda==3),
+          expression(lambda==12)),
+     col=gray((0:3)/3),adj=0)
+## leg.y = seq(0.38,length=3,by=-0.02)
+## segments(rep(10,3),leg.y,rep(12,3),leg.y,
+##          col=gray((0:3)/3),lwd=3)
+## for (i in 1:3)
+##   text(rep(12.4,3),leg.y[i],
+##       substitute(lambda==z,list(z=pvec[i])),adj=0)
+@ 
+\caption{Poisson distribution.}
+\label{fig:poisson}
+\end{figure}
+
+\emph{Examples:} number of seeds/seedlings falling in a gap; number of
+offspring produced in a season (although this might be
+better fit by a binomial if the number of breeding
+attempts is fixed); number of prey
+caught per unit time.
+
+\textbf{Summary:} \\
+\begin{tabular}{ll}
+range & discrete ($0 \le x$)\\
+distribution & $\frac{e^{-\lambda} \lambda^n}{n!}$ \\
+             & \textbf{or} $\frac{e^{-r t} (rt)^n}{n!}$ \\
+\R & \code{dpois}, \code{ppois}, \code{qpois}, \code{rpois} \\
+parameters & $\lambda$ (real, positive), expected number per sample [\code{lambda}] \\
+           & \textbf{or} $r$ (real, positive),
+expected number per unit effort, area, time, etc. (\emph{arrival rate}) \\
+ mean & $\lambda$ (\textbf{or} $rt$) \\
+ variance & $\lambda$ (\textbf{or} $rt$) \\
+ CV & $1/\sqrt{\lambda}$ (\textbf{or} $1/\sqrt{rt}$) \\
+Conjugate prior & Gamma \\
+
+\end{tabular}
+
+\subsubsection{Negative binomial}
+\label{sec:negbinom}
+Most probability books derive the
+negative binomial distribution
+from a series of independent binary 
+(heads/tails, black/white, male/female, yes/no) trials
+that all have the same probability of
+success, like the binomial distribution. 
+Rather than count the number of successes
+obtained in a fixed number of trials, 
+which would result in a binomial distribution,
+the negative binomial counts
+the number of \emph{failures} before a predetermined
+number of successes occurs.
+
+This failure-process parameterization is only occasionally useful in
+ecological modeling.
+%  (although I have used a variant of the negative
+% binomial to describe the distribution of the infectious period of a
+% disease in days, assuming that individuals have to go through multiple
+% stages before they recover or die)
+Ecologists use the negative
+binomial because it is discrete, like the
+Poisson, but its variance can be larger than its mean
+(i.e. it can be \emph{overdispersed}).  Thus,
+it's a good phenomenological description
+of a patchy or clustered distribution with
+no intrinsic upper limit that has more variance
+than the Poisson.
+
+The ``ecological'' parameterization of the negative binomial replaces
+the parameters $p$ (probability of success per trial: \code{prob} in \R) 
+and $n$ (number
+of successes before you stop counting failures: \code{size} in \R) 
+with $\mu=n(1-p)/p$,
+the mean number of failures expected (or of counts in a sample: 
+\code{mu} in \R), and
+$k$, which is typically called an \emph{overdispersion parameter}.
+Confusingly, $k$ is also called \code{size} in \R, because 
+it is mathematically
+equivalent to $n$ in the failure-process parameterization.
+
+The overdispersion parameter measures the amount of
+clustering, or aggregation, or heterogeneity, in the data:
+a smaller $k$ means more heterogeneity.
+The variance of the negative binomial distribution is $\mu+\mu^2/k$, and
+so as $k$ becomes large the variance approaches the mean and the
+distribution approaches the Poisson distribution.  For $k>10$, the
+negative binomial is hard to tell from a Poisson distribution, but $k$
+is often less than 1 in ecological applications\footnote{Beware of the word
+``overdispersion'', which is sometimes used with an opposite meaning
+in spatial statistics, where it can mean ``more regular than expected
+from a random distribution of points''.  If you took quadrat samples
+from such an ``overdispersed'' population, the distribution of counts
+would have variance less than the mean and be ``underdispersed'' in
+the probability distribution sense \citep{BrownBolker2004} (!)}.
+
+Specifically, you can get a negative binomial distribution 
+as the result of a Poisson sampling process
+where the rate $\lambda$ itself varies.  If the distribution of 
+$\lambda$ is a gamma
+distribution (p.~\pageref{sec:gamma}) with shape parameter $k$ and mean
+$\mu$, and $x$ is Poisson-distributed with mean $\lambda$,
+then the distribution of $x$ be a negative binomial
+distribution with mean $\mu$ and overdispersion parameter $k$
+\citep{May1978,HilbornMangel1997}.
+In this case, the negative binomial reflects unmeasured
+(``random'') variability in the population.
+
+Negative binomial distributions
+can also result from a homogeneous birth-death process,
+births and deaths (and immigrations) occurring
+at random in continuous time. 
+Samples from a population that starts from 0 at time
+$t=0$, with immigration rate $i$, birth rate $b$, and
+death rate $d$ will be negative binomially distributed
+with parameters $\mu=i/(b-d) (e^{(b-d)t}-1)$
+and $k=i/b$ \citep[p. 99]{Bailey1964}.
+
+Several different ecological processes can often generate
+the same probability distribution.
+We can usually reason forward
+from knowledge of probable mechanisms operating
+in the field to plausible distributions for
+modeling data, but this many-to-one relationship suggests
+that it is unsafe to reason backwards from
+probability distributions to particular mechanisms
+that generate them.
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+par(lwd=2,cex=1.5,las=1,bty="l",mgp=c(2.5,1,0),yaxs="i")
+xvec = 0:10
+pvec = c(10,1,0.1)
+multdiscplot(xvec,parvec=pvec,
+             dfun="dnbinom",
+             mu=2,parname=c("size"),
+             col=gray((0:3)/3),lwd=4,
+             displ=0.1)
+##legend(4,0.6,
+text(c(3.53,0.37,0.16),
+     c(0.18,0.32,0.59),
+       c(expression(k==10),
+         expression(k==1),
+         expression(k==0.1)),
+     adj=0,
+     col=gray((0:3)/3),lty=1,lwd=3)
+##leg.y = seq(0.6,length=3,by=-0.06)
+##segments(rep(4,3),leg.y,rep(6,3),leg.y,
+##         col=gray((0:3)/3),lwd=3)
+##for (i in 1:3)
+##  text(rep(6.4,3),leg.y[i],
+##       substitute(list(mu==2,k==z),list(z=pvec[i])),adj=0)
+@ 
+\caption{Negative binomial distribution.
+Mean $\mu$ = 2 in all cases.}
+\label{fig:negbinom}
+\end{figure}
+
+\emph{Examples:} essentially
+the same as the Poisson distribution, but allowing for
+heterogeneity.
+Numbers of individuals per patch; 
+distributions of numbers of parasites within individual hosts;
+number of seedlings in a gap, or per unit area, or per seed trap.
+
+% prob=size/(size+mu); size/prob = mu+size; mu = size/prob-size = size*(1/p-1) = size*((1-p)/p)
+\textbf{Summary:} \\
+\begin{tabular}{ll}
+range & discrete, $x \ge 0$\\
+distribution &             $\frac{(n+x-1)!}{(n-1!) x!} p^n (1-p)^x$  \\
+             & \textbf{or} $\frac{\Gamma(k+x)}{\Gamma(k) x!} (k/(k+\mu))^k (\mu/(k+\mu))^x$ \\
+\R & \code{dnbinom}, \code{pnbinom}, \code{qnbinom}, \code{rnbinom} \\
+parameters  & $p$ ($0<p<1$) probability per trial [\code{prob}] \\
+            & \textbf{or} $\mu$ (real, positive) expected number of counts [\code{mu}] \\
+            & $n$ (positive integer) number of successes awaited [\code{size}] \\
+            &  \textbf{or} $k$ (real, positive), overdispersion parameter [\code{size}] \\
+            & \quad (= shape parameter of underlying heterogeneity) \\
+ mean & $\mu=n(1-p)/p$ \\
+ variance & $\mu + \mu^2/k= n(1-p)/p^2$ \\
+% (n(1-p)/p^2)/(n^2(1-p)^2/p^2) = 1/(n(1-p))
+ CV &   $\sqrt{\frac{(1+\mu/k)}{\mu}} = 1/\sqrt{n(1-p)}$ \\
+Conjugate prior & No simple conjugate prior \citep{Bradlow+2002}
+
+\end{tabular}
+
+\R's default coin-flipping
+($n=$\code{size}, $p=$\code{prob}) parameterization.
+In order to use the
+``ecological'' ($\mu=$\code{mu}, $k=$\code{size}) 
+parameterization, you
+\emph{must} name the \code{mu} parameter explicitly
+(e.g. \code{dnbinom(5,size=0.6,mu=1)}).
+
+\subsubsection{Geometric}
+The geometric distribution is the number of trials 
+(with a constant probability of failure) until you get a single
+failure: it's a special case of the negative binomial, with $k$ or $n=1$.
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+par(lwd=2,cex=1.5,las=1,bty="l",yaxs="i")
+pvec=c(0.2,0.5)
+multdiscplot(0:20,parvec=pvec,
+             dfun="dgeom",
+             parname="prob",
+             col=gray((0:2)/2),lwd=3,
+             displ=0.1,
+             xlab="Survival time")
+text(c(5.4,0.5),
+     c(0.082,0.41),
+     paste("p=",pvec,sep=""),
+     adj=0,
+     col=gray((0:2)/2))
+@ 
+\caption{Geometric distribution.}
+\label{fig:geometric}
+\end{figure}
+
+\emph{Examples:} number of successful/survived breeding seasons for a
+seasonally reproducing organism.  Lifespans measured in discrete units.
+
+\textbf{Summary:} \\
+\begin{tabular}{ll}
+range & discrete, $x \ge 0$ \\
+distribution &  $p(1-p)^x$ \\
+\R & \code{dgeom}, \code{pgeom}, \code{qgeom}, \code{rgeom} \\
+parameters  & $p$ ($0<p<1$) probability of ``success'' (death) [\code{prob}] \\
+mean & $1/p-1$ \\
+ variance & $(1-p)/p^2$ \\
+ CV &  $1/\sqrt{1/(1-p)}$ 
+\end{tabular}
+
+\subsubsection{Beta-binomial}
+\label{sec:betabinom}
+Just as one can compound the Poisson distribution
+with a Gamma to allow for heterogeneity in rates,
+producing a negative binomial,
+one can compound the binomial distribution
+with a Beta distribution to allow for
+heterogeneity in per-trial probability,
+producing a \emph{Beta-binomial} distribution
+\citep{Crowder1978,ReeveMurdoch1985,Hatfield+1996}.
+The most common
+parameterization of the 
+beta-binomial distribution uses the binomial parameter
+$N$ (trials per sample), plus two
+additional parameters $a$ and $b$
+that describe the beta distribution of the
+per-trial probability.
+When $a=b=1$ the per-trial probability is
+equally likely to be any value between
+0 and 1 (the mean is 0.5), 
+and the beta-binomial gives
+a uniform (discrete) distribution between 0
+and $N$. As $a+b$ increases,
+the variance of the underlying heterogeneity
+decreases and the beta-binomial converges
+to the binomial distribution.
+\cite{Morris1997} suggests a different parameterization
+that uses an overdispersion parameter $\theta$, like
+the $k$ parameter of the negative binomial distribution.
+In this case the parameters are $N$, the per-trial
+probability $p$ ($=a/(a+b)$), and $\theta$ ($=a+b$).
+When $\theta$ is large (small overdispersion), the beta-binomial becomes
+binomial.  When $\theta$ is near zero (large overdispersion),
+the beta-binomial becomes U-shaped (Figure~\ref{fig:betabinom}).
+
+\textbf{Summary:} \\
+\begin{tabular}{ll}
+range & discrete, $0 \le x \le N$ \\
+\R & \code{dbetabinom}, \code{rbetabinom} [\code{emdbook} package] \\
+  & (\code{pbetabinom} and \code{qbetabinom} are missing) \\
+density & $\frac{\Gamma(\theta)}{\Gamma(p\theta)\Gamma((1-p)\theta)} \cdot %
+\frac{N!}{x! (N-x)!} \cdot \frac{\Gamma(x+p \theta) \Gamma(N-x+(1-p)\theta)}%
+{\Gamma(N+\theta)}$ \\
+parameters  & $p$ (real, positive), probability: average per-trial probability [\code{prob}] \\
+            & $\theta$ (real, positive), overdispersion parameter [\code{theta}] \\
+& \textbf{or} $a$ and $b$ (shape parameters of Beta distribution for per-trial
+probability) \\
+ & [\code{shape1} and \code{shape2}] \\
+ & $a=\theta p$, $b=\theta(1-p)$ \\
+mean & $Np$  \\
+variance & $N p(1-p) \left(1+\frac{N-1}{\theta+1}\right)$ \\
+ CV & $\sqrt{\frac{(1-p)}{Np} \left(1+\frac{N-1}{\theta+1}\right)}$  \\
+\end{tabular}
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+op <- par(lwd=2,cex=1.5,las=1,bty="l",mgp=c(3,1,0),yaxs="i")
+multdiscplot(0:10,parvec=c(0.5,5),parname="theta",
+             dfun="dbetabinom",prob=0.5,size=10,
+             col=gray((0:3)/3),lwd=5,
+             xlab="# of successes",displ=0.1)
+par(xpd=NA)
+text(0.5,0.25,expression(theta==0.5),col=gray(0),pos=4)
+text(4,0.15,  expression(theta==5),col=gray(1/3),pos=4)
+#legend(2,0.5,paste("N=10, p=",c(0.1,0.5,0.9),sep=""),
+#       lty=1,lwd=5,col=gray((0:3)/3))
+par(xpd=TRUE)
+par(op)
+@                    
+\caption{Beta-binomial distribution.
+Number of trials ($N$) equals 10,
+average per-trial probability ($p$) equals 0.5
+for all distributions.}
+\label{fig:betabinom}
+\end{figure}
+
+\emph{Examples:} as for the binomial.
+
+\subsection{Continuous distributions}
+%% You can see Phil Pollett's Java applets that illustrate these distributions,
+%% and dynamically show you the effects of changing the parameters,
+%% at
+%% \url{http://www.maths.uq.edu.au/~pkp/teaching/PlotDist/}.
+
+\subsubsection{Uniform distribution}
+
+The uniform distribution with limits $a$ and $b$,
+denoted $U(a,b)$, has a constant probability
+density of $1/(b-a)$ for $a \le x \le b$ and
+zero probability elsewhere.  The standard uniform,
+$U(0,1)$, is very commonly used as a building
+block for other distributions, but is surprisingly
+rarely used in ecology otherwise.
+
+\textbf{Summary:} \\
+\begin{tabular}{ll}
+range & $a \le x \le b$ \\
+distribution &  $1/(b-a)$ \\
+\R & \code{dunif}, \code{punif}, \code{qunif}, \code{runif} \\
+parameters  &  minimum ($a$) and maximum ($b$) limits (real)
+[\code{min}, \code{max}]\\
+mean & $(a+b)/2$ \\
+%% ((b^3-a^3)/(3*(b-a)) -(a+b)^2/4)
+%% (b^3/3-a^3/3-a^2*b/4-2*a*b^2/4-b^3/4+a^3/4+2*a^2*b/4+a*b^2/4)/(b-a)
+%% (b^3/3-b^3/4-a^3/3+a^3/4-a^2*b/4+2*a^2*b/4-2*a*b^2/4+a*b^2/4)/(b-a)
+%% (b^3/12-a^3/12+a^2*b/4-a*b^2/4)/(b-a)
+%% (A+B)^3 = (A^3+3*A^2*B+3*A*B^2+B^3)
+%% (b-a)^2/12
+variance & $(b-a)^2/12$ \\
+%% (b-a)/(2*sqrt(3))/(a+b)/2
+%% = (b-a)/((a+b)*sqrt(3))
+CV &  $(b-a)/((a+b) \sqrt{3})$
+\end{tabular}
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+op <- par(lwd=2,cex=1.5,las=1,bty="l",yaxs="i")
+par(mar=c(5,4,2,6))
+curve(dunif(x,0,1),from=-0.3,to=2.3,
+   xlab="Value",ylab="Probability density",
+      axes=FALSE,type="S")
+axis(side=2)
+axis(side=1)
+curve(dunif(x,0.5,2),add=TRUE,lty=2,type="S")
+par(xpd=NA)
+text(c(0.5,1.6),
+     c(1.05,1/1.5+0.05),
+     c("U(0,1)","U(0.5,2.5)"))
+par(xpd=FALSE)
+box()
+par(op)
+@ 
+\caption{Uniform distribution.}
+\label{fig:unif}
+\end{figure}
+
+\subsubsection{Normal distribution}
+Normally distributed variables are everywhere, and
+most classical statistical methods
+use this distribution.
+The explanation for the normal distribution's ubiquity is the \emph{Central Limit Theorem},
+which says that if you add a large number of independent
+samples from the same distribution the distribution of the sum will be
+approximately normal.  ``Large'', for practical purposes, can mean as
+few as 5.  The central limit theorem does \emph{not} mean that ``all
+samples with large numbers are normal''.  
+One obvious counterexample is two different populations with
+different means that are lumped together, leading
+to a distribution with two peaks (p.~\pageref{sec:discmix}).
+Also, adding isn't the only way to combine
+samples: if you multiply independent samples from the same distribution,
+you get a log-normal distribution instead of a normal distribution
+(p.~\pageref{sec:lnorm}).
+
+Many distributions (binomial, Poisson, negative binomial, gamma)
+become approximately normal in some limit
+(Figure~\ref{fig:probdisttab}).  You can usually think
+about this as some form of ``adding lots of things together''.
+
+The normal distribution specifies the mean and variance separately,
+with two parameters, which means that one often assumes constant
+variance (as the mean changes), in contrast to the Poisson and
+binomial distribution where the variance is a fixed function of the mean.
+% Whenever you can, it's easiest to explain processes that match the
+% definitions of the Poisson or binomial with the correct distribution.
+% This takes care of the systematic changes of the variance in a natural
+% way.
+% However, you can also define models with
+% \emph{heteroscedasticity}---variance that is not a function of the
+% mean.
+% For example, $Y \sim a X + b + N(0, c X^d)$ specifies a linear
+% regression (the expected value of $Y$ is a linear function of $X$)
+% where the variance, instead of being constant, is itself a function of
+% the dependent variable.
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+op <- par(lwd=2,cex=1.5,las=1,bty="l",yaxs="i")
+par(mar=c(5,4,2,6))
+curve(dnorm(x,0,1),from=-10,to=12,
+   xlab="Value",ylab="Probability density",xlim=c(-14,10),
+      axes=FALSE)
+col2 = gray(0.7)
+axis(side=2)
+axis(side=1,at=seq(-10,10,by=5))
+curve(dnorm(x,0,3),add=TRUE,col=1,lty=2)
+curve(dnorm(x,2,1),add=TRUE,col=col2,lty=1)
+curve(dnorm(x,2,3),add=TRUE,col=col2,lty=2)
+par(xpd=NA)
+#legend(5,0.4,
+text(c(-1,-3),
+     c(0.3,0.1),
+     adj=1,
+       c(expression(list(mu==0,sigma==1)),
+         expression(list(mu==0,sigma==3))))
+text(c(4,6),
+     c(0.3,0.1),
+     adj=0,
+     c(expression(list(mu==2,sigma==1)),
+       expression(list(mu==2,sigma==3))),
+     col=col2)
+par(op)
+@ 
+\caption{Normal distribution}
+\label{fig:normal}
+\end{figure}
+
+
+\emph{Examples:} practically everything.
+
+\textbf{Summary:} \\
+\begin{tabular}{ll}
+range & all real values \\
+distribution & $\frac{1}{\sqrt{2 \pi} \sigma} \exp\left(-\frac{(x-\mu)^2}{2 \sigma^2}\right)$ \\
+\R & \code{dnorm}, \code{pnorm}, \code{qnorm}, \code{rnorm} \\
+parameters  & $\mu$ (real), mean [\code{mean}] \\
+  & $\sigma$ (real, positive), standard deviation [\code{sd}] \\
+mean & $\mu$ \\
+variance & $\sigma^2$ \\
+ CV &  $\sigma/\mu$ \\
+Conjugate prior & Normal ($\mu$); Gamma ($1/\sigma^2$)
+\end{tabular}
+
+\subsubsection{Gamma}
+\label{sec:gamma}
+The \emph{Gamma} distribution
+is the distribution of \emph{waiting times} until a certain
+number of events take place.
+For example,
+$\mbox{Gamma}(\mbox{shape}=3,\mbox{scale}=2)$ is the distribution of
+the length of time (in days) you'd expect to have to wait for 3 deaths
+in a population, given that the average 
+survival time is 2~days (mortality rate is 1/2 per day).
+The mean waiting time
+is 6 days=(3 deaths/(1/2 death per day)).
+(While the gamma
+\emph{function} (\code{gamma} in \R: see Appendix) is usually
+written with a capital Greek gamma, $\Gamma$, the Gamma distribution
+(\code{dgamma} in \R) is written out as Gamma.)  Gamma
+distributions with integer shape parameters are also called
+\emph{Erlang} distributions.
+The Gamma distribution is still defined
+for non-integer (positive) shape parameters, but the simple
+description given above breaks down: how can you define the waiting time until 3.2
+events take place?
+
+For shape parameters $\le 1$, the Gamma has its mode at zero;
+for shape parameter $=1$, the Gamma is equivalent to
+the exponential (see below).  For shape parameter greater than
+1, the Gamma has a peak (mode) at a value greater than zero;
+as the shape parameter increases, the Gamma distribution becomes
+more symmetrical and approaches the normal distribution.
+This behavior makes sense if you think of the Gamma as the
+distribution of the sum of independent, identically distributed
+waiting times, in which case it is governed by the Central
+Limit Theorem.
+
+The scale parameter (sometimes defined in terms of a rate parameter
+instead, $1/\mbox{scale}$) just adjusts the mean of the Gamma
+by adjusting the waiting time per event; however, multiplying
+the waiting time by a constant to adjust its mean
+also changes the variance, so both the variance and the
+mean depend on the scale parameter.
+
+The Gamma distribution is less familiar than the normal,
+and new users of the Gamma often find it annoying that
+in the standard parameterization you can't adjust the
+mean independently of the variance. 
+You could define a new set of parameters $m$ (mean) and
+$v$ (variance), with
+$\mbox{scale}=v/m$ and $\mbox{shape}=m^2/v$ --- but
+then you would find (unlike the normal distribution)
+the shape changing as you changed the variance.
+Nevertheless, the Gamma is extremely useful;
+it solves the problem that many researchers face
+when they have a continuous variable with ``too much
+variance'', whose coefficient of variation is
+greater than about 0.5. Modeling such data with
+a normal distribution leads to unrealistic
+negative values, which then have to be dealt
+with in some \emph{ad hoc} way like truncating
+them or otherwise trying to ignore them.
+The Gamma is often a more realistic alternative.
+
+The Gamma is the continuous counterpart of the negative binomial,
+which is the discrete distribution of a number of trials (rather than
+length of time) until a certain number of events occur.  
+Both the negative
+binomial and Gamma distributions are often generalized,
+however, in ways
+that don't necessarily make sense according to their simple
+mechanistic descriptions (e.g. 
+a Gamma distribution with a shape parameter
+of 2.3 corresponds to the distribution of
+waiting times until 2.3 events occur \ldots).
+
+The Gamma and negative binomial are both 
+commonly used phenomenologically,
+as skewed or overdispersed versions of the
+Poisson or normal distributions, 
+rather than for their mechanistic descriptions.
+The Gamma is less widely used than the negative binomial because
+the negative binomial replaces the Poisson, which is restricted to
+a particular variance, while the Gamma replaces the normal, which can
+have any variance.  Thus you 
+might use the negative binomial for any discrete distribution with
+variance $>$ mean, while you wouldn't need a Gamma distribution unless
+the distribution you were trying to match was skewed to the right.
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+op <- par(lwd=2,cex=1.5,las=1,bty="l")
+curve(dgamma(x,1,1),from=1e-4,to=25,
+   xlab="Value",ylab="Prob. density")
+cols = c("black","gray")
+curve(dgamma(x,2,1),add=TRUE,col=cols[1],lty=2,from=0)
+curve(dgamma(x,5,1),add=TRUE,col=cols[1],lty=3,from=0)
+curve(dgamma(x,1,1/3),add=TRUE,col=cols[2],lty=1,from=0)
+curve(dgamma(x,2,1/3),add=TRUE,col=cols[2],lty=2,from=0)
+curve(dgamma(x,5,1/3),add=TRUE,col=cols[2],lty=3,from=0)
+par(xpd=NA)
+legend(5,1,
+       paste("shape=",c(1,2,5,1,2,5),", scale=",
+             rep(c("1","1/3"),c(3,3)),sep=""),
+       col=rep(cols,each=3),lty=rep(1:3,2))
+par(op)
+@ 
+\caption{Gamma distribution}
+\label{fig:gamma}
+\end{figure}
+
+\textbf{Summary:} \\
+\begin{tabular}{ll}
+range & positive real values \\
+\R & \code{dgamma}, \code{pgamma}, \code{qgamma}, \code{rgamma} \\
+distribution & $\frac{1}{s^a \Gamma(a)} x^{a-1} e^{-x/s}$ \\
+parameters  & $s$ (real, positive), scale: length per event [\code{scale}] \\
+ & \textbf{or} $r$ (real, positive), rate = $1/s$; rate at which events occur [\code{rate}] \\
+  & $a$ (real, positive), shape: number of events [\code{shape}] \\
+mean & $as$ or $a/r$ \\
+variance & $as^2$ or $a/r^2$ \\
+ CV &  $1/\sqrt{a}$
+\end{tabular}
+
+\emph{Examples:} almost any environmental variable with a large
+variance where negative values don't make sense: nitrogen
+concentrations, light intensity, etc..
+
+
+\subsubsection{Exponential}
+The exponential distribution (Figure~\ref{fig:expdist})
+describes the distribution of waiting
+times for a single event to happen, given that there is a constant
+probability per unit time that it will happen.  
+It is the continuous counterpart of the geometric
+distribution and a special case (for shape parameter=1) of the Gamma
+distribution.   It can be useful both mechanistically, as a
+distribution of inter-event times or lifetimes, or phenomenologically,
+for any continuous distribution that has highest probability for zero
+or small values.
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+par(lwd=2,cex=1.5,las=1,bty="l",yaxs="i",xaxs="i",mgp=c(2.5,1,0))
+curve(dexp(x,1),from=1e-4,to=15,
+   xlab="Value",ylab="Probability density")
+curve(dexp(x,0.5),from=1e-4,add=TRUE,lty=2)
+curve(dexp(x,0.2),from=1e-4,add=TRUE,lty=3)
+text(c(0.73,2.17,5.7),
+     c(0.67,0.2,0.11),
+     c(expression(lambda==1),
+       expression(lambda==1/2),
+       expression(lambda==1/5)),
+     col=1,adj=0)
+
+@ 
+\caption{Exponential distribution.}
+\label{fig:expdist}
+\end{figure}
+
+\emph{Examples:} times between events (bird sightings, rainfall,
+etc.); lifespans/survival times; random samples of anything that
+decreases exponentially (e.g. light levels in a forest canopy).
+
+\textbf{Summary:} \\
+\begin{tabular}{ll}
+range & positive real values \\
+\R & \code{dexp}, \code{pexp}, \code{qexp}, \code{rexp} \\
+density & $\lambda e^{-\lambda x}$ \\
+parameters  & $\lambda$ (real, positive), rate: death/disappearance rate [\code{rate}] \\
+mean & $1/\lambda$ \\
+variance & $1/\lambda^2$ \\
+ CV &  1
+\end{tabular}
+
+\subsubsection{Beta}
+\label{sec:beta}
+The beta distribution, a continuous
+distribution closely related to the binomial distribution, 
+completes our basic family of continuous
+distributions (Figure~\ref{fig:probdisttab}).
+The beta distribution is the only standard continuous distribution
+(besides the uniform distribution) with a finite range, from 0 to 1.
+The beta distribution is
+the inferred distribution of the \emph{probability} of success in a binomial
+trial with $a-1$ observed successes and $b-1$ observed failures.
+When $a=b$ the distribution is symmetric around $x=0.5$, when $a<b$ the
+peak shifts toward zero, and when $a>b$ it shifts toward 1.  
+With $a=b=1$, the distribution is $U(0,1)$.
+As $a+b$ (equivalent to the total number of trials+2) gets larger, 
+the distribution becomes more peaked.
+For $a$ or $b$ less than 1, the mechanistic description stops
+making sense (how can you have fewer than zero trials?), but the distribution
+is still well-defined, and 
+when $a$ and $b$ are both between 0 and 1
+it becomes U-shaped --- it has peaks at $p=0$ and $p=1$.
+
+The beta distribution is obviously good for modeling probabilities
+or proportions.
+It can also be useful for modeling
+continuous distributions with peaks at both ends, although in some cases
+a finite mixture model (p.~\pageref{sec:discmix}) may be more appropriate.
+The beta distribution is also useful whenever you have to define
+a continuous distribution on a finite range, as it is the only
+such standard continuous distribution.
+It's easy to rescale the
+distribution so that it applies over some other finite range
+instead of from 0 to 1:
+for example, \cite{Tiwari+2005} used the beta distribution to
+describe the distribution of turtles on a beach, so the range
+would extend from 0 to the length of the beach.
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+op <- par(lwd=2,cex=1.5,las=1,bty="l",yaxs="i",mgp=c(2.5,1,0),
+          mar=c(5,4,2,5)+0.1)
+curve(dbeta(x,1,1),from=0,to=1,
+   xlab="Value",ylab="Probability density",lty=1,
+      ylim=c(0,5))
+curve(dbeta(x,5,5),add=TRUE,from=0,to=1,col=1,lty=2)
+curve(dbeta(x,5,1),add=TRUE,from=0,to=1,col=1,lty=3)
+curve(dbeta(x,1,5),add=TRUE,from=0,to=1,col=1,lty=4)
+curve(dbeta(x,0.5,0.5),add=TRUE,from=0,to=1,col=1,lty=5)
+par(xpd=NA)
+text(0.07,4.15,c("a=1, b=5"),adj=0)
+text(0.5,2.7,c("a=5, b=5"))
+text(c(1,1,0.94),
+     c(4.58,2.53,0.83),
+     c("a=5, b=1",
+       "a=0.5, b=0.5",
+       "a=1, b=1"),
+     adj=0)
+par(xpd=FALSE)
+par(op)
+@ 
+\caption{Beta distribution}
+\label{fig:beta}
+\end{figure}
+
+\textbf{Summary:} \\
+\begin{tabular}{ll}
+range & real, 0 to 1 \\
+\R & \code{dbeta}, \code{pbeta}, \code{qbeta}, \code{rbeta} \\
+density & $\frac{\Gamma(a+b)}{\Gamma(a)\Gamma(b)} x^{a-1}(1-x)^{b-1}$ \\
+parameters  & $a$ (real, positive), shape 1: number of successes +1 [\code{shape1}] \\
+            & $b$ (real, positive), shape 2: number of failures +1 [\code{shape2}] \\
+mean & $a/(a+b)$  \\
+mode & $(a-1)/(a+b-2)$  \\
+variance & $ab/((a+b)^2)(a+b+1)$ \\
+ CV &  $\sqrt{(b/a)/(a+b+1)}$ \\
+\end{tabular}
+
+\subsubsection{Lognormal}
+\label{sec:lnorm}
+The lognormal falls outside the neat classification scheme we've been
+building so far; it is not
+the continuous analogue or limit
+of some discrete sampling distribution
+(Figure~\ref{fig:probdisttab})\footnote{The lognormal extends
+our table in another direction --- exponential transformation
+of a known distribution.  Other distributions have this
+property, most notably the \emph{extreme value distribution},
+which is the log-exponential: if $Y$ is exponentially
+distributed, then log $Y$ is extreme-value distributed.
+As its name suggests, the extreme value distribution
+occurs mechanistically as the distribution of extreme
+values (e.g. maxima) of samples of other distributions
+\citep{Katz+2005}.}.
+Its mechanistic justification
+is like the normal distribution (the Central Limit Theorem), but for
+the \emph{product} of many independent, identical variates rather than
+their sum.  Just as taking logarithms converts products into sums,
+taking the logarithm of a lognormally distributed variable---which
+might result from the product of independent variables---converts
+it it into a normally distributed variable resulting from the 
+sum of the logarithms of those independent variables.
+% (You might consider the name of the lognormal to be backwards,
+% since you have to exponentiate rather than take
+% the logarithm of a normally
+% distributed variable to get one that was lognormally distributed \ldots)
+The best example of this mechanism is the distribution of
+the sizes of individuals or populations that grow exponentially, with
+a per capita growth rate that varies randomly over time.
+At each time step (daily, yearly, etc.), the current size
+is \emph{multiplied} by the
+randomly chosen growth increment, so the final size (when measured) is
+the product of the initial size and all of the random growth
+increments.
+
+One potentially puzzling aspect of the lognormal distribution is that
+its mean is not what you might naively expect if you
+exponentiate a normal distribution with mean $\mu$ (i.e. $e^\mu$).
+Because of Jensen's inequality, and because the exponential function
+is an accelerating function, the mean of the lognormal,
+$e^{\mu+\sigma^2/2}$, is greater than $e^\mu$ by 
+an amount that depends on the variance of the original
+normal distribution.  When the variance is small
+relative to the mean, the mean is
+approximately equal to $e^\mu$, and the lognormal itself looks
+approximately normal (e.g. solid lines in Figure~\ref{fig:lognormal},
+with $\sigma(\log) = 0.2$).  As with the Gamma distribution,
+the distribution also changes shape as the variance increases,
+becoming more skewed.
+
+The log-normal is also used phenomenologically
+in some of the same situations where a Gamma distribution also fits:
+continuous, positive distributions with long tails or variance much
+greater than the mean \citep{McGill+2006}.  
+Like the distinction between a Michaelis-Menten
+and a saturating exponential, you may not be able to tell the difference
+between a lognormal and a Gamma without large amounts of data.
+Use the one that is more convenient, or that corresponds to a more
+plausible mechanism for your data.
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+par(lwd=2,cex=1.5,las=1,bty="l")
+curve(dlnorm(x,0,0.5),from=0,to=12,
+   xlab="Value",ylab="Probability density",n=300,lty=2,
+      ylim=c(0,2))
+curve(dlnorm(x,0,1),add=TRUE,col=1,lty=3,n=300,from=0)
+curve(dlnorm(x,0,0.2),add=TRUE,col=1,lty=1,n=500,from=0)
+curve(dlnorm(x,2,0.5),add=TRUE,col=cols[2],lty=2,from=0)
+curve(dlnorm(x,2,1),add=TRUE,col=cols[2],lty=3,from=0)
+curve(dlnorm(x,2,0.2),add=TRUE,col=cols[2],lty=1,from=0)
+legend(3,2,
+       c(expression(paste(mu[log]==0,", ",sigma[log]==0.2)),
+         expression(paste(mu[log]==0,", ",sigma[log]==0.5)),
+         expression(paste(mu[log]==0,", ",sigma[log]==1)),
+         expression(paste(mu[log]==2,", ",sigma[log]==0.2)),
+         expression(paste(mu[log]==2,", ",sigma[log]==0.5)),
+         expression(paste(mu[log]==2,", ",sigma[log]==1))),
+       col=rep(cols,each=3),lty=rep(1:3,2))
+@ 
+\caption{Lognormal distribution}
+\label{fig:lognormal}
+\end{figure}
+
+\emph{Examples:} sizes or masses of individuals,
+especially rapidly growing individuals; abundance
+vs. frequency curves for plant communities.
+
+\textbf{Summary:} \\
+\begin{tabular}{ll}
+range & positive real values \\
+\R & \code{dlnorm}, \code{plnorm}, \code{qlnorm}, \code{rlnorm} \\
+density & $\frac{1}{\sqrt{2 \pi} \sigma x} e^{-(\log x - \mu)^2/(2 \sigma^2)}$ \\
+parameters  & $\mu$ (real): mean of the logarithm [\code{meanlog}] \\
+  & $\sigma$ (real): standard deviation of the logarithm [\code{sdlog}] \\
+mean & $\exp(\mu+\sigma^2/2)$ \\
+variance & $\exp(2 \mu + \sigma^2) (\exp(\sigma^2)-1)$ \\
+ CV &  $\sqrt{\exp(\sigma^2)-1}$ ($\approx \sigma$ when $\sigma<1/2$)
+\end{tabular}
+\label{lnormsum}
+
+\begin{figure}
+\begin{center}
+\includegraphics{probdisttab}
+\end{center}
+\caption{Relationships among probability distributions.}
+\label{fig:probdisttab}
+\end{figure}
+
+\section{Extending simple distributions;
+compounding and generalizing}
+
+What do you do when none of these simple distributions fits your data?
+You could always explore other distributions.
+For example, the Weibull
+distribution 
+(similar to the Gamma distribution in shape:
+\code{?dweibull} in \R) 
+generalizes the exponential to allow for
+survival probabilities 
+that increase or decrease with age (p.~\pageref{eq:weib}).
+The Cauchy distribution (\code{?dcauchy} in \R),
+described as \emph{fat-tailed} because the
+probability of extreme events (in the tails
+of the distribution) is very large --- larger than for
+the exponential or normal distributions --- can
+be useful for modeling distributions with many
+outliers.
+You can often find useful distributions
+for your data in modeling papers from
+your subfield of ecology.
+
+However, in addition to simply learning 
+more distributions
+it can also useful to learn some
+strategies for generalizing more familiar distributions.
+
+% \begin{quote}
+% \textbf{Digression:}
+% \emph{The two basic assumptions of ``randomness'', for example in
+% the Poisson distribution, are (1) independence and (2) uniformity.
+% Individuals are assumed not to affect each other, and the
+% \emph{expected} arrival rate/population density is assumed to be the
+% same everywhere.  Neither of these assumptions is ever really true.
+% When we relax one or the other we get distributions such as the
+% negative binomial, or more complicated distributions.  You can tell
+% from data whether at least one of these assumptions is violated
+% (e.g. if a data set has variance $>$ mean), but not which one --- you
+% can't infer the process from the pattern.  But you can construct
+% plausible models that explain the pattern in terms of one process or
+% another.}
+% \end{quote}
+
+\subsection{Adding covariates}
+One obvious strategy is to look for systematic differences
+within your data that explain the non-standard shape
+of the distribution.
+For example, a \emph{bimodal} or
+\emph{multimodal} distribution
+(one with two or more peaks, in contrast
+to most of the distributions discussed above that
+have a single peak) 
+may make perfect sense once you realize that 
+your data are a collection of
+objects from different populations
+with different means.% [CITE Holling?]
+For example, the sizes or masses
+of sexually dimorphic animals
+or animals from several different cryptic species
+would bi- or multimodal distributions,
+respectively.  
+A distribution that isn't 
+multimodal but is more fat-tailed
+than a normal distribution might 
+indicate systematic variation in
+a continuous covariate
+such as nutrient availability, or maternal size,
+of environmental temperature, of different individuals.
+
+\subsection{Mixture models}
+But what if you can't identify systematic differences?
+You can still extend standard distributions by supposing
+that your data are really a mixture of observations from
+different types of individuals, but that 
+you can't observe the 
+(finite) types or (continuous) covariates of individuals.  
+These distributions are called \emph{mixture distributions}
+or \emph{mixture models}.
+Fitting them to data 
+can be challenging,
+but they are very flexible.
+
+\subsubsection{Finite mixtures}
+\label{sec:discmix}
+Finite mixture models suppose that 
+your observations
+are drawn from a discrete set of
+unobserved categories, each of which has its own distribution:
+typically all categories have the same type
+of distribution, such as normal, but with different
+mean or variance parameters.
+Finite mixture distributions often
+fit multimodal data.
+Finite mixtures are typically parameterized by the parameters
+of each component of the mixture, plus a set of probabilities
+or percentages
+describing the amount of each component.  For example,
+30\% of the organisms ($p=0.3$) could be in group~1,
+normally distributed with mean $1$ and standard deviation $2$,
+while 70\% ($1-p=0.7$) are in group~2,
+normally distributed with mean $5$ and standard deviation $1$
+(Figure~\ref{fig:discrmix}).
+If the peaks of the 
+distributions are closer together,
+or their standard deviations are larger
+so that the distributions overlap, you'll
+see a broad (and perhaps lumpy) peak rather than
+two distinct peaks.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+par(lwd=2,cex=1.5,las=1,bty="l")
+curve(0.7*dnorm(x,1,2)+0.3*dnorm(x,5,1),from=-8,to=12,
+      ylab="Probability density",xlab="")
+mtext(side=1,"x",line=2,cex=1.5)
+curve(0.7*dnorm(x,1,2),lty=2,add=TRUE)
+curve(0.3*dnorm(x,5,1),lty=2,add=TRUE)
+@
+\caption{Finite mixture distribution:
+70\% $\mbox{Normal}(\mu=1,\sigma=2)$,
+30\% $\mbox{Normal}(\mu=5,\sigma=1)$.}
+\label{fig:discrmix}
+\end{figure}
+
+\label{zinfl}
+\emph{Zero-inflated} models 
+are a common type of finite mixture model
+\citep{Inouye1999,Martin+2005}.
+Zero-inflated models (Figure~\ref{fig:zi}).
+combine a standard discrete probability
+distribution (e.g. binomial, Poisson, 
+or negative binomial), which typically
+include some probability of 
+sampling zero counts even when some individuals
+are present, with some additional process
+that can also lead to a zero 
+count (e.g. complete absence
+of the species or  trap failure).
+
+\subsection{Continuous mixtures}
+\label{sec:compounding}
+Continuous mixture distributions, 
+also known as \emph{compounded distributions}, 
+allow the parameters
+themselves to vary randomly, drawn from
+their own distribution.
+They are a sensible choice for
+overdispersed data, or for data
+where you suspect that unobserved
+covariates may be important.
+Technically, 
+compounded distributions
+are the distribution of a sampling
+distribution $S(x,p)$ with parameter(s) $p$ that vary according to another
+(typically continuous) distribution $P(p)$. 
+The distribution of the
+compounded distribution $C$ is $C(x) = \int S(x,p) P(p) dp$.
+For example, compounding a Poisson
+distribution by drawing the rate parameter $\lambda$ from a Gamma
+distribution with shape parameter $k$ (and scale parameter $\lambda/k$,
+to make the mean equal to $\lambda$) results in a negative binomial 
+distribution (p.~\pageref{sec:negbinom}).  
+Continuous mixture distributions are
+growing ever more popular in ecology as ecologists
+try to account for heterogeneity in their data.
+
+The negative binomial,
+which could also be called the
+Gamma-Poisson distribution to highlight
+its compound origin, is the most common
+compounded distribution.
+The Beta-binomial is also fairly common:
+like the negative binomial, it
+compounds a common discrete
+distribution (binomial) with its
+conjugate prior (Beta), resulting
+in a mathematically simple form
+that allows for more variability.
+The \emph{lognormal-Poisson} is very similar to the
+negative binomial, except that (as its name
+suggests) it uses the lognormal 
+instead of the Gamma as a compounding distribution.
+One technical reason to use the less 
+common lognormal-Poisson is that on the log scale 
+the rate parameter is normally
+distributed, which simplifies some numerical procedures
+\citep{Elston+2001}.
+
+
+\citet{Clark+1999} used the
+\emph{Student $t$} distribution
+to model seed dispersal curves.
+Seeds often disperse
+fairly uniformly near parental trees but also
+have a high probability of long dispersal.
+These two characteristics are incompatible
+with standard seed dispersal models like the
+exponential and normal distributions.
+Clark \emph{et al.} assumed that the 
+seed dispersal curve
+represents a compounding of a normal distribution for the dispersal
+of any one seed with an Gamma distribution of the 
+inverse variance of the distribution of any particular seed (i.e.,
+$1/\sigma^2 \sim \mbox{Gamma}$)\footnote{This 
+choice of a compounding distribution, which may
+seem arbitrary, turns out to be mathematically convenient.}.
+This variation in variance accounts for the
+different distances that different seeds 
+may travel as a function of factors 
+like their size, shape,
+height on the tree, and the wind speed at the time
+they are released.
+Clark \emph{et al.} used compounding
+to model these factors as random, unobserved
+covariates since they are practically impossible
+to measure for all the individual seeds on a tree
+or in a forest.
+
+The inverse Gamma-normal model is equivalent
+to the Student $t$ distribution, 
+which you may recognize from
+$t$ tests in classical statistics and which statisticians
+sometimes use as
+a phenomenological model for fat-tailed distributions.
+Clark \emph{et al.}
+extended the usual one-dimensional 
+$t$ distribution (\code{?dt} in \R)
+to the two-dimensional
+distribution of seeds around a parent and called it the
+$2Dt$ distribution.
+The $2Dt$ distribution has a scale parameter that determines
+the mean dispersal distance and a shape parameter $p$.
+When $p$ is 
+large the underlying Gamma distribution has a small
+coefficient of variation and the $2Dt$
+distribution is close to normal; when $p=1$ the
+$2Dt$ becomes a Cauchy distribution.
+
+\emph{Generalized distributions} are 
+an alternative class of mixture distribution that
+arises when there is a
+sampling distribution $S(x)$ for the number of individuals within a
+cluster and another sampling distribution $C(x)$ for number of
+clusters in a sampling unit.
+For example, the distribution of number
+of eggs per square might be generalized from the distribution of
+clutches per square and of eggs per clutch. A standard example is the
+``Poisson-Poisson'' or ``Neyman Type A'' distribution
+\citep{Pielou1977}, which assumes a
+Poisson distribution of clusters with a Poisson distribution of
+individuals in each.
+
+Figuring out the probability distribution or
+density formulas for compounded distributions
+analytically is mathematically challenging (see \cite{Bailey1964}
+or \cite{Pielou1977} for the gory details), but 
+\R\ can easily generate random numbers from these distributions
+(see the \R\ supplement for more detail).
+
+The key is that \R's functions for generating random distributions
+({\tt rpois}, {\tt rbinom}, etc.) can take vectors for their
+parameters.
+Rather than generate (say) 20 deviates from a binomial
+distribution with $N$ trials and
+and a fixed per-trial probability $p$,
+you can choose 20 deviates with 
+$N$ trials and a vector of 20 different per-trial probabilities
+$p_1$ to $p_20$.
+Furthermore, you can generate this vector of
+parameters from another randomizing function!  For example, to
+generate 20 beta-binomial deviates with
+$N=10$ and the per-trial probabilities drawn from a
+beta distribution with $a=2$ and $b=1$, you could use
+\code{rbinom(20,rbeta(20,2,1))}.
+
+Compounding and generalizing
+are powerful ways to extend the range of
+stochastic ecological models.
+A good fit to a compounded distribution also
+suggests that environmental variation is
+shaping the variation in the population.
+But be careful: \cite{Pielou1977} demonstrates
+that for Poisson distributions, every generalized distribution
+(corresponding to variation in the underlying
+density) can also be generated
+by a compound distribution (corresponding to individuals occurring
+in clusters), and concludes that (p. 123)
+``the fitting of theoretical frequency distributions to observational
+data can never by itself suffice to `explain' the pattern of a
+natural population''.
+
+\newpage
+
+\section{\R\ supplement}
+
+For all of the probability distributions
+discussed in this chapter (and many more: try
+\code{help.search("distribution")}),
+\R\ can generate random numbers drawn from the distribution
+(``deviates'');
+compute the cumulative distribution function and the probability
+distribution
+function; and compute the quantile function, which gives the
+$x$ value such that $\int_0^x P(x) \, dx$ (area under the curve from 0
+to $x$) is a specified value.
+For example, you can obtain the critical values of the
+standard normal distribution, $\pm 1.96$, with
+\code{qnorm(0.025)} and \code{qnorm(0.975)}
+(Figure~\ref{fig:dpqr}).
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=8>>=
+sh = 4
+op=par(mfrow=c(1,2))
+par(mar=c(5.1,4.5,1,0.5),cex=1.5,lwd=2,las=1,bty="l",yaxs="i")
+curve(dgamma(x,shape=sh),from=0,to=20,ylab="",xlab="",lwd=2,axes=FALSE)
+mtext(side=1,line=2,cex=2,"x")
+axis(side=1,labels=FALSE)
+axis(side=2,labels=FALSE)
+box()
+xvec = seq(0,5,length=100)
+polygon(c(xvec,rev(xvec)),c(rep(0,length(xvec)),dgamma(rev(xvec),shape=sh)),
+        col="gray",border=NA)
+curve(dgamma(x,shape=sh),from=0,to=20,lwd=2,add=TRUE) ## redraw
+abline(v=5,lty=3)
+mtext(side=1,line=0.7,at=5,expression(x[0]),cex=1.5)
+abline(h=dgamma(5,shape=sh),lty=2,lwd=2)
+mtext(side=2,at=dgamma(5,shape=sh),las=1,expression(ddist(x[0])),
+      line=1,cex=1.5)
+text(10,0.1,expression(pdist(x[0])),cex=1)
+arrows(6.5,0.1,3,0.1,angle=20,lwd=2)
+mtext(side=2,at=0.07,"Probability\ndensity",cex=2,line=1,
+      las=0)
+set.seed(1001)
+r1 <- rgamma(10,shape=sh)
+points(r1,rep(0.01,10),cex=1.5)
+text(11.7,0.03,"rdist(10)",adj=0,cex=1)
+arrows(11,0.03,7,0.02,lwd=2,angle=20)
+curve(pgamma(x,shape=sh),from=0,to=20,xlab="",ylab="",lwd=2,axes=FALSE)
+axis(side=1,labels=FALSE)
+axis(side=2,labels=FALSE)
+mtext(side=1,line=2,cex=2,"x")
+box()
+abline(v=5,lty=3)
+mtext(side=1,line=0.3,at=5,expression(x[0]),cex=1.5)
+abline(h=pgamma(5,shape=sh),lty=2,lwd=2)
+mtext(side=2,at=pgamma(5,shape=sh),las=1,expression(pdist(x[0])),
+      line=1,cex=1.5)
+abline(v=qgamma(0.95,shape=sh),lty=4,lwd=2)
+mtext(side=2,at=0.95,las=1,0.95,
+      line=par("mgp")[2],cex=1.5)
+segments(par("usr")[1],0.95,qgamma(0.95,shape=sh),0.95,lty=4,lwd=2)
+mtext(side=1,at=qgamma(0.95,shape=sh),text="qdist(0.95)",line=1,
+      cex=1.5,adj=0.3)
+mtext(side=2,at=0.4,adj=0.5,"Cumulative\ndistribution",cex=2,line=1,las=0)
+@
+\caption{\R\ functions for an arbitrary distribution
+\code{dist}, showing density function (\code{ddist}),
+cumulative distribution function (\code{pdist}),
+quantile function (\code{qdist}), and
+random-deviate function (\code{rdist}).}
+\label{fig:dpqr} 
+\end{figure}
+
+\subsection{Discrete distribution}
+For example, let's explore the (discrete)
+negative binomial distribution.
+
+First set the random-number seed for
+consistency:
+<<>>=
+set.seed(1001)
+@ 
+
+Arbitrarily choose parameters $\mu=10$ and $k=0.9$ --- %
+since $k<1$, this represents a strongly overdispersed
+population.  Remember that \R\ uses \code{size} to
+denote $k$, because $k$ is mathematically equivalent
+to the number of failures in the failure-process
+parameterization.
+
+<<>>=
+z <- rnbinom(1000,mu=10,size=0.9)
+@ 
+
+Check the first few values:
+<<>>=
+head(z)
+@ 
+
+Since the negative binomial has no set upper limit,
+we will just plot the results up to the maximum value
+sampled:
+<<>>=
+maxz <- max(z)
+@ 
+
+The easiest way to plot the results is:
+<<>>=
+f <- factor(z,levels=0:maxz)
+plot(f)
+@ 
+using the \code{levels} specification to make sure
+that all values up to the maximum are included in
+the plot even when none were sampled in this particular
+experiment.
+
+If we want the observed probabilities (freq/N)
+rather than the frequencies:
+<<>>=
+obsprobs <- table(f)/1000
+plot(obsprobs)
+@ 
+
+Add theoretical values:
+<<>>=
+tvals <- dnbinom(0:maxz,size=0.9,mu=10)
+points(0:maxz,tvals)
+@ 
+
+You could plot the deviations with
+\code{plot(0:maxz,obsprobs-tvals)};
+this gives you some idea how the
+variability changes with the mean.
+
+Find the probability that $x>30$:
+<<>>=
+pnbinom(30,size=0.9,mu=10,lower.tail=FALSE)
+@ 
+By default \R's distribution functions will
+give you the \emph{lower tail}
+of the distribution --- the
+probability that $x$ is less than
+or equal to some particular value.
+You could use
+\code{1-pnbinom(30,size=0.9,mu=10)}
+to get the uppper tail
+since $\prob(x>30)=1-\prob(x\le 30)$,
+but using \code{lower.tail=FALSE} to get the upper tail
+is more numerically accurate.
+
+What is the upper 95th percentile of the distribution?
+<<>>=
+qnbinom(0.95,size=0.9,mu=10)
+@ 
+To get
+the lower and upper 95\% confidence limits,
+you need 
+<<>>=
+qnbinom(c(0.025,0.975),size=0.9,mu=10)
+@ 
+
+You can also use the random sample \code{z} to check
+that the mean and variance, and 95th quantile
+of the sample, agree reasonably
+well with the theoretical expectations:
+<<>>=
+mu <- 10
+k <- 0.9
+c(mu,mean(z))
+c(mu*(1+mu/k),var(z))
+c(qnbinom(0.95,size=k,mu=mu),quantile(z,0.95))
+@ 
+
+\subsection{Continuous distribution: lognormal}
+
+Going through the same exercise for 
+the lognormal, a continuous distribution:
+
+<<>>=
+z <- rlnorm(1000,meanlog=2,sdlog=1)
+@ 
+
+Plot the results:
+<<>>=
+hist(z,breaks=100,freq=FALSE)
+lines(density(z,from=0),lwd=2)
+@ 
+
+Add theoretical values:
+<<>>=
+curve(dlnorm(x,meanlog=2,sdlog=1),add=TRUE,lwd=2,from=0,
+      col="darkgray")
+@ 
+
+The probability of $x>20$,
+95\% confidence limits:
+<<>>=
+plnorm(30,meanlog=2,sdlog=1,lower.tail=FALSE)
+qlnorm(c(0.025,0.975),meanlog=2,sdlog=1)
+@
+
+Comparing 
+the theoretical values given
+on p.~\pageref{lnormsum} with the observed values
+for this random sample:
+
+<<>>=
+meanlog <- 2
+sdlog <- 1
+c(exp(meanlog+sdlog^2/2),mean(z))
+c(exp(2*meanlog+sdlog^2)*(exp(sdlog^2)-1),var(z))
+c(qlnorm(0.95,meanlog=meanlog,sdlog=sdlog),quantile(z,0.95))
+@ 
+There is a fairly large difference between the expected
+and observed variance.
+This is typical: variances of random samples
+have larger variances, or absolute differences
+from their theoretical expected values, than
+means of random samples.
+
+Sometimes it's easier to deal with
+log-normal data by
+taking the logarithm of the data and comparing them
+to the normal distribution:
+<<>>=
+hist(log(z),freq=FALSE,breaks=100)
+curve(dnorm(x,mean=meanlog,sd=sdlog),add=TRUE,lwd=2)
+@ 
+
+\begin{table}
+\begin{tabular}{llclp{2in}}
+\textbf{Distribution} & \textbf{Type} &  \textbf{Range} & \textbf{Skew} & \textbf{Examples} \\
+\hline
+Binomial & Discrete & $0,N$ & any & Number surviving, number killed \\
+Poisson & Discrete & $0,\infty$ & right $\to$ none & Seeds per quadrat, settlers 
+(variance/mean $\approx 1$)\\
+Negative binomial & Discrete & $0,\infty$ & right & Seeds per quadrat, settlers
+(variance/mean $> 1$) \\
+Geometric & Discrete & $0,\infty$ & right & Discrete lifetimes \\
+Normal & Continuous & $-\infty,\infty$ & none & Mass \\
+Gamma & Continuous & $0,\infty$ & right & Survival time, distance to nearest edge \\
+Exponential & Continuous & $0,\infty$ & right & Survival time, distance to nearest edge \\
+Lognormal & Continuous & $0,\infty$ & right & Size, mass (exponential growth)
+\end{tabular}
+
+\caption{Summary of probability distributions}
+\end{table}
+
+\afterpage{\clearpage}
+
+\subsection{Mixing and compounding distributions}
+
+\subsubsection{Finite mixture distributions}
+
+The general recipe for generating
+samples from finite mixtures is to use a uniform distribution
+to sample which of the components of the mixture to
+sample, then use \code{ifelse} to pick values from
+one distribution or the other.  To pick 1000 values from
+a mixture of normal distributions with the 
+parameters shown in Figure~\ref{fig:discrmix}
+($p=0.3$, $\mu_1=1$, $\sigma_1=2$, $\mu_2=5$,
+$\sigma_2=1$):
+
+<<>>=
+u1 <- runif(1000)
+z <- ifelse(u1<0.3,rnorm(1000,mean=1,sd=2),
+            rnorm(1000,mean=5,sd=1))
+hist(z,breaks=100,freq=FALSE)
+@ 
+
+The probability density of a finite mixture
+composed of two distributions $D_1$ and $D_2$
+in proportions $p_1$ and $1-p_1$
+is $p_1 D_1+p_2 D_2$.
+We can superimpose the theoretical probability density
+for the finite mixture above on the histogram:
+<<>>=
+curve(0.3*dnorm(x,mean=1,sd=2)+0.7*dnorm(x,mean=5,sd=1),
+      add=TRUE,lwd=2)
+@ 
+
+The general formula for the probability distribution of
+a zero-inflated distribution, with an underlying
+distribution $P(x)$ and a zero-inflation probability
+of $p_z$, is:
+\begin{eqnarray*}
+\mbox{Prob}(0) & = & p_z + (1-p_z) P(0) \\
+\mbox{Prob}(x>0) & = & (1-p_z) P(x)
+\end{eqnarray*}
+So, for example, we could define a probability distribution
+for a zero-inflated negative binomial as follows:
+<<>>=
+dzinbinom = function(x,mu,size,zprob) {
+  ifelse(x==0,
+         zprob+(1-zprob)*dnbinom(0,mu=mu,size=size),
+         (1-zprob)*dnbinom(x,mu=mu,size=size))
+}
+@ 
+(the name, \code{dzinbinom}, follows the \R\ convention
+for a probability distribution function: a \code{d}
+followed by the abbreviated name of the distribution,
+in this case \code{zinbinom} for
+``\textbf{z}ero-\textbf{i}nflated \textbf{n}egative
+\textbf{binom}ial'').
+\label{zinbinom}
+
+The \code{ifelse} command checks every element of
+\code{x} to see whether it is zero or not and fills
+in the appropriate value depending on the answer.
+
+Here's a random deviate generator:
+<<>>=
+rzinbinom = function(n,mu,size,zprob) {
+  ifelse(runif(n)<zprob,
+         0,
+         rnbinom(n,mu=mu,size=size))
+}
+@ 
+The command \code{runif(n)} picks \code{n}
+random values between 0 and 1; the \code{ifelse}
+command compares them with the value of
+\code{zprob}.  If an individual value is
+less than \code{zprob} (which happens with probability
+\code{zprob}=$p_z$), then the corresponding
+random number is zero; otherwise it is a value
+picked out of the appropriate negative binomial
+distribution.
+
+\subsubsection{Compounded distributions}
+
+Start by confirming numerically that a negative binomial
+distribution is really a compounded Poisson-Gamma distribution.
+Pick 1000 values out of a Gamma distribution,
+then use those values as the $\lambda$ (rate)
+parameters in a random draw from a Poisson
+distribution:
+<<>>=
+k <- 3
+mu <- 10
+lambda <- rgamma(1000,shape=k,scale=mu/k)
+z <- rpois(1000,lambda)
+P1 <- table(factor(z,levels=0:max(z)))/1000 
+plot(P1)
+P2 <- dnbinom(0:max(z),mu=10,size=3)
+points(0:max(z),P2)
+@
+
+Establish that a Poisson-lognormal and
+a Poisson-Gamma (negative binomial) are
+not very different: pick the Poisson-lognormal
+with approximately the same mean and variance
+as the negative binomial just shown.
+
+% mean and var of gamma: 
+<<>>=
+mlog <- mean(log(lambda))
+sdlog <- sd(log(lambda))
+lambda2 <- rlnorm(1000,meanlog=mlog,sdlog=sdlog)
+z2 <- rpois(1000,lambda2)
+P3 <- table(factor(z2,levels=0:max(z)))/1000
+matplot(0:max(z),cbind(P1,P3),pch=1:2)
+lines(0:max(z),P2)
+@ 

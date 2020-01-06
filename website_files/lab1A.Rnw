@@ -1,0 +1,213 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{amssymb}
+\usepackage{amsmath}
+
+\newcommand{\R}{{\sf R}}
+\newcommand{\code}[1]{\texttt{#1}}
+\title{Lab 1: solutions}
+\author{\copyright 2005 Ben Bolker}
+
+\newcounter{exercise}
+\numberwithin{exercise}{section}
+\newcommand{\exnumber}{\addtocounter{exercise}{1} \theexercise \thinspace}
+
+
+\begin{document}
+\maketitle
+\addtocounter{section}{2}
+\textbf{Exercise\exnumber}:
+
+\begin{enumerate}
+\item
+<<>>=
+2^7/(2^7-1)
+(1-1/2^7)^-1
+@ 
+\item 
+<<>>=
+1+0.2
+1+0.2+0.2^2/2
+1+0.2+0.2^2/2+0.2^3/6
+exp(0.2)
+@ 
+\item
+<<>>=
+x=1
+1/sqrt(2*pi)*exp(-x^2/2)
+dnorm(1)
+x=2
+1/sqrt(2*pi)*exp(-x^2/2)
+dnorm(2)
+@
+\end{enumerate}
+
+\addtocounter{section}{1}
+\setcounter{exercise}{0}
+
+\textbf{Exercise\exnumber}:
+(nothing to write down!)
+
+\addtocounter{section}{2}
+\setcounter{exercise}{0}
+\textbf{Exercise\exnumber}:
+<<>>=
+X=read.table("ChlorellaGrowth.txt",header=TRUE) 
+Light=X[,1]; rmax=X[,2] 
+logLight=log(Light)
+@ 
+
+<<fig=TRUE>>=
+op <- par(cex=1.5,cex.main=0.9)
+plot(logLight,rmax,
+     xlab="Log light intensity (uE/m^2/s)",
+     ## expression(paste("Log light intensity ",(mu*E/m^2/s))), ylab=
+     ylab="Maximum growth rate rmax (1/d)",pch=16) 
+title(main="Data from Fussmann et al. (2000) system")
+fit=lm(rmax~logLight)
+abline(fit) 
+rcoef=round(coef(fit),digits=3)
+text(3.7,3.5,paste("rmax=",rcoef[1],"+",rcoef[2],"log(Light)"))
+par(op)
+@ 
+
+\textbf{Exercise\exnumber}:
+explained in text
+
+\textbf{Exercise\exnumber}:
+<<fig=TRUE>>=
+plot(Light,rmax,xlim=c(0,120),ylim=c(1,4))
+@ 
+
+\textbf{Exercise\exnumber}:
+<<>>=
+X=read.table("ChlorellaGrowth.txt",header=TRUE) 
+Light=X[,1]; rmax=X[,2]
+logLight=log(Light)
+logrmax = log(rmax)
+@ 
+
+<<fig=TRUE>>=
+op <- par(mfcol=c(2,1))
+plot(Light,rmax,xlab="Light intensity (uE/m2/sa)", ylab="Maximum growth rate rmax (1/d)",pch=16) 
+title(main="Data from Fussmann et al. (2000) system")
+plot(logLight,logrmax,xlab="Log light intensity", ylab="Log max growth rate",pch=16) 
+title(main="Data from Fussmann et al. (2000) system")
+par(op)
+@
+
+
+\textbf{Exercise\exnumber}:
+
+<<>>=
+x = 3:8
+y=5*x+3
+@ 
+
+<<fig=TRUE>>=
+op = par(mfrow=c(2,2))
+plot(x,y,lty=1,col=1,type="l")
+plot(x,y,lty=2,col=2,type="l")
+plot(x,y,lty=3,col=3,type="l")
+plot(x,y,lty=4,col=4,type="l")
+par(op)
+@ 
+
+\textbf{Exercise\exnumber}:
+(nothing to say)
+
+\addtocounter{section}{3}
+\setcounter{exercise}{0}
+
+\textbf{Exercise\exnumber}:
+<<keep.source=TRUE>>=
+seq(1,13,by=4)
+## or
+seq(1,by=4,length=4)
+seq(1,5,by=0.2)
+@ 
+
+\textbf{Exercise\exnumber}:
+<<keep.source=TRUE>>=
+z=c(1,3,5,7,9,11) ## set value of z
+z[c(2,1,3)]
+@ 
+
+\textbf{Exercise\exnumber}:
+<<>>=
+x=1:10
+y = (x-1)/(x+1)
+@ 
+
+<<fig=TRUE>>=
+plot(x,y,type="b")
+@ 
+
+\textbf{Exercise\exnumber}:
+<<>>=
+r=0.5
+n=10
+G = r^(0:n)
+sum(G)
+1/(1-r)
+n=50
+sum(r^(0:n))
+2-sum(r^(0:n))
+@ 
+
+\textbf{Exercise\exnumber}:
+<<>>=
+set.seed(273)
+x = runif(20)
+x[x<mean(x)]
+@ 
+
+\textbf{Exercise\exnumber}:
+<<>>=
+which(x<mean(x))
+@ 
+or
+<<>>=
+p = 1:length(x)
+p[x<mean(x)]
+@ 
+
+\textbf{Exercise\exnumber*}:
+<<>>=
+x = 1:40
+n = length(x)
+x[seq(1,n,by=2)]
+x[-seq(2,n,by=2)]
+@ 
+
+\addtocounter{section}{1}
+\setcounter{exercise}{0}
+
+\textbf{Exercise\exnumber*}:
+<<>>=
+v = c(1,2,1,2,1,2,1,2)
+X=matrix(v,nrow=2,ncol=4)
+@ 
+or
+<<>>=
+v = rep(1:2,4)
+X=matrix(v,nrow=2,ncol=4)
+@ 
+or
+<<>>=
+v = rep(1:2,each=4)
+X=matrix(v,nrow=2,ncol=4,byrow=TRUE)
+@ 
+
+\textbf{Exercise\exnumber*}:
+<<>>=
+set.seed(273)
+v = rnorm(35,mean=1,sd=2)
+matrix(v,nrow=5,ncol=7)
+@
+
+\textbf{Exercise\exnumber}:
+nothing to do
+
+\end{document}

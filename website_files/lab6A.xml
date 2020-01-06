@@ -1,0 +1,472 @@
+<?xml version="1.0"?>
+<!DOCTYPE html    PUBLIC "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN"
+           "http://www.w3.org/Math/DTD/mathml2/xhtml-math11-f.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="GENERATOR" content="TtM 3.70" />
+ <style type="text/css">
+ div.p { margin-top: 7pt; }
+ span.roman {font-family: serif; font-style: normal; font-weight: normal;} 
+</style>
+ 
+
+
+<title> Lab 6: estimation (solutions) </title>
+</head>
+<body>
+ 
+<h1 align="center">Lab 6: estimation (solutions) </h1>
+
+<h3 align="center">Ben Bolker </h3>
+
+ &#169; 2005 Ben Bolker
+
+<div class="p"><!----></div>
+<b>Exercise  1</b>:
+
+<div class="p"><!----></div>
+(Recreate negative binomial data, likelihood surface, etc.):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;set.seed(1001)
+&#62;&nbsp;mu.true&nbsp;=&nbsp;1
+&#62;&nbsp;k.true&nbsp;=&nbsp;0.4
+&#62;&nbsp;x&nbsp;=&nbsp;rnbinom(50,&nbsp;mu&nbsp;=&nbsp;mu.true,&nbsp;size&nbsp;=&nbsp;k.true)
+&#62;&nbsp;NLLfun1&nbsp;=&nbsp;function(p,&nbsp;dat&nbsp;=&nbsp;x)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mu&nbsp;=&nbsp;p[1]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k&nbsp;=&nbsp;p[2]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-sum(dnbinom(x,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k,&nbsp;log&nbsp;=&nbsp;TRUE))
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Method-of-moments estimates, for starting point:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;m&nbsp;=&nbsp;mean(x)
+&#62;&nbsp;v&nbsp;=&nbsp;var(x)
+&#62;&nbsp;mu.mom&nbsp;=&nbsp;m
+&#62;&nbsp;k.mom&nbsp;=&nbsp;m/(v/m&nbsp;-&nbsp;1)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Using <tt>optim()</tt> to find best fit:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;O1&nbsp;=&nbsp;optim(fn&nbsp;=&nbsp;NLLfun1,&nbsp;par&nbsp;=&nbsp;c(mu&nbsp;=&nbsp;mu.mom,&nbsp;k&nbsp;=&nbsp;k.mom))
+&#62;&nbsp;O1
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+$par
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mu&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k&nbsp;
+1.2602356&nbsp;0.2884793&nbsp;
+
+$value
+[1]&nbsp;71.79646
+
+$counts
+function&nbsp;gradient&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;45&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NA&nbsp;
+
+$convergence
+[1]&nbsp;0
+
+$message
+NULL
+
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculating likelihood surface:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;muvec&nbsp;=&nbsp;seq(0.4,&nbsp;3,&nbsp;by&nbsp;=&nbsp;0.05)
+&#62;&nbsp;kvec&nbsp;=&nbsp;seq(0.01,&nbsp;0.7,&nbsp;by&nbsp;=&nbsp;0.01)
+&#62;&nbsp;resmat&nbsp;=&nbsp;matrix(nrow&nbsp;=&nbsp;length(muvec),&nbsp;ncol&nbsp;=&nbsp;length(kvec))
+&#62;&nbsp;for&nbsp;(i&nbsp;in&nbsp;1:length(muvec))&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(j&nbsp;in&nbsp;1:length(kvec))&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;resmat[i,&nbsp;j]&nbsp;=&nbsp;NLLfun1(c(muvec[i],&nbsp;kvec[j]))
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The new part: (1) construct confidence levels
+(bivariate, so use <tt>df=2</tt> in <tt>qchisq</tt>):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;alevels&nbsp;=&nbsp;c(0.5,&nbsp;0.9,&nbsp;0.95,&nbsp;0.99,&nbsp;0.999)
+&#62;&nbsp;minval&nbsp;=&nbsp;O1$value
+&#62;&nbsp;nll.levels&nbsp;=&nbsp;qchisq(alevels,&nbsp;df&nbsp;=&nbsp;2)/2&nbsp;+&nbsp;minval
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Draw  the contour plot, then add MLEs,
+true values, and method-of-moments values
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;contour(muvec,&nbsp;kvec,&nbsp;resmat,&nbsp;levels&nbsp;=&nbsp;nll.levels,&nbsp;labels&nbsp;=&nbsp;alevels)
+&#62;&nbsp;points(O1$par["mu"],&nbsp;O1$par["k"],&nbsp;pch&nbsp;=&nbsp;16)
+&#62;&nbsp;points(mu.true,&nbsp;k.true,&nbsp;pch&nbsp;=&nbsp;1)
+&#62;&nbsp;points(mu.mom,&nbsp;k.mom,&nbsp;pch&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab6A-006.png" alt="lab6A-006.png" />
+
+<div class="p"><!----></div>
+<b>Exercise 2:</b>
+
+<div class="p"><!----></div>
+Set up reef fish data, yet again:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;a&nbsp;=&nbsp;0.696
+&#62;&nbsp;b&nbsp;=&nbsp;9.79
+&#62;&nbsp;recrprob&nbsp;=&nbsp;function(x,&nbsp;a&nbsp;=&nbsp;0.696,&nbsp;b&nbsp;=&nbsp;9.79)&nbsp;a/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;x)
+&#62;&nbsp;scoefs&nbsp;=&nbsp;c(mu&nbsp;=&nbsp;25.32,&nbsp;k&nbsp;=&nbsp;0.932,&nbsp;zprob&nbsp;=&nbsp;0.123)
+&#62;&nbsp;rzinbinom&nbsp;=&nbsp;function(n,&nbsp;mu,&nbsp;size,&nbsp;zprob)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ifelse(runif(n)&nbsp;&lt;&nbsp;zprob,&nbsp;0,&nbsp;rnbinom(n,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;size))
++&nbsp;}
+&#62;&nbsp;settlers&nbsp;=&nbsp;rzinbinom(603,&nbsp;mu&nbsp;=&nbsp;scoefs["mu"],&nbsp;size&nbsp;=&nbsp;scoefs["k"],&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;zprob&nbsp;=&nbsp;scoefs["zprob"])
+&#62;&nbsp;recr&nbsp;=&nbsp;rbinom(603,&nbsp;prob&nbsp;=&nbsp;recrprob(settlers),&nbsp;size&nbsp;=&nbsp;settlers)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Likelihood functions for Shepherd, BH, and constant model,
+using log-scaled parameters:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;NLLfun3L&nbsp;=&nbsp;function(loga,&nbsp;logb,&nbsp;logd)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a&nbsp;=&nbsp;exp(loga)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b&nbsp;=&nbsp;exp(logb)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;d&nbsp;=&nbsp;exp(logd)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;recrprob&nbsp;=&nbsp;a/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;settlers^d)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-sum(dbinom(recr,&nbsp;prob&nbsp;=&nbsp;recrprob,&nbsp;size&nbsp;=&nbsp;settlers,&nbsp;log&nbsp;=&nbsp;TRUE),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;na.rm&nbsp;=&nbsp;TRUE)
++&nbsp;}
+&#62;&nbsp;NLLfun4L&nbsp;=&nbsp;function(loga,&nbsp;logb)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a&nbsp;=&nbsp;exp(loga)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b&nbsp;=&nbsp;exp(logb)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;recrprob&nbsp;=&nbsp;a/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;settlers)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-sum(dbinom(recr,&nbsp;prob&nbsp;=&nbsp;recrprob,&nbsp;size&nbsp;=&nbsp;settlers,&nbsp;log&nbsp;=&nbsp;TRUE),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;na.rm&nbsp;=&nbsp;TRUE)
++&nbsp;}
+&#62;&nbsp;NLLfun5L&nbsp;=&nbsp;function(loga)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a&nbsp;=&nbsp;exp(loga)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;recrprob&nbsp;=&nbsp;a
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;r&nbsp;=&nbsp;-sum(dbinom(recr,&nbsp;prob&nbsp;=&nbsp;recrprob,&nbsp;size&nbsp;=&nbsp;settlers,&nbsp;log&nbsp;=&nbsp;TRUE),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;na.rm&nbsp;=&nbsp;TRUE)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return(r)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Start by doing linear regression of recruits vs. settlers,
+with a zero intercept:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;lm1&nbsp;=&nbsp;lm(recr&nbsp;~&nbsp;settlers&nbsp;-&nbsp;1)
+&#62;&nbsp;lm.loga&nbsp;=&nbsp;list(log(coef(lm1)))
+&#62;&nbsp;rename&nbsp;=&nbsp;function(L,&nbsp;names)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(i&nbsp;in&nbsp;seq(along&nbsp;=&nbsp;L))&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;names(L[[i]])&nbsp;=&nbsp;NULL
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;names(L)&nbsp;=&nbsp;names
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;L
++&nbsp;}
+&#62;&nbsp;lm.loga&nbsp;=&nbsp;rename(lm.loga,&nbsp;"loga")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+First fit density-independent model, using BFGS
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;library(stats4)
+&#62;&nbsp;m5L&nbsp;=&nbsp;mle(minuslogl&nbsp;=&nbsp;NLLfun5L,&nbsp;start&nbsp;=&nbsp;list(loga&nbsp;=&nbsp;-1),&nbsp;method&nbsp;=&nbsp;"BFGS",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;control&nbsp;=&nbsp;list(ndeps&nbsp;=&nbsp;0.01))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Had to use Nelder-Mead instead of BFGS:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;library(stats4)
+&#62;&nbsp;m4L&nbsp;=&nbsp;mle(minuslogl&nbsp;=&nbsp;NLLfun4L,&nbsp;start&nbsp;=&nbsp;list(loga&nbsp;=&nbsp;log(0.5),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;logb&nbsp;=&nbsp;log(10)),&nbsp;method&nbsp;=&nbsp;"Nelder-Mead")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+set new starting condition to coeffs of last fit:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;s3&nbsp;=&nbsp;c(coef(m4L),&nbsp;list(logd&nbsp;=&nbsp;0))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;m3L&nbsp;=&nbsp;mle(minuslogl&nbsp;=&nbsp;NLLfun3L,&nbsp;start&nbsp;=&nbsp;s3,&nbsp;method&nbsp;=&nbsp;"Nelder-Mead")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Table of coefficients and log-likelihoods:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;lin&nbsp;=&nbsp;c(exp(coef(m5L)),&nbsp;NA,&nbsp;NA,&nbsp;-logLik(m5L))
+&#62;&nbsp;BH&nbsp;=&nbsp;c(exp(coef(m4L)),&nbsp;NA,&nbsp;-logLik(m4L))
+&#62;&nbsp;shep&nbsp;=&nbsp;c(exp(coef(m3L)),&nbsp;-logLik(m3L))
+&#62;&nbsp;ptab&nbsp;=&nbsp;rbind(lin,&nbsp;BH,&nbsp;shep)
+&#62;&nbsp;colnames(ptab)&nbsp;=&nbsp;c("a",&nbsp;"b",&nbsp;"d",&nbsp;"NLL")
+&#62;&nbsp;ptab
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;d&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NLL
+lin&nbsp;&nbsp;0.1956194&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NA&nbsp;1444.717
+BH&nbsp;&nbsp;&nbsp;0.6469000&nbsp;9.661556&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NA&nbsp;1020.843
+shep&nbsp;0.6958790&nbsp;7.488366&nbsp;0.938981&nbsp;1020.427
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Confidence intervals:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;exp(confint(m3L))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+Profiling...
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5&nbsp;%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;97.5&nbsp;%
+loga&nbsp;0.5803975&nbsp;&nbsp;0.8629401
+logb&nbsp;4.5138376&nbsp;13.2413092
+logd&nbsp;0.8183324&nbsp;&nbsp;1.0738117
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;exp(confint(m4L))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+Profiling...
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5&nbsp;%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;97.5&nbsp;%
+loga&nbsp;0.5833116&nbsp;&nbsp;0.7180536
+logb&nbsp;8.9412988&nbsp;10.4843910
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;exp(confint(m5L))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+Profiling...
+&nbsp;&nbsp;&nbsp;&nbsp;2.5&nbsp;%&nbsp;&nbsp;&nbsp;&nbsp;97.5&nbsp;%&nbsp;
+0.1888597&nbsp;0.2025078&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<b>Exercise 3:</b>
+ZINB, negative binomial, Poisson:
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;NLLpois&nbsp;=&nbsp;function(lambda)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-sum(dpois(settlers,&nbsp;lambda&nbsp;=&nbsp;lambda,&nbsp;log&nbsp;=&nbsp;TRUE))
++&nbsp;}
+&#62;&nbsp;NLLnb&nbsp;=&nbsp;function(mu,&nbsp;k)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-sum(dnbinom(settlers,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k,&nbsp;log&nbsp;=&nbsp;TRUE))
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Set up ZINB function again:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;dzinbinom&nbsp;=&nbsp;function(x,&nbsp;mu,&nbsp;size,&nbsp;zprob,&nbsp;log&nbsp;=&nbsp;FALSE)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;v&nbsp;=&nbsp;ifelse(x&nbsp;==&nbsp;0,&nbsp;zprob&nbsp;+&nbsp;(1&nbsp;-&nbsp;zprob)&nbsp;*&nbsp;dnbinom(0,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;size&nbsp;=&nbsp;size),&nbsp;(1&nbsp;-&nbsp;zprob)&nbsp;*&nbsp;dnbinom(x,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;size))
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if&nbsp;(log)&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return(log(v))
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;else&nbsp;v
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;NLLzinb&nbsp;=&nbsp;function(mu,&nbsp;k,&nbsp;zprob)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-sum(dzinbinom(settlers,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k,&nbsp;zprob&nbsp;=&nbsp;zprob,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;log&nbsp;=&nbsp;TRUE))
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Fit all three functions, from simplest to most complex:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;m&nbsp;=&nbsp;mean(settlers)
+&#62;&nbsp;mpois&nbsp;=&nbsp;mle(minuslogl&nbsp;=&nbsp;NLLpois,&nbsp;start&nbsp;=&nbsp;list(lambda&nbsp;=&nbsp;m))
+&#62;&nbsp;mnbinom&nbsp;=&nbsp;mle(minuslogl&nbsp;=&nbsp;NLLnb,&nbsp;start&nbsp;=&nbsp;list(mu&nbsp;=&nbsp;m,&nbsp;k&nbsp;=&nbsp;0.5))
+&#62;&nbsp;mzinbinom&nbsp;=&nbsp;mle(minuslogl&nbsp;=&nbsp;NLLzinb,&nbsp;start&nbsp;=&nbsp;list(mu&nbsp;=&nbsp;m,&nbsp;k&nbsp;=&nbsp;0.5,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;zprob&nbsp;=&nbsp;0.5))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Table of coefficients and log-likelihoods:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;pois&nbsp;=&nbsp;c(coef(mpois),&nbsp;NA,&nbsp;NA,&nbsp;-logLik(mpois))
+&#62;&nbsp;nbin&nbsp;=&nbsp;c(coef(mnbinom),&nbsp;NA,&nbsp;-logLik(mnbinom))
+&#62;&nbsp;zinb&nbsp;=&nbsp;c(coef(mzinbinom),&nbsp;-logLik(mzinbinom))
+&#62;&nbsp;ptab&nbsp;=&nbsp;rbind(pois,&nbsp;nbin,&nbsp;zinb)
+&#62;&nbsp;colnames(ptab)&nbsp;=&nbsp;c("lambda/mu",&nbsp;"k",&nbsp;"zprob",&nbsp;"NLL")
+&#62;&nbsp;ptab
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lambda/mu&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;zprob&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NLL
+pois&nbsp;&nbsp;21.52405&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NA&nbsp;8623.188
+nbin&nbsp;&nbsp;21.52405&nbsp;0.6238752&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NA&nbsp;2432.672
+zinb&nbsp;&nbsp;24.45607&nbsp;1.0250050&nbsp;0.1199043&nbsp;2411.265
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The zero-inflated negative binomial wins
+by a very large margin (how small would we
+have to make the data set before we couldn't
+tell the difference any more?) - 6000
+log-likelihood units between neg bin and
+Poisson, and an additional 21 log-likelihood
+units between neg bin and z-i neg bin ...
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;confint(mpois)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+Profiling...
+&nbsp;&nbsp;&nbsp;2.5&nbsp;%&nbsp;&nbsp;&nbsp;97.5&nbsp;%&nbsp;
+21.15587&nbsp;21.89647&nbsp;
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;confint(mnbinom)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+Profiling...
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5&nbsp;%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;97.5&nbsp;%
+mu&nbsp;19.4557009&nbsp;23.8917798
+k&nbsp;&nbsp;&nbsp;0.5553659&nbsp;&nbsp;0.6993166
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;confint(mzinbinom)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+Profiling...
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5&nbsp;%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;97.5&nbsp;%
+mu&nbsp;&nbsp;&nbsp;&nbsp;22.37720768&nbsp;26.7320557
+k&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.87239529&nbsp;&nbsp;1.1904082
+zprob&nbsp;&nbsp;0.08789511&nbsp;&nbsp;0.1532577
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+As expected, confidence limits for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math>
+get wider and wider as we add more parameters
+to the model.  Still, even <tt>zprob</tt> is
+pretty well bounded from these data.
+
+<div class="p"><!----></div>
+
+<br /><br /><hr /><small>File translated from
+T<sub><font size="-1">E</font></sub>X
+by <a href="http://hutchinson.belmont.ma.us/tth/">
+T<sub><font size="-1">T</font></sub>M</a>,
+version 3.70.<br />On 24 Oct 2005, 18:20.</small>
+</body></html>

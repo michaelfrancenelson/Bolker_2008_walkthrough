@@ -1,0 +1,63 @@
+---
+title: "Bolker 2008 Chapter 2"
+output: html_document
+---
+
+
+```{r setup, INCLUDE = false}
+require(data.table)
+require(emdbook)
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+```
+
+
+```{r read data}
+
+getwd()
+data("SeedPred")
+SeedPred
+class(SeedPred)
+seed_pred = fread("data/seedpred.dat")
+seed_pred = data.table(SeedPred)
+class(seed_pred)
+
+summary(seed_pred)
+summary(SeedPred)
+sp1 = seed_pred[, .(seeds = mean(seeds), ch = as.integer(species)), by = list(species, date)]
+sp1
+
+sp1[, plot()]
+
+
+s[, .(seeds = mean(seeds), pch = as.integer(species)), by = list(species, date)]
+sp1[, {matplot(x = date, y = seeds, pch = ch); matlines(x = date, y = seeds, pch = ch)}]
+sp1[, matlines(x = date, y = seeds, pch = ch)]
+sp1
+melt(sp1, measure.vars =  c("species"))
+sp1[species == "cd"]
+sp1[, 
+    {
+      matplot(x = date, y = seeds, type = "n", axes = FALSE);
+      axis.Date(1, date)
+      
+    }
+    ]
+sp1[, axis.Date(1, date)]
+
+seed_pred[, .(seeds = mean(seeds), species, pch = as.integer(species)), by = list(species, date)][, matplot(x = date, y = seeds)]
+
+seed_pred[, plot(seeds)]
+plot(seed_pred$seeds)
+
+seed_pred[, matplot(seeds, date)]
+# seed_pred[, .(seeds = mean(seeds), pch = as.integer(species)), by = list(species, date)][, matpoints(x = date, y = seeds, pch = pch)]
+
+
+```
+```{r}
+SeedPred = data.table(SeedPred)
+SeedPred[, matplot(y = seeds, x = date, pch = 1)]
+SeedPred[, by(seeds, INDICES = list(species, date), mean, na.rm = TRUE)]
+matlines
+```
+

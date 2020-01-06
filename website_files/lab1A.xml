@@ -1,0 +1,549 @@
+<?xml version="1.0"?>
+<!DOCTYPE html    PUBLIC "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN"
+           "http://www.w3.org/Math/DTD/mathml2/xhtml-math11-f.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="GENERATOR" content="TtM 3.70" />
+ <style type="text/css">
+ div.p { margin-top: 7pt; }
+ span.roman {font-family: serif; font-style: normal; font-weight: normal;} 
+</style>
+ 
+
+
+<title> Lab 1: solutions </title>
+</head>
+<body>
+ 
+<h1 align="center">Lab 1: solutions </h1>
+
+<h3 align="center">&#169; 2005 Ben Bolker </h3>
+
+<div class="p"><!----></div>
+ <b>Exercise 1</b>:
+
+<ol type="1">
+<li>   <font color="#FF0000">
+<pre>
+&#62;&nbsp;2^7/(2^7&nbsp;-&nbsp;1)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;1.007874
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;(1&nbsp;-&nbsp;1/2^7)^-1
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;1.007874
+
+&nbsp;
+</pre> </font>
+<div class="p"><!----></div>
+</li>
+
+<li> 
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;1&nbsp;+&nbsp;0.2
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;1.2
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;1&nbsp;+&nbsp;0.2&nbsp;+&nbsp;0.2^2/2
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;1.22
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;1&nbsp;+&nbsp;0.2&nbsp;+&nbsp;0.2^2/2&nbsp;+&nbsp;0.2^3/6
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;1.221333
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;exp(0.2)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;1.221403
+
+&nbsp;
+</pre> </font>
+<div class="p"><!----></div>
+</li>
+
+<li>
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;x&nbsp;=&nbsp;1
+&#62;&nbsp;1/sqrt(2&nbsp;*&nbsp;pi)&nbsp;*&nbsp;exp(-x^2/2)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.2419707
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;dnorm(1)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.2419707
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;x&nbsp;=&nbsp;2
+&#62;&nbsp;1/sqrt(2&nbsp;*&nbsp;pi)&nbsp;*&nbsp;exp(-x^2/2)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.05399097
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;dnorm(2)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.05399097
+
+&nbsp;
+</pre> </font>
+<div class="p"><!----></div>
+</li>
+</ol>
+
+<div class="p"><!----></div>
+<b>Exercise 2</b>:
+(nothing to do!)
+
+<div class="p"><!----></div>
+<b>Exercise 3</b>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;X&nbsp;=&nbsp;read.table("ChlorellaGrowth.txt")
+&#62;&nbsp;Light&nbsp;=&nbsp;X[,&nbsp;1]
+&#62;&nbsp;rmax&nbsp;=&nbsp;X[,&nbsp;2]
+&#62;&nbsp;logLight&nbsp;=&nbsp;log(Light)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;op&nbsp;&lt;-&nbsp;par(cex&nbsp;=&nbsp;1.5,&nbsp;cex.main&nbsp;=&nbsp;0.9)
+&#62;&nbsp;plot(logLight,&nbsp;rmax,&nbsp;xlab&nbsp;=&nbsp;"Log&nbsp;light&nbsp;intensity&nbsp;(uE/m2/s)",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ylab&nbsp;=&nbsp;"Maximum&nbsp;growth&nbsp;rate&nbsp;rmax&nbsp;(1/d)",&nbsp;pch&nbsp;=&nbsp;16)
+&#62;&nbsp;title(main&nbsp;=&nbsp;"Data&nbsp;from&nbsp;Fussmann&nbsp;et&nbsp;al.&nbsp;(2000)&nbsp;system")
+&#62;&nbsp;fit&nbsp;=&nbsp;lm(rmax&nbsp;~&nbsp;logLight)
+&#62;&nbsp;abline(fit)
+&#62;&nbsp;rcoef&nbsp;=&nbsp;round(coef(fit),&nbsp;digits&nbsp;=&nbsp;3)
+&#62;&nbsp;text(3.7,&nbsp;3.5,&nbsp;paste("rmax=",&nbsp;rcoef[1],&nbsp;"+",&nbsp;rcoef[2],&nbsp;"log(Light)"))
+&#62;&nbsp;par(op)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab1A-005.png" alt="lab1A-005.png" />
+
+<div class="p"><!----></div>
+<b>Exercise 4</b>:
+explained in text
+
+<div class="p"><!----></div>
+<b>Exercise 5</b>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(Light,&nbsp;rmax,&nbsp;xlim&nbsp;=&nbsp;c(0,&nbsp;120),&nbsp;ylim&nbsp;=&nbsp;c(1,&nbsp;4))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab1A-006.png" alt="lab1A-006.png" />
+
+<div class="p"><!----></div>
+<b>Exercise 6</b>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;X&nbsp;=&nbsp;read.table("ChlorellaGrowth.txt")
+&#62;&nbsp;Light&nbsp;=&nbsp;X[,&nbsp;1]
+&#62;&nbsp;rmax&nbsp;=&nbsp;X[,&nbsp;2]
+&#62;&nbsp;logLight&nbsp;=&nbsp;log(Light)
+&#62;&nbsp;logrmax&nbsp;=&nbsp;log(rmax)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;op&nbsp;&lt;-&nbsp;par(mfcol&nbsp;=&nbsp;c(2,&nbsp;1))
+&#62;&nbsp;plot(Light,&nbsp;rmax,&nbsp;xlab&nbsp;=&nbsp;"Light&nbsp;intensity&nbsp;(uE/m2/sa)",&nbsp;ylab&nbsp;=&nbsp;"Maximum&nbsp;growth&nbsp;rate&nbsp;rmax&nbsp;(1/d)",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pch&nbsp;=&nbsp;16)
+&#62;&nbsp;title(main&nbsp;=&nbsp;"Data&nbsp;from&nbsp;Fussmann&nbsp;et&nbsp;al.&nbsp;(2000)&nbsp;system")
+&#62;&nbsp;plot(logLight,&nbsp;logrmax,&nbsp;xlab&nbsp;=&nbsp;"Log&nbsp;light&nbsp;intensity",&nbsp;ylab&nbsp;=&nbsp;"Log&nbsp;max&nbsp;growth&nbsp;rate",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pch&nbsp;=&nbsp;16)
+&#62;&nbsp;title(main&nbsp;=&nbsp;"Data&nbsp;from&nbsp;Fussmann&nbsp;et&nbsp;al.&nbsp;(2000)&nbsp;system")
+&#62;&nbsp;par(op)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab1A-008.png" alt="lab1A-008.png" />
+
+<div class="p"><!----></div>
+<b>Exercise 7</b>:
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;x&nbsp;=&nbsp;3:8
+&#62;&nbsp;y&nbsp;=&nbsp;5&nbsp;*&nbsp;x&nbsp;+&nbsp;3
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;op&nbsp;=&nbsp;par(mfrow&nbsp;=&nbsp;c(2,&nbsp;2))
+&#62;&nbsp;plot(x,&nbsp;y,&nbsp;lty&nbsp;=&nbsp;1,&nbsp;col&nbsp;=&nbsp;1,&nbsp;type&nbsp;=&nbsp;"l")
+&#62;&nbsp;plot(x,&nbsp;y,&nbsp;lty&nbsp;=&nbsp;2,&nbsp;col&nbsp;=&nbsp;2,&nbsp;type&nbsp;=&nbsp;"l")
+&#62;&nbsp;plot(x,&nbsp;y,&nbsp;lty&nbsp;=&nbsp;3,&nbsp;col&nbsp;=&nbsp;3,&nbsp;type&nbsp;=&nbsp;"l")
+&#62;&nbsp;plot(x,&nbsp;y,&nbsp;lty&nbsp;=&nbsp;4,&nbsp;col&nbsp;=&nbsp;4,&nbsp;type&nbsp;=&nbsp;"l")
+&#62;&nbsp;par(op)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab1A-010.png" alt="lab1A-010.png" />
+
+<div class="p"><!----></div>
+<b>Exercise 8</b>:
+(nothing to say)
+
+<div class="p"><!----></div>
+<b>Exercise 9</b>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;seq(1,&nbsp;13,&nbsp;by&nbsp;=&nbsp;4)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;&nbsp;1&nbsp;&nbsp;5&nbsp;&nbsp;9&nbsp;13
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;seq(1,&nbsp;by&nbsp;=&nbsp;4,&nbsp;length&nbsp;=&nbsp;4)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;&nbsp;1&nbsp;&nbsp;5&nbsp;&nbsp;9&nbsp;13
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;seq(1,&nbsp;5,&nbsp;by&nbsp;=&nbsp;0.2)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;[1]&nbsp;1.0&nbsp;1.2&nbsp;1.4&nbsp;1.6&nbsp;1.8&nbsp;2.0&nbsp;2.2&nbsp;2.4&nbsp;2.6&nbsp;2.8&nbsp;3.0&nbsp;3.2&nbsp;3.4&nbsp;3.6&nbsp;3.8&nbsp;4.0&nbsp;4.2&nbsp;4.4&nbsp;4.6
+[20]&nbsp;4.8&nbsp;5.0
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<b>Exercise 10</b>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;z&nbsp;=&nbsp;c(1,&nbsp;3,&nbsp;5,&nbsp;7,&nbsp;9,&nbsp;11)
+&#62;&nbsp;z[c(2,&nbsp;1,&nbsp;3)]
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;3&nbsp;1&nbsp;5
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<b>Exercise 11</b>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;x&nbsp;=&nbsp;1:10
+&#62;&nbsp;y&nbsp;=&nbsp;(x&nbsp;-&nbsp;1)/(x&nbsp;+&nbsp;1)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(x,&nbsp;y,&nbsp;type&nbsp;=&nbsp;"b")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab1A-014.png" alt="lab1A-014.png" />
+
+<div class="p"><!----></div>
+<b>Exercise 12</b>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;r&nbsp;=&nbsp;0.5
+&#62;&nbsp;n&nbsp;=&nbsp;10
+&#62;&nbsp;G&nbsp;=&nbsp;r^(0:n)
+&#62;&nbsp;sum(G)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;1.999023
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;1/(1&nbsp;-&nbsp;r)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;2
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;n&nbsp;=&nbsp;50
+&#62;&nbsp;sum(r^(0:n))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;2
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;2&nbsp;-&nbsp;sum(r^(0:n))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;8.881784e-16
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<b>Exercise 13</b>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;x&nbsp;=&nbsp;runif(20)
+&#62;&nbsp;x[x&nbsp;&lt;&nbsp;mean(x)]
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;[1]&nbsp;0.006096034&nbsp;0.081215761&nbsp;0.288657362&nbsp;0.442924182&nbsp;0.138363040&nbsp;0.439876188
+&nbsp;[7]&nbsp;0.266660742&nbsp;0.182081694&nbsp;0.362768221&nbsp;0.055500135&nbsp;0.368313897&nbsp;0.267021385
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<b>Exercise 14</b>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;which(x&nbsp;&lt;&nbsp;mean(x))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;[1]&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;3&nbsp;&nbsp;5&nbsp;&nbsp;6&nbsp;&nbsp;8&nbsp;&nbsp;9&nbsp;11&nbsp;12&nbsp;13&nbsp;16&nbsp;19
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+or
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;p&nbsp;=&nbsp;1:length(x)
+&#62;&nbsp;p[x&nbsp;&lt;&nbsp;mean(x)]
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;[1]&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;3&nbsp;&nbsp;5&nbsp;&nbsp;6&nbsp;&nbsp;8&nbsp;&nbsp;9&nbsp;11&nbsp;12&nbsp;13&nbsp;16&nbsp;19
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<b>Exercise 15*</b>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;x&nbsp;=&nbsp;1:40
+&#62;&nbsp;n&nbsp;=&nbsp;length(x)
+&#62;&nbsp;x[seq(1,&nbsp;n,&nbsp;by&nbsp;=&nbsp;2)]
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;[1]&nbsp;&nbsp;1&nbsp;&nbsp;3&nbsp;&nbsp;5&nbsp;&nbsp;7&nbsp;&nbsp;9&nbsp;11&nbsp;13&nbsp;15&nbsp;17&nbsp;19&nbsp;21&nbsp;23&nbsp;25&nbsp;27&nbsp;29&nbsp;31&nbsp;33&nbsp;35&nbsp;37&nbsp;39
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;x[-seq(2,&nbsp;n,&nbsp;by&nbsp;=&nbsp;2)]
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;[1]&nbsp;&nbsp;1&nbsp;&nbsp;3&nbsp;&nbsp;5&nbsp;&nbsp;7&nbsp;&nbsp;9&nbsp;11&nbsp;13&nbsp;15&nbsp;17&nbsp;19&nbsp;21&nbsp;23&nbsp;25&nbsp;27&nbsp;29&nbsp;31&nbsp;33&nbsp;35&nbsp;37&nbsp;39
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<b>Exercise 16*</b>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;v&nbsp;=&nbsp;c(1,&nbsp;2,&nbsp;1,&nbsp;2,&nbsp;1,&nbsp;2,&nbsp;1,&nbsp;2)
+&#62;&nbsp;X&nbsp;=&nbsp;matrix(v,&nbsp;nrow&nbsp;=&nbsp;2,&nbsp;ncol&nbsp;=&nbsp;4)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+or
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;v&nbsp;=&nbsp;rep(1:2,&nbsp;4)
+&#62;&nbsp;X&nbsp;=&nbsp;matrix(v,&nbsp;nrow&nbsp;=&nbsp;2,&nbsp;ncol&nbsp;=&nbsp;4)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+or
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;v&nbsp;=&nbsp;rep(1:2,&nbsp;each&nbsp;=&nbsp;4)
+&#62;&nbsp;X&nbsp;=&nbsp;matrix(v,&nbsp;nrow&nbsp;=&nbsp;2,&nbsp;ncol&nbsp;=&nbsp;4,&nbsp;byrow&nbsp;=&nbsp;TRUE)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<b>Exercise 17*</b>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;v&nbsp;=&nbsp;rnorm(35,&nbsp;mean&nbsp;=&nbsp;1,&nbsp;sd&nbsp;=&nbsp;2)
+&#62;&nbsp;matrix(v,&nbsp;nrow&nbsp;=&nbsp;5,&nbsp;ncol&nbsp;=&nbsp;7)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[,1]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[,2]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[,3]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[,4]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[,5]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[,6]
+[1,]&nbsp;&nbsp;1.934322&nbsp;-1.6832689&nbsp;&nbsp;2.6564640&nbsp;-0.1636006&nbsp;&nbsp;5.8214780&nbsp;-3.2442263
+[2,]&nbsp;&nbsp;3.838532&nbsp;&nbsp;2.1087967&nbsp;&nbsp;2.0801288&nbsp;-2.0904217&nbsp;-2.8455893&nbsp;&nbsp;1.5531939
+[3,]&nbsp;&nbsp;1.220530&nbsp;&nbsp;0.8758584&nbsp;-0.1898886&nbsp;&nbsp;1.9576247&nbsp;&nbsp;4.3258848&nbsp;-0.2510648
+[4,]&nbsp;&nbsp;4.739258&nbsp;&nbsp;1.1932033&nbsp;-2.8016818&nbsp;&nbsp;1.4586832&nbsp;&nbsp;5.2427179&nbsp;&nbsp;2.0921979
+[5,]&nbsp;-1.060502&nbsp;&nbsp;4.1259011&nbsp;&nbsp;1.3870164&nbsp;&nbsp;0.7241470&nbsp;&nbsp;0.6232388&nbsp;&nbsp;1.3113981
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[,7]
+[1,]&nbsp;-0.4077326
+[2,]&nbsp;&nbsp;0.9242169
+[3,]&nbsp;&nbsp;2.4103272
+[4,]&nbsp;-2.4482055
+[5,]&nbsp;&nbsp;1.4427584
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<b>Exercise 18</b>:
+nothing to do
+
+<div class="p"><!----></div>
+
+<br /><br /><hr /><small>File translated from
+T<sub><font size="-1">E</font></sub>X
+by <a href="http://hutchinson.belmont.ma.us/tth/">
+T<sub><font size="-1">T</font></sub>M</a>,
+version 3.70.<br />On 14 Sep 2005, 11:12.</small>
+</body></html>

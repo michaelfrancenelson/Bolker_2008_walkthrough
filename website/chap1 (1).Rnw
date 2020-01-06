@@ -1,0 +1,2343 @@
+<<echo=FALSE,results=hide>>=
+## badfonts <- .Platform$OS.type=="unix"
+badfonts <- FALSE
+library(Hmisc,warn.conflicts=FALSE)
+source("chapskel.R")
+@ 
+
+\section*{Summary}
+This chapter gives a broad overview
+of the philosophy and techniques
+of ecological modeling.
+A small data set on seed removal
+illustrates the three most common
+frameworks for statistical modeling
+in ecology: frequentist,
+likelihood-based, and Bayesian.
+The chapter also reviews what
+you should know to get the most
+out of the book,
+discusses the \R\ language,
+and spells out a
+step-by-step process for building
+models of ecological systems.
+
+If you're impatient with 
+philosophical discussion, you can read Section~\ref{sec:inference}
+and the \R\ supplement at the end of the chapter and move on to Chapter~2.
+
+\section{Introduction}
+
+This book is about combining models with data to answer ecological
+questions.  Pursuing this worthwhile goal will lead to
+topics ranging from basic statistics,
+to the cutting edge of modern statistics, to the
+nuts and bolts of computer programming, to the philosophy of science.
+Remember as we go along not to miss the ecological forest for the
+statistical trees; all of these complexities are in the service of
+answering ecological questions, and the most important
+thing is to keep your common sense about you and your focus on the
+biological questions you set out to answer.  ``Does
+this make sense?'' and ``What does this answer really mean?'' are the
+two questions you should ask constantly. If you cannot answer
+them, back up to the last point you understood.
+
+If you want to combine models with data, you need to use statistical
+tools.  Ecological statistics has gotten much more complicated in the
+last few decades. Research papers in ecology now routinely refer to
+likelihood, Markov chain Monte Carlo, and other arcana.  This new
+complexity arises from the explosion of cheap computing power, which
+allows us to run complicated tests quickly and easily --- %
+or at least more easily than before. But there is still a lot to know
+about how these tests work, which is what this book is about.  The
+good news is that we can now develop statistical methods that directly
+answer our ecological questions, adapting statistics to the data
+rather than \emph{vice versa}.  Instead of asking ``what is the
+probability of observing at least this much variability among the
+arcsine-square-root-transformed counts of seeds in different
+treatments?'', we can ask ``is the number of seeds removed consistent
+with standard foraging theory, and what are the attack rates and
+handling times of predators?  Do the attack rates or handling times
+increase with mean seed size? With the time that the seeds have been
+available?  Is there evidence for variability among seeds?''.  By
+customizing statistical tests we can squeeze more
+information, and more relevant information, from expensive data.
+Building your own statistical tests is not easy, but it is not really
+harder than using any
+of the other tools ecologists have picked up in their ongoing effort to
+extract meaning from the natural world (stable isotope
+techniques, radiotelemetry, microsatellite population genetics,
+geographic information systems, otolith analysis, flow cytometry, mist
+netting \ldots you can probably identify several more from your own
+field).  Custom statistical techniques are just another set of tools in the modern
+ecologist's toolbox;
+the information this book presents should show you how to use
+them on your own data, to answer your own questions.
+%   At the
+% very least, even if you just read the book without working to apply
+% the techniques to your own data, you will be able to read and
+% understand the background of papers that use such modern tools, and
+% you may have a better appreciation for how the basic statistics you
+% learned in a statistics class fit into a larger framework of asking
+% questions about ecological data.
+
+For example, \cite{SandinPacala2005b} combined population counts
+through time with remote underwater video monitoring to analyze how
+the density of reef fishes in the Caribbean affected their
+risk of predation.  The
+classic approach to this problem would be to test for a significant
+correlation between density and mortality rate, or between density and
+predator activity.  A positive correlation between prey population
+density and the number of observed predator visits or attacks would
+suggest that prey aggregations attract predators.  If
+predator attacks on the prey population are proportional to population
+density, then the predation rate per prey \emph{individual} will be
+independent of density; predator attacks would need to accelerate with
+increasing population density in order for predators to regulate the
+prey population.  One could test for positive correlations between
+prey density and \emph{per capita} mortality to see whether this is
+so.
+
+However, correlation analysis assumes the data are bivariate normally
+distributed, while linear regression assumes a linear relationship
+between a predictor variable and a normally distributed response variable.
+While one can sometimes transform data to satisfy these assumptions,
+or simply ignore minor violations, \citeauthor{SandinPacala2005b} took a
+more powerful approach: they built explicit models to describe
+how absolute and \emph{per capita} predator visits or
+mortality depended on prey population density. For example, the absolute
+mortality probability would be $r_0 + r_1 n$ and the \emph{per capita}
+mortality probability would be $(r_0 + r_1 n)/n$ if predator visits
+are proportional to prey density.  They also used realistic binomial
+and Poisson probability distributions to describe the variation in the
+data, rather than assuming normality (a particularly awkward
+assumption when there are lots of zeros in the data).  By doing so,
+they were able to choose among a variety of possible models and conclude
+that predators induce \emph{inverse} density dependence in this system
+(i.e., that smaller prey populations experience higher \emph{per
+capita} mortality, because predators are present at relatively
+constant numbers independent of prey density).  Because they fitted
+models rather than running classical statistical tests on transformed
+data, they were also able to estimate meaningful parameter values,
+such as the increase in predator visits per hour for every additional
+prey individual present. These values are more useful than
+$p$ (significance) values, or than regression slopes from
+transformed data, because they express statistical information
+in ecological terms.
+
+\section{What this book is not about}
+
+\subsection{What you should already know}
+
+To get the most out of the material presented
+here you should already have a good grasp
+of basic statistics, be comfortable with computers (e.g.  have used
+Microsoft Excel to deal with data), and have some rusty calculus.
+But attitude and aptitude are more important than
+previous classroom experience. 
+Getting into this material requires some hard work at the outset,
+but it will become easier as you brush up on basic concepts%
+\footnote{After teaching with
+Hilborn and Mangel's excellent book \emph{The Ecological Detective}
+I wanted to a write a book that included enough
+nitty-gritty detail for students to
+tackle their own problems.  If this book feels too hard for you,
+consider starting with \emph{The Ecological Detective} --- but
+consider reading \emph{ED} in any case.}.
+
+\paragraph{Statistics}
+
+I assume that you've had the equivalent of a one-semester
+undergraduate statistics course. The phrases \emph{hypothesis test},
+\emph{analysis of variance}, \emph{linear regression}, \emph{normal
+  distribution} (maybe even \emph{Central Limit Theorem}) should be
+familiar to you, even if you don't remember all of the details.  
+%(You
+%may even have to \emph{un}learn some of what you learned in statistics
+%class.)  
+The basics of experimental design --- the meaning of and need for
+randomization, control, independence, and replication in setting up
+experiments, the idea of statistical power, and the concept of
+pseudoreplication
+\citep{Hurlbert1984,HargrovePickering1992,Heffner+1996,Oksanen2001}
+--- are essential tools for any working ecologist,
+but you can learn them from a good introductory statistics
+class or textbook such as \cite{GotelliEllison2004} or
+\cite{QuinnKeough2002}\footnote{Ideally, you would think about how you
+  will analyze your data before you go into the field to collect it.
+  This rarely happens. Fortunately, if your observations are
+  adequately randomized, controlled, independent, and replicated, you
+  will be able to do \emph{something} with your data.  If they aren't,
+  no fancy statistical techniques can help you.}.
+
+\textbf{Further reading:}
+If you need to review statistics,
+try \cite{Crawley2002}, \cite{Dalgaard2003},
+or \cite{GotelliEllison2004}.
+Gonick and Smith's \citeyear{GonickSmith1993} \emph{Cartoon
+Guide to Statistics} gives a gentle introduction to some basic concepts,
+but you will need to go beyond what they cover.
+\cite{SokalRohlf1995}, \cite{Zar1999}, and
+\cite{Crawley2005} cover a broader range of 
+classical statistics.
+For experimental design,
+try \cite{Underwood1996}, \cite{ScheinerGurevitch2001},
+or \cite{QuinnKeough2002} (the latter two discuss
+statistical analysis as well).
+
+\paragraph{Computers}
+
+This book will teach you how to use computers to understand data. You
+will be writing a few lines of \R\ code at a time
+rather than full-blown computer programs, but you will
+have to go beyond pointing and clicking.  You need to be comfortable with
+computers, and with using spreadsheets like Excel to manipulate
+data.  It will be useful to be familiar with a mainstream statistics
+package like SPSS or SAS, although you should definitely
+use \R\ to work through this book instead of falling back on
+a familiar software package.
+(If you have used \R\ already you'll have a big head start.)
+You needn't have done any programming.
+
+\paragraph{Math}
+
+Having ``rusty'' calculus means knowing what a derivative and
+an integral are.
+While it would be handy to remember a few of the formulas
+for derivatives, a feeling for the meanings of logarithms, exponentials, derivatives
+and integrals is more important than the formulas (you'll
+find the formulas in the Appendix).
+In working through this book you will have to
+\emph{use} algebra, as much as calculus, in a routine way to solve
+equations and answer questions.  
+%95\% 
+Most of the people who have taken my
+classes were very rusty when they started.
+%\footnote{And 78\% of statistics
+%are made up on the spot: see \cite{Huff1993}.}.
+
+\textbf{Further reading:} \cite{Adler2004} 
+gives a very applied review of basic
+calculus, differential equations, and probability,
+while \cite{Neuhauser2003} covers calculus 
+in a more rigorous and traditional way, but still
+with a biological slant.
+
+\paragraph{Ecology}
+
+I have assumed you know some basic ecological concepts,
+since they are the foundation of ecological data analysis.
+You should be familiar, for example, with
+exponential and logistic growth from population ecology;
+functional responses from predator-prey ecology;
+and competitive exclusion from community ecology.
+
+\textbf{Further reading:} 
+For a short introduction to ecological theory, try
+\cite{Hastings1997} or
+\cite{VandermeerGoldberg2004} (the latter is more general). 
+\cite{Gotelli2001} is more detailed.
+\cite{Begon+1996} gives an extremely thorough introduction
+to general ecology, including some basic ecological models.
+\cite{Case1999} provides an illustrated treatment of theory, while
+\cite{Roughgarden1997} integrates ecological theory with programming
+examples in MATLAB.
+\cite{Mangel2006} and \cite{OttoDay2007},
+two new books, both give basic introductions to
+the ``theoretical biologist's toolbox''.
+\label{theorybooks}
+
+
+\subsection{Other kinds of models}
+
+Ecologists sometimes want to ``learn how to model'' without knowing
+clearly what questions they hope the models will answer, and
+without knowing what kind of models might be useful.  
+This is a bit like saying ``I want to learn to do
+experiments'', or ``I want to learn molecular biology'': do you want
+to analyze microsatellites? Use RNA inactivation to knock out gene
+function?  Sequence genomes?  What people usually mean by ``I want to
+learn how to model'' is ``I have heard that modeling is a
+powerful tool and I think it could tell me something about my system,
+but I'm not really sure what it can do''.
+
+Ecological modeling has many facets.
+This book covers only one:
+statistical modeling, with a bias towards mechanistic descriptions of
+ecological patterns.  
+The next section briefly reviews a much broader range of modeling
+frameworks, and gives some starting points in the
+modeling literature in case you want to learn more about
+other kinds of ecological models.
+
+\section{Frameworks for modeling}
+
+This book is primarily about how to combine models with data and how
+to use them to discover the answers to theoretical or applied
+questions.  To help fit statistical models into the larger picture,
+Table~\ref{tab:models} presents a broad range of dichotomies that
+cover some of the kinds and uses of ecological models.  The discussion
+of these dichotomies starts to draw in some of the statistical,
+mathematical and ecological concepts I suggested you should know.
+However, if a few are unfamiliar, don't worry --- the
+next few chapters will review the most important
+concepts.  Part of the
+challenge of learning the material in this book is a chicken-and-egg
+problem: in order to know why certain technical details are important,
+you need to know the big picture, but the big picture itself involves
+knowing some of those technical details.  Iterating, or cycling, is
+the best way to handle this problem.
+Most of the material introduced in this chapter will be
+covered in more detail in later chapters. If you don't completely get
+it this time around, hang on and see if it makes more sense the second
+time.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{cc}
+\multicolumn{2}{c}{\textbf{Scope and approach}} \\
+abstract & concrete \\
+strategic & tactical \\
+general & specific \\
+theoretical & applied \\
+qualitative & quantitative \\
+descriptive & predictive \\
+mathematical & statistical \\
+mechanistic & phenomenological \\
+pattern & process \\
+\\
+\multicolumn{2}{c}{\textbf{Technical details}} \\
+analytical & computational \\
+dynamic & static \\
+continuous & discrete \\
+population-based & individual-based \\
+Eulerian & Lagrangian \\
+deterministic & stochastic \\
+\\
+\multicolumn{2}{c}{\textbf{Sophistication}} \\
+simple & complex \\
+crude & sophisticated
+\end{tabular}
+\end{center}
+\caption{Modeling dichotomies.
+Each column contrasts a different qualitative style
+of modeling.
+The loose association of descriptors in each column
+gets looser as you work downwards.}
+\label{tab:models}
+\end{table}
+
+\subsection{Scope and approach}
+
+The first set of dichotomies in the table subdivides models into two
+categories, one (theoretical/strategic) that aims for general insight
+into the workings of ecological processes and one (applied/tactical)
+that aims to describe and predict how a particular system functions,
+often with the goal of forecasting or managing its behavior.
+Theoretical models are often mathematically difficult and ecologically
+oversimplified, which is the price of generality.  Paradoxically,
+although theoretical models are defined in terms of precise numbers of
+individuals, because of their simplicity they are usually only used
+for qualitative predictions.  Applied models are often mathematically
+simpler (although they can require complex computer code), but tend to
+capture more of the ecological complexity and quirkiness needed to
+make detailed predictions about a particular place and time.  Because
+of this complexity their predictions are often less general.
+
+The dichotomy of mathematical \emph{vs.} statistical modeling says more about
+the culture of modeling and how different disciplines go about
+thinking about models than about how we should actually model
+ecological systems.  A mathematician is more likely to produce a
+deterministic, dynamic process model without thinking very much
+about noise and uncertainty (e.g. the 
+ordinary differential equations that
+make up the Lotka-Volterra predator prey model).  
+A statistician, on the other hand, is more likely to
+produce a stochastic but static model, that treats noise and
+uncertainty carefully but focuses more on static patterns than on the
+dynamic processes that produce them (e.g. linear regression)\footnote{Of course,
+both mathematicians and statisticians are capable of more
+sophisticated models than the simple examples given here.}.
+
+The important difference between phenomenological (pattern) and mechanistic
+(process) models will be with us throughout the
+book. Phenomenological models concentrate on observed patterns in the
+data, using functions and distributions that are the right shape
+and/or sufficiently flexible to match them; mechanistic models are
+more concerned with the underlying processes, using functions and
+distributions based on theoretical expectations.  
+As usual, there are shades of gray; the same function could be classified as either
+phenomenological or mechanistic depending on why it was chosen.  For
+example, you could use the function $f(x)=ax/(b+x)$ 
+(a Holling type~II functional response)
+as a mechanistic model in
+a predator-prey context because you expected predators to attack prey
+at a constant rate and be constrained by handling time, or as a
+phenomenological model of population growth simply because you wanted
+a function that started at zero, was initially linear, and leveled off
+as it approached an asymptote (see Chapter~\ref{chap:determ}). All other things being equal,
+mechanistic models are more powerful since they tell you about the
+underlying processes driving patterns.  They are more likely to work
+correctly when extrapolating beyond the observed conditions.  Finally,
+by making more assumptions, they allow you to extract more information
+from your data --- with the risk of making the
+\emph{wrong} assumptions.\footnote{For an alternative, classic approach to the tradeoffs between
+different kinds of models, see \cite{Levins1966} (criticized
+by \cite{OrzackSober1993}; Levins's (\citeyear{Levins1993}) defense
+invokes the fluidity of model-building in ecology).}
+
+Examples of theoretical models include
+the Lotka-Volterra or Nicholson-Bailey predator-prey equations
+\citep{Hastings1997}; classical
+metapopulation models for single
+\citep{Hanski1999} and 
+multiple \citep{LevinsCulver1971,Tilman1994}
+species; simple food web models
+\citep{May1973,Cohen+1990}; and
+%simple spatial models \citep{DurrettLevin1994b};
+theoretical ecosystem models \citep{AgrenBosatta1996}.
+Applied models include
+forestry and biogeochemical cycling models
+\citep{Blanco+2005},
+fisheries stock-recruitment models \citep{QuinnDeriso1999},
+and population viability analysis \citep{MorrisDoak2002,MillerLacy2005}.
+
+\label{ecomodrefs}
+\textbf{Further reading}: books on ecological modeling
+overlap with those on ecological theory listed on p.~\pageref{theorybooks}.
+Other good sources include \cite{NisbetGurney1982}
+(a well-written but challenging classic)
+\cite{GurneyNisbet1998} (a lighter version)
+ \cite{Haefner1996} (broader, including physiological and ecosystem
+perspectives) \cite{Renshaw1991} (good coverage of stochastic models),
+\cite{Wilson2000} (simulation modeling in C), and
+%\cite{Britton2003}, 
+\cite{EllnerGuckenheimer2006} (dynamics of biological systems in
+general).
+
+\subsection{Technical details}
+
+Another set of dichotomies characterizes models 
+according to the methods used to analyze them
+or according to the decisions they embody about how
+to represent individuals, time, and space.
+
+An analytical model is made up of equations
+solved with algebra and calculus.
+A computational model consists of a computer program
+which you run for a range of parameter values to
+see how it behaves.
+
+Most mathematical models and a few statistical models are dynamic;
+the response variables at a particular time (the state of the system)
+feed back to affect the response variables in the future.  
+Integrating dynamical and
+statistical models is challenging (see Chapter~\ref{chap:dyn}).
+Most statistical models are static; the
+relationship  between predictor and response variables is fixed.
+
+One can specify how models represent the passage of time or the
+structure of space (both can be continuous or discrete); whether they
+track continuous population densities (or biomass or carbon densities)
+or discrete individuals; whether 
+they consider individuals within a species
+to be equivalent or divide them by age, size, genotype, or past
+experience; and whether they track the properties of individuals
+(individual-based or Eulerian) or the number of individuals within
+different categories (population-based or Lagrangian).
+
+Deterministic models represent only the average, expected behavior of
+a system in the absence of random variation, while stochastic models
+incorporate noise or randomness in some way. A purely
+deterministic model allows only for qualitative comparisons with
+real systems; since the model will never match the data \emph{exactly},
+how can you tell if it matches closely enough?
+For example, a deterministic food-web model might predict that 
+introducing pike to a lake would cause
+a trophic cascade, decreasing the density
+of phytoplankton (because pike prey on sunfish, which eat
+zooplankton, which in turn consume phytoplankton);
+it might even predict the expected magnitude of the change.  In
+order to test this prediction with real data, however, you
+would need
+some kind of statistical model to estimate the magnitude of
+the average change in several lakes (and the uncertainty),
+and to distinguish between observed changes due
+to pike introduction and those due to other causes (measurement error, seasonal
+variation, weather, nutrient dynamics, population cycles \ldots).  
+
+Most ecological models incorporate stochasticity
+crudely, by simply assuming that there is some kind of (perhaps
+normally distributed) variation, arising from a combination of unknown
+factors, and estimating the magnitude of
+that variation from the variation observed in the field. We will
+go beyond this approach, specifying different sources of
+variability and something about their expected distributions.  More
+sophisticated models of variability enjoy some of the advantages
+of mechanistic models: models that make explicit
+assumptions about the underlying causes of variability can both
+provide more information about the ecological processes at work and
+can get more out of your data.
+%\footnote{At the
+%risk, as always, of making the \emph{wrong} assumptions.}.
+
+There are essentially three kinds of random variability:
+\begin{itemize}
+\item{\emph{Measurement error} is the variability imposed by our imperfect
+observation of the world; it is always present, except perhaps when we
+are counting a small number of easily detected organisms.
+It is usually modeled by the standard approach of
+adding normally distributed variability around a mean value.}
+\item{\emph{Demographic stochasticity} is the innate variability in outcomes
+due to random processes even among otherwise identical units.
+In experimental trials where you flip a coin 20 times
+you might get 10 heads, or 9, or 11, even though you're flipping the 
+same coin the same way each time.
+Likewise, the number of tadpoles out of an initial cohort of 20
+eaten by predators in a set amount of time
+will vary between experiments.  Even if we
+controlled everything about the environment and genotype of the
+predators and prey, we would still see different numbers
+dying in each run of the experiment.}
+\item{\emph{Environmental stochasticity}  is variability imposed from
+``outside'' the ecological system, such as climatic, seasonal,
+or topographic variation.  We usually reserve environmental 
+stochasticity for unpredictable variability, as opposed to
+predictable changes (such as seasonal or latitudinal changes in temperature)
+which we can incorporate
+into our models in a deterministic way.}
+\end{itemize}
+The latter two categories, demographic and environmental stochasticity, make up
+\emph{process variability}\footnote{Process variability
+is also called \emph{process noise} or \emph{process error} (Chapter~\ref{chap:var}).}
+which unlike measurement error affects
+the future dynamics of the ecological system.  
+Suppose we expect to find three individuals on an isolated
+island.  If we make a measurement error
+and measure zero instead of three,
+we may go back at some time in the future and still find them.
+If an unexpected predator eats all three individuals (process variability),
+and no immigrants arrive, any future observations will
+find no individuals.
+The conceptual distinction between process and measurement error is most
+important in dynamic models, where the
+process error has a chance to feed back on the dynamics.
+
+The distinctions between stochastic and deterministic effects, and
+between demographic and environmental variability, are really a matter
+of definition.  Until you get down to the quantum level, any
+``random'' variability can in principle be explained and predicted.
+What determines whether a tossed coin will land heads-up? Its starting
+orientation and the number of times it turns in the air, which depends
+on how hard you toss it \citep{Keller1986}.
+What determines exactly which and how many seedlings of a cohort die?
+The amount of energy with which their mother
+provisions the seeds, their individual light and nutrient environments, and encounters
+with pathogens and herbivores.  Variation that drives
+mortality in seedlings  --- e.g. variation in available carbohydrates among individuals
+because of small-scale variation in light availability --- might be 
+treated as a random variable by a forester at the same time that
+it is treated as a deterministic function of light availability
+by a physiological ecologist measuring the same plants.
+Climatic variation is random to an ecologist (at least on short time scales) but might be
+deterministic, although chaotically unpredictable, to a meteorologist.
+Similarly, the distinction between demographic variation, internal to the system, and
+environmental variation, external to the system, varies
+according to the focus of a study.  Is the variation in the number of
+trees that die every year an internal property of the variability in
+the population or does it depend on an external climatic variable that
+is modeled as random noise?
+
+\subsection{Sophistication}
+I want to make one final distinction, between simple and complex
+models and between crude and sophisticated ones.  One could quantify
+simplicity vs. complexity by the length of the description of the
+analysis, or the number of lines of computer script or code required
+to implement a model.  Crudity and sophistication are harder to
+recognize; they represent the conceptual depth, or the amount of
+\emph{hidden} complexity, involved in a model or statistical approach.
+For example, a computer model that picks random numbers to determine
+when individuals give birth and die and keeps track of the total
+population size, for particular values of the birth and death rates
+and starting population size, is simple and crude.  Even simpler, but
+far more sophisticated, is the mathematical theory of random walks
+\citep{okubo} which describes the same system but --- at the cost of
+challenging mathematics --- predicts its behavior for \emph{any} birth
+and death rates and any starting population sizes.  A statistical
+model that searches at random for the line that minimizes the sum of
+squared deviations of the data is crude and simple; the theory of
+linear models, which involves more mathematics, does the same
+thing in a more powerful and general way.  Computer programs, too, can
+be either crude or sophisticated. One can pick numbers from a binomial
+distribution by virtually flipping the right number of coins and
+seeing how many come up heads, or by using numerical methods
+that arrive at the same result far more efficiently.  A
+simple \R\ command like \code{rbinom}, which picks random binomial
+deviates, hides a lot of complexity.
+
+The value of sophistication is generality, simplicity, and power; its
+costs are opacity and conceptual and mathematical difficulty.  
+% There is always a
+% balancing act between teaching methods that people can understand,
+% which will empower them, and teaching powerful methods, which will let
+% them get more done but may seem like magic. Everyone 
+% has their own particular answer to this question. 
+% For example, \cite{HilbornMangel1997} recommend crude but understandable
+% optimization approaches over more sophisticated tools 
+% like those found in the classic numerical analysis cookbook \emph{Numerical Recipes}
+% \citep{Press+1994}, which in turn are cruder but easier
+% to understand than the methods built into \R.
+In this book, I will take advantage of many of \R's sophisticated tools for
+optimization and random number generation (since in this context it's
+more important to have these tools available than to learn the
+details of how they work), but I will avoid many of its sophisticated
+statistical tools, so that you can learn from the ground up how
+statistical models really work and make your models work the way you
+want them to rather than being constrained by existing frameworks.
+Having reinvented the wheel, however, we'll briefly revisit 
+some standard statistical frameworks like
+generalized linear models and see how they can solve some problems
+more efficiently.
+
+\section{Frameworks for statistical inference }
+\label{sec:inference}
+
+This section will explore three different
+ways of drawing statistical conclusions from data --- %
+frequentist, Bayesian, and likelihood-based.
+While the differences among these frameworks
+are sometimes controversial,
+most modern statisticians know them all
+and use whatever tools they
+need to get the job done; this book will teach you the details of
+those tools, and the distinctions among them.  
+
+To illustrate the ideas I'll draw on
+a seed predation data set
+from \cite{DuncanDuncan2000}
+that quantifies how many times
+seeds of two different species disappeared
+(presumably taken by seed predators, although
+we can't be sure)
+from observation stations in Kibale National Park, Uganda.
+The two species (actually the smallest- and largest-seeded
+species of a set of eight species)
+are \emph{Polyscias fulva} (\code{pol}: seed mass $<0.01$~g)
+and \emph{Pseudospondias microcarpa} (\code{psd}:
+seed mass $\approx 50$~g).
+
+
+\subsection{Classical frequentist}
+
+\emph{Classical} statistics, which are part of the
+broader \emph{frequentist} paradigm, are 
+the kind of statistics typically presented 
+in introductory statistics
+classes.
+For a specific experimental procedure (such as drawing cards or flipping
+coins), you calculate the probability of a particular outcome, which
+is defined as \emph{the long-run average frequency of that outcome in
+a sequence of repeated experiments}.  Next you calculate a
+\emph{p-value}, defined as the probability of that outcome \emph{or
+any more extreme outcome} given a specified null hypothesis.  If
+this so-called \emph{tail probability} is small, then you reject the
+null hypothesis: otherwise, you fail to reject it.
+But you don't accept the alternative hypothesis
+if the tail probability is large, you just fail
+to reject the null hypothesis.
+
+The frequentist approach to statistics
+(due to Fisher, Neyman and Pearson)
+is useful and very widely used, but it 
+has some serious drawbacks  --- which are repeatedly pointed out by
+proponents of other statistical frameworks \citep{BergerBerry1988}.  
+It relies on
+the probability of a series of outcomes that didn't happen (the tail
+probabilities), and which depend on the way the
+experiment is defined;
+%in a way that can change depending on the experimental
+%design; 
+its definition of probability depends on a series of
+hypothetical repeated experiments that are often impossible in any
+practical sense; 
+and it tempts us to construct straw-man 
+null hypotheses and make convoluted arguments
+about why we have failed to reject them.
+Probably the most criticized aspect of frequentist
+statistics is their reliance on
+$p$-values, which when  misused (as frequently occurs)
+are poor tools for scientific inference.  It seems to be human nature
+to abuse $p$-values, acting as though alternative hypotheses (which are
+usually what we're really interested in) are ``true'' if we can reject
+the null hypothesis with $p<0.05$ and ``false'' if we can't. In fact,
+when the null hypothesis is true we still find
+$p \le 0.05$ one time in twenty (we
+falsely reject the null hypothesis 5\% of the time, by definition).
+If $p>0.05$ the null hypothesis could 
+still be false but we have insufficient data to reject
+it.  We could also reject the null hypothesis, in cases where we have
+lots of data, even though the 
+results are biologically insignificant --- that is, if
+the estimated effect size is
+ecologically irrelevant (e.g. a 0.01\% increase in plant growth rate
+with a 30$^{\circ}$C increase in temperature).
+More fundamentally, if we use a so-called \emph{point null hypothesis} (such as
+``the slope of the relationship between plant productivity and
+temperature is zero''), common sense tells us that the null
+hypothesis \emph{must} be false, because it can't be exactly zero ---
+which makes the $p$ value into a statement
+about whether we have enough data to detect a non-zero slope, rather
+than about whether the slope is actually different from zero.  
+Working statisticians will tell you that it is
+better to focus on estimating the values of biologically meaningful
+parameters and finding their confidence limits rather than worrying
+too much about whether $p$ is greater or less than 0.05
+\citep{Yoccoz1991,Johnson1999,Osenberg+2002} --- although
+\cite{Stephens+2005} remind us that hypothesis testing
+can still be useful.
+% decided to leave Yoccoz 1991 in after all
+
+<<echo=FALSE>>=
+## read in and attach seed predation data
+library(emdbook)
+data(SeedPred)
+seedsize <- c(0.11,0.03,0.21,0.16,0.35,0.01,0.52,0.27)
+ss.levels <- levels(SeedPred$species)[order(seedsize)]
+SeedPred$species <- factor(SeedPred$species,levels=ss.levels)
+seedsub = subset(SeedPred,seeds>0 & !is.na(taken))
+attach(seedsub,warn.conflicts=FALSE)
+## grab useful? libraries
+invisible(require(lattice,quietly=TRUE))
+invisible(require(plotrix,quietly=TRUE,warn.conflicts=FALSE))
+## compute none/any values for number of seeds taken by species
+t1 <- table(taken>0,species)
+## total number of obs per species
+tot <- table(species)
+## number of "successes" and proportion for all species
+succ <- t1[2,]
+props <- succ/tot
+## restrict to just the first two species
+spp <- c("pol","psd")
+succ <- succ[spp]
+tot <- tot[spp]
+vals <- t1[2:1,spp] ## reverse order
+## MLE estimates of binomial p
+p.mle <- succ/tot
+ptot.mle <- sum(succ)/sum(tot)
+obs.pratio <- p.mle["pol"]/p.mle["psd"]
+## let's be frequentist: Fisher exact test
+F1 <- fisher.test(vals)
+F1.1 <- fisher.test(vals,alternative="greater")
+## likelihood: restricted and full likelihood
+pr <- sum(succ)/sum(tot)
+L0 <- dbinom(sum(succ),size=sum(tot),prob=pr,log=TRUE)
+L0 <- sum(dbinom(succ,size=tot,prob=pr,log=TRUE))  ## ??? sum(log-likelihoods) neq log(pooled data)???
+L0x <- dbinom(succ,size=tot,prob=pr,log=TRUE)
+L0bx <- lchoose(tot,succ)+succ*log(pr)+log(1-pr)*(tot-succ)
+L0b <- lchoose(sum(tot),sum(succ))+sum(succ)*log(pr)+log(1-pr)*(sum(tot)-sum(succ))
+## correct!
+L1 <- sum(dbinom(succ,size=tot,prob=succ/tot,log=TRUE))
+g1 <- glm(t(vals)~factor(1:2),family="binomial")
+g2 <- glm(t(vals)~1,family="binomial")
+## anova(g1,g2,test="Chisq")
+## ??? logLik(g1) matches L1
+## logLik(g2) = -22.23, L0 = -2.84
+## plogis(coef(g2))
+## plogis(coef(g1)[1])
+## plogis(sum(coef(g1)))
+## likelihood ratio test:
+LRT.p <- pchisq(2*(L1-L0),df=1,lower.tail=FALSE)
+OR.to.PR <- function(OR,p1) {
+  O1 <- p1/(1-p1)
+  O2 <- O1*OR
+  p2 <- O2/(1+O2)
+  p2/p1
+}
+pr.conf <- OR.to.PR(F1$conf,p.mle[2])
+
+## calculate num taken from odds ratio,
+## given margins v1,v2,v3
+OR.to.nums <- function(OR,vals) {
+  v1 <- colSums(vals)[1] ## total pol
+  v2 <- colSums(vals)[2] ## total psd
+  v3 <- rowSums(vals)[1] ## total num taken
+}
+
+## calculate odds ratio given number in [1,1]
+x.to.OR <- function(x,vals) {
+  v1 <- colSums(vals)[1] ## total pol
+  v2 <- colSums(vals)[2] ## total psd
+  v3 <- rowSums(vals)[1] ## total num taken
+  m <- matrix(nrow=2,ncol=2)
+  m[1,1] <- x
+  m[2,1] <- v1-x
+  m[1,2] <- v3-x
+  m[2,2] <- v2-m[1,2]
+  (m[1,1]/m[2,1])/(m[1,2]/m[2,2])
+}
+
+## PR = P1/P2 = (m[1,1]/v1)/(m[1,2]/v2)
+## m[1,2] = v3-m[1,1]
+## PR = (m[1,1]/v1)/((v3-m[1,1])/v2)
+## ((v3-m[1,1])/v2)*PR = m[1,1]/v1
+## v3/v2*PR = m[1,1]*(1/v1+PR/v2)
+## m[1,1] = v3/v2*PR/(1/v1+PR/v2)
+## calculate number in [1,1] given prob. ratio,
+## marginals
+PR.to.x <- function(PR,vals) {
+  v1 <- colSums(vals)[1] ## total pol
+  v2 <- colSums(vals)[2] ## total psd
+  v3 <- rowSums(vals)[1] ## total num taken
+  v3/v2*PR/(1/v1+PR/v2)
+}
+
+ors <- sapply(0:40,x.to.OR,vals=vals)
+prs <- sapply(ors,OR.to.PR,p1=vals[1,1]/colSums(vals)[1])
+or2 <- pmax(ors,1/ors)
+smvals <- (0:40)[ors<1 & or2>F1$estimate]
+lgvals <- vals[1,1]:40
+@ 
+
+Looking at the seed data,
+we have the following 2 $\times$ 2 table:
+\begin{center}
+<<echo=FALSE,results=tex>>=
+vals2 = rbind(vals,colSums(vals))
+dimnames(vals2)[[1]] <- c("any taken ($t$)","none taken","total ($N$)")
+latex(vals2,file="",title="",table.env=FALSE)
+@
+\end{center}
+If $t_i$ is the number of times that species~$i$
+seeds disappear and $N_i$ is the total number of
+observations of species~$i$ then
+the observed proportions of the time that
+seeds disappeared for
+each species are (pol) $t_1/N_1 = \Sexpr{round(p.mle["pol"],3)}$
+and (psd) $t_2/N_2=\Sexpr{round(p.mle["psd"],3)}$. 
+The overall
+proportion taken (which is not the average
+of the two proportions since there are different
+total numbers of observations for each species)
+is $(t_1+t_2)/(N_1+N_2)=\Sexpr{round(ptot.mle,3)}$.
+The ratio of the predation probabilities
+(proportion for pol/proportion for psd)
+is $\Sexpr{round(p.mle["pol"],3)}/\Sexpr{round(p.mle["psd"],3)}=
+\Sexpr{round(obs.pratio,3)}$.
+The ecological question we want to answer is 
+``is there differential predation
+on the seeds on these two species?''
+(Given the sample sizes and the size of
+the observed difference, what do you think?
+Do you think the answer is likely to be
+statistically significant?  How about
+biologically significant? What assumptions or
+preconceptions does your
+answer depend on?)
+
+A frequentist would translate this biological
+question into statistics as ``what is the probability that I would 
+observe a result this extreme, or more extreme,
+given the sampling procedure?''  More specifically,
+``what proportion of possible outcomes would result in
+observed ratios of proportions greater
+than 
+\Sexpr{round(obs.pratio,3)}, \emph{or} smaller
+than 1/\Sexpr{round(obs.pratio,3)} = \Sexpr{round(1/obs.pratio,3)}?''
+(Figure~\ref{fig:freq1}).
+Fisher's exact test (\code{fisher.test} in \R)
+calculates this probability,
+as a one-tailed test (proportion of outcomes with
+ratios greater than \Sexpr{round(obs.pratio,3)})
+or a two-tailed test
+(proportion with
+ratios greater than \Sexpr{round(obs.pratio,3)}
+or less than its reciprocal, \Sexpr{round(1/obs.pratio,3)});
+the two-tailed answer in this case is
+\Sexpr{scinot(F1$p.value,digits=2)}.
+%$
+% the one-tailed answer\footnote{such a one-tailed
+% test would only be legitimate if you really
+% thought in advance that a smaller-seeded species
+% like \emph{Polyscias fulva} was more likely to
+% be taken by seed predators; the authors comment
+% that the high loss rate of small-seeded species
+% may actually be caused by rain washing seeds out of
+% the stations} in this case is
+% $p=$\Sexpr{scinot(F1.1$p.value)}.
+According to Fisher's original interpretation,
+this number represents the strength of evidence
+against the null hypothesis, or (loosely
+speaking) for the alternative hypothesis --- that
+there is a difference in seed predation rates.
+According to the Neyman-Pearson decision rule,
+if we had set our acceptance cutoff at $\alpha=0.05$,
+we could conclude that there was a \emph{statistically
+significant} difference in predation rates.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op <- par(cex=1.5,lwd=2,bty="l",yaxs="i")
+par(mar=c(5,4,4,2)+0.1)
+## stuff for Fisher's test: one-sided test
+## vals
+maxv <- 40
+xvec <- 0:maxv
+v1 <- colSums(vals)[1] ## total pol
+v2 <- colSums(vals)[2] ## total psd
+v3 <- rowSums(vals)[1] ## total num taken
+hvec <- dhyper(xvec,v1,v2,v3,log=TRUE)/log(10)
+## convert to log-10 units
+hvec2 <- dhyper(xvec,v1,v2,v3)
+##phyper(29,125,439,52,lower.tail=FALSE)
+pval <- fisher.test(vals,alternative="greater")$p.val
+pval2 <- fisher.test(vals,alternative="two.sided")$p.val
+pval3 <- pval2-pval
+op <- par(cex=1.5,lwd=2,bty="l",mgp=c(2.5,1,0),yaxs="i")
+## barplot(hvec)
+plot(xvec,hvec,type="n",xlab="Number of pol stations with any seeds taken",
+     ylab="",ylim=c(min(hvec),min(hvec)+diff(range(hvec))*1.1),
+      axes=FALSE,xlim=c(-5,40))
+rect(xvec-0.5,rep(min(hvec),length(xvec)),xvec+0.5,hvec,
+     border="black",lwd=1,
+     col=rep(c("darkgray","white","darkgray"),
+       c(length(smvals),
+         length(xvec)-length(smvals)-length(lgvals), 
+         length(lgvals))))
+## plot(xvec,hvec2,type="l",log="y")
+if (!badfonts) mtext("Probability",side=2,at=-10,line=3,las=0,cex=1.5)
+axis(side=1,at=seq(0,40,by=10))
+axis(side=2,at=c(-5,-10,-15),labels=NA)
+prvals <- seq(0,10,by=2)
+axis(side=3,at=PR.to.x(prvals,vals=vals),labels=prvals,
+     line=0.5,cex.axis=0.8)
+v0 <- vals[1,1]
+obs=v0
+obsPR=3.62
+par(xpd=NA)
+arrows(26,4.34,26,1.8,length=0.15,angle=15) ## 1.585
+text(26,5.0, ## 4.82,
+     paste("obs=",obsPR,sep=""),cex=0.5)
+par(xpd=TRUE)
+## kluge
+mtext(side=3,at=PR.to.x(10,vals=vals),text="10",
+      line=1.5,cex=0.8*1.5)
+mtext(side=3,at=20,line=3,"Probability ratio")
+par(las=1)
+invisible(lapply(seq(-5,-15,by=-5),
+                 function(x) { mtext(text=substitute(10^x,list(x=x)),
+                                     side=2,at=x,line=par("mgp")[2],cex=1.5) }))
+v0 <- vals[1,1]
+x1 <- lgvals
+##polygon(c(x1,rev(x1)),c(hvec[xvec>=v0],rep(par("usr")[3],length(x1))),
+##        col="gray",border=NA)
+x2 <- smvals
+v5 <- max(smvals)
+## polygon(c(x2,rev(x2)),c(hvec[xvec<=v5],rep(par("usr")[3],length(x2))),
+##        col="gray",border=NA)
+## lines(xvec,hvec)
+box(lwd=2)
+u1=par("usr")[3]
+u2=par("usr")[4]
+segments(v0,u1,v0,-2.7,lty=2)
+segments(v5,u1,v5,u2,lty=2)
+par(xpd=NA)
+text(v0,1,paste("observed\n=",v0,sep=""),pos=1)
+do.call("text",list(40,-8,scinot(pval,"expression",digits=2,pref="p="),
+                    cex=0.5))
+do.call("text",list(-2,-2,scinot(pval3,"expression",digits=2,pref="p="),
+                    cex=0.5))
+arrows(40,-9,36,-15,angle=15)
+arrows(-2,-3,1,-6,angle=15)
+par(op)
+@ 
+\caption{Classical frequentist analysis.  
+Fisher's exact test calculates 
+the probability of a given number of \code{pol} stations
+having seeds taken under the null hypothesis that both
+species have the same predation probability.
+The total probability that as many or more
+\code{pol} stations had seeds taken,
+\emph{or} that the difference was more extreme 
+in the other direction, is the two-tailed
+frequentist $p$-value 
+(\Sexpr{scinot(pval,digits=2)}+\Sexpr{scinot(pval3,digits=2)}=
+\Sexpr{scinot(pval+pval3,digits=2)}).
+The top axis shows the equivalent in 
+seed predation probability ratios.
+(\emph{Note}: I put the $y$-axis on a log scale because the
+tails of the curve are otherwise too small to see,
+even though this change means that the
+area under the curve no longer represents the total probability.)}
+
+\label{fig:freq1}
+\end{figure}
+
+We needn't fixate on $p$-values:
+the \R\ command for Fisher's test, \code{fisher.test},
+also tells us the 95\% confidence limits
+for the difference between rates%
+\footnote{\R\ expresses the
+difference in predation rates in terms of the
+\emph{odds ratio} --- if there are $t_1$ seeds
+taken and $N_1-t_1$ seeds not taken for species~1,
+then the odds of a seed being taken are
+$t_1/(N_1-t_1)$ and the odds ratio between
+the species
+is $(t_1/(N_1-t_1))/(t_2/(N_2-t_2))$.
+<<echo=FALSE>>=
+or = vals[1,1]*vals[2,2]/(vals[1,2]*vals[2,1])
+@ 
+%% wanted to give the value of the odds ratio
+%% and confidence intervals, but the conditional/unconditional
+%% distinction made in the R help page (which is why
+%% fisher.test gives 3.98 instead of 3.99) is just
+%% too complicated -- a footnote on a footnote ...
+The odds ratio and its logarithm 
+(the \emph{logit} or log-odds ratio) have
+nice statistical properties.}. In terms of
+probability ratios, this example gives
+(\Sexpr{round(pr.conf[1],3)}, \Sexpr{round(pr.conf[2],3)}),
+which as expected does not include 1.
+Do you think a range of a
+\Sexpr{signif((pr.conf[1]-1)*100,2)}\% to a
+\Sexpr{signif((pr.conf[2]-1)*100,2)}\% increase
+in seed predation probability\footnote{These values
+are the confidence limits on the probability ratios,
+minus 1, converted into approximate percentages: for
+example, a probability ratio of 1.1 would represent a 10\%
+increase in predation.} is significant?
+%(For much more detail on inference on contingency tables,
+%see \cite{Agresti2002} ch. 3.)
+
+\subsection{Likelihood}
+Most of the book will focus on frequentist statistics, 
+but not the standard version that you may be used to.
+Most modern statistics uses an approach
+called \emph{maximum likelihood estimation},
+or approximations to it.
+For a particular statistical model,
+maximum likelihood finds the set
+of parameters (e.g. seed removal rates)
+\emph{that makes the observed data} (e.g. the
+particular outcomes of predation trials) \emph{most likely to have
+occurred}.  Based on a model for both the deterministic and
+stochastic aspects of the data, we can compute the \emph{likelihood}
+(the probability of the observed outcome) given a particular choice of
+parameters.  
+\label{likedef}
+We then find the set of
+parameters that makes the likelihood as large as possible, and take the
+resulting \emph{maximum likelihood estimates} (MLEs) as our best guess
+at the parameters.  
+So far we haven't assumed any particular
+definition of probability of the parameters.
+We could decide on confidence limits by choosing a
+likelihood-based cutoff, for example 
+by saying that any parameters that make the
+probability of the observed outcomes at least 1/10 as likely as the
+maximum likelihood are ``reasonable''.  
+For mathematical convenience, 
+we often work with the logarithm of the likelihood (the \emph{log-likelihood})
+instead of the likelihood; 
+the parameters that give the maximum log-likelihood
+also give the maximum likelihood.
+On the log scale, statisticians have suggested
+a cutoff of 2 log-likelihood units \citep{Edwards1992},
+meaning that we consider any
+parameter reasonable that is at least 
+$e^{-2} \approx 1/\Sexpr{round(exp(2),1)}=\Sexpr{round(100*exp(-2))}$\% as
+likely as the maximum likelihood.
+
+However, most modelers add a frequentist interpretation
+to likelihoods, using a mathematical proof that says that, across 
+the hypothetical repeated trials of the frequentist approach,
+the distribution of the negative logarithm of the
+likelihood itself 
+follows a $\chi^2$ (``chi-squared'') 
+distribution%
+\footnote{This result holds in 
+the \emph{asymptotic} case where we have lots of data,
+which happens less than we would like --- but we often gloss over
+the fact of limited data and use it anyway.}.
+This fact means that we can set a cut-off for differences in
+log-likelihoods based on the 95\textsuperscript{th} percentile of the $\chi^2$
+distribution, which corresponds to 1.92~log-likelihood units, or
+parameters that lower the likelihood by a factor of
+\Sexpr{round(exp(1.92),2)}.  The theory says that the estimated value
+of the parameter will fall farther away than that from the true value
+only 5\% of the time in a long series of repeated experiments.  This
+rule is called the \emph{Likelihood Ratio Test} (LRT)\footnote{The difference
+between log-likelihoods is equivalent to the ratio of likelihoods.}.
+We will see that it lets us both estimate confidence limits for parameters
+and choose between competing models.
+
+Bayesians also use the likelihood --- it is part of the recipe
+for computing the posterior distribution --- but they
+take it as a measure of the information we can gain from the data,
+without saying anything about what the distribution of the likelihood
+would be in repeated trials.
+
+<<echo=FALSE>>=
+tprobs <- c(0.05,0.04)
+bprobs <- dbinom(sum(succ),prob=tprobs,size=sum(tot))
+ml <- dbinom(sum(succ),prob=sum(succ)/sum(tot),size=sum(tot))
+@ 
+
+How would one apply maximum likelihood estimation to
+the seed predation example?
+Lumping all the data from both species together at first, and
+assuming that (1) all observations are independent of each other and
+(2) the probability of at least one seed being taken is the same for
+all observations, it follows that the number of times at
+least one seed is removed is
+\emph{binomially} distributed 
+(we'll get to the formulas in Chapter~\ref{chap:stoch}).
+Now we want to know how the probability of observing
+the data (the likelihood, $\lik$) 
+depends on the probability $p_s$ that at
+least one seed was taken 
+from a particular station by a predator\footnote{One of the most
+confusing things about maximum likelihood estimation is that
+there are so many different probabilities floating around.
+The likelihood $\lik$ is the probability of observing the complete
+data set (i.e., Prob(seeds were taken 51 times out of 941 observations));
+$p_s$ is the probability that seeds were taken in any given
+trial; and the frequentist $p$-value is the probability,
+given a particular value of $p_s$, that seeds were taken
+51 \emph{or more} times out of 941 observations.},
+and what value of $p_s$ maximizes
+the likelihood.
+The likelihood $\lik$ is the probability that seeds were taken
+in \Sexpr{sum(succ)} out of the total of \Sexpr{sum(tot)} observations.
+This probability varies
+as a function of $p_s$
+(Figure~\ref{fig:lik}):
+for $p_s=\Sexpr{tprobs[1]}$,
+$\lik=\Sexpr{round(bprobs[1],3)}$,
+while for $p_s=\Sexpr{tprobs[2]}$, $\lik$ is only 
+\Sexpr{scinot(bprobs[2],digits=2)}.
+As it turns out, the MLE
+for the probability that seeds were
+taken in any one trial ($p_s$) is exactly
+what we'd expect---\Sexpr{sum(succ)}/\Sexpr{sum(tot)},
+or \Sexpr{round(sum(succ)/sum(tot),3)}---and the likelihood is
+$\lik=\Sexpr{round(ml,3)}$. (This likelihood is small, but it
+just means that the probability of any \emph{particular} outcome ---
+seeds being taken in \Sexpr{sum(succ)} trials rather than
+\Sexpr{sum(succ)-1}  or \Sexpr{sum(succ)+1}  --- is small.)
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op <- par(mfrow=c(2,1),las=1,lwd=2,cex=1.5,bty="l")
+par(mar=c(0,4,2,2)+0.2)
+curve(dbinom(sum(succ),size=sum(tot),prob=x),from=0.01,to=0.2,ylim=c(0,0.06),
+      axes=FALSE,
+      ylab="Likelihood",xlab="")
+##      xlab="Prob. any seeds\ntaken in one trial",
+axis(side=2,at=seq(0,0.06,by=0.03))
+box()
+abline(v=sum(succ)/sum(tot),lty=2)
+par(mar=c(4,4,1,2)+0.2)
+corner.label2("a","topleft",inset=0.025)
+curve(dbinom(sum(succ),size=sum(tot),prob=x,log=TRUE),from=0.01,to=0.2,
+      xlab="",
+      axes=FALSE,
+      ylab="Log-likelihood",ylim=c(-66,0))
+mtext(side=1,expression(paste("P(seeds taken), ",p[s])),
+    at=0.1,line=2.5,cex=1.5)
+axis(side=2,at=seq(0,-60,by=-20))
+box()
+par(xpd=NA)
+corner.label2("b","topleft",inset=0.025)
+par(xpd=FALSE)
+axis(side=1)
+par(las=1)
+## invisible(lapply(seq(-5,-25,by=-10),
+##        function(x) { mtext(text=substitute(10^x,list(x=x)),
+##                            side=2,at=10^(x),line=par("mgp")[2],cex=1.5) }))
+#mtext(side=2,at=1e-15,"Likelihood",line=3.2,las=0,cex=1.5)
+#box()
+abline(v=sum(succ)/sum(tot),lty=2)
+par(op)
+@ 
+\caption{Likelihood and log-likelihood curves for predation probability $p$.
+Both curves have their maxima at the same point ($p=\Sexpr{round(sum(succ)/sum(tot),3)}$).
+Log-likelihoods are based on natural ($\log_e$ or $\ln$) logarithms. 
+}
+\label{fig:lik}
+\end{figure}
+
+To answer the questions that really concern us 
+about the different
+predation probabilities for different species, we need to allow
+different probabilities for each species, and see how much better
+we can do (how much higher the likelihood is) with this more
+complex model.  Now we take the separate values for each species
+(\Sexpr{succ[1]} out of \Sexpr{tot[1]} and \Sexpr{succ[2]} out
+of \Sexpr{tot[2]}) and, for a per-observation probability for
+each species, compute the likelihoods of each species' data
+and multiply them (see Chapter~\ref{chap:stoch} for basic probability calculations),
+or add the log-likelihoods.  If I define the model in terms
+of the probability for psd and the ratio of the
+probabilities, I can plot a \emph{likelihood profile} for
+the maximum likelihood I can get for a given value of the
+ratio (Figure~\ref{fig:likprof}).
+
+
+<<echo=FALSE>>=
+clip <- function(x) { min(1,max(0,x)) }
+plik1 <- function(r) {
+  optimize(f=function(x) {-sum(dbinom(x=succ,
+             size=tot,prob=c(x,
+                        clip(x*r)),log=TRUE))},
+           interval=c(0.01,0.4))$objective
+}
+
+## use odds ratio instead of probability ratio 
+plik1.OR <- function(r) {
+  optimize(f=function(x) {
+    or2 <- (x/(1-x))*r; p2 <- or2/(1+or2);
+    -sum(dbinom(x=succ,size=tot,prob=c(x,p2),log=TRUE))},
+           interval=c(0.05,0.4))$objective
+}
+## range of probability ratios to try
+## changed range -- species 1 now has higher number taken
+rvec <- seq(0.01,1,length=300)
+rvec2 <- seq(1.5,7,length=100)
+## negative log-likelihood
+lprof <- sapply(rvec,plik1)
+lprof2 <- sapply(1/rvec2,plik1)
+## likelihood profile on odds ratio
+lprof.OR <- sapply(rvec,plik1.OR)
+
+fit.mle <- optim(fn=function(p) { -sum(dbinom(x=succ,size=tot,prob=c(p[1],clip(p[1]*p[2])),
+                   log=TRUE)) },par=c(0.2,2))
+
+##library(stats4)
+##invisible(require(nlme,quietly=TRUE))
+##library(methods)
+invisible(require(bbmle,quietly=TRUE))
+fit2.mle <- mle2(minuslogl=function(p,r) { -sum(dbinom(x=succ,size=tot,prob=c(p,clip(p*r)),
+                   log=TRUE)) },start=list(p=0.2,r=2))
+ci.mle <- confint(fit2.mle,quietly=TRUE)
+@ 
+
+<<echo=FALSE>>=
+lprior <- function(prob,ratio) { 1 } ## improper prior in both directions
+plik2 <- function(prob,ratio) {
+  exp(sum(dbinom(x=succ,size=tot,prob=c(prob,clip(prob*ratio)),log=TRUE)))
+}
+## odds ratio:
+## prob1 + odds ratio -> new odds ratio = prob1/(1-prob1)*oddsratio
+##  new probability = OR/(1+OR)
+plik2.OR <- function(prob,ratio) {
+  or2 <- (prob/(1-prob))*ratio  ## changed from *ratio to /ratio
+  p2 <- or2/(1+or2)
+  exp(sum(dbinom(x=succ,size=tot,prob=c(prob,p2),log=TRUE)))
+}
+pnum <- function(P) lprior(P[1],P[2])*plik2(P[1],P[2])
+library(adapt)
+denom <- adapt(ndim=2,lower=c(0,0),upper=c(1,10),functn=pnum,eps=0.005)$value
+plik2B <- function(prob,ratio) {
+  sapply(prob,plik2,ratio=ratio)
+}
+plik2B.OR <- function(prob,ratio) {
+  sapply(prob,plik2.OR,ratio=ratio)
+}
+plik3 <- function(r) {
+  integrate(plik2B,lower=0,upper=1,ratio=r)$value
+}
+plik3B <- function(p) {
+  sapply(p,plik3)
+}
+
+plik3.OR <- function(r) {
+  integrate(plik2B.OR,lower=0,upper=1,ratio=r)$value
+}
+## what probability ratio corresponds to a given odds ratio???
+ratiopost <- sapply(rvec,plik3)
+ratiopost.OR <- sapply(rvec,plik3.OR)
+@ 
+
+<<echo=FALSE,eval=FALSE>>=
+plot(rvec,ratiopost)
+par(new=TRUE)
+plot(rvec,exp(-lprof),col=2,type="l")
+abline(v=p.mle[2]/p.mle[1],lty=2)
+
+plot(rvec,ratiopost.OR)
+par(new=TRUE)
+plot(rvec,exp(-lprofC),col=2,type="l")
+abline(v=1.9535)
+@ 
+
+<<echo=FALSE>>=
+densfac <- 1/sum(ratiopost)/diff(rvec)[1]
+## find credible interval ...
+## find lower and upper values for which prob dens = target value
+lims <- function(pdens) {
+  lower <- uniroot(function(p) {plik3(p)*densfac-pdens},
+                   interval=c(0.0001,rvec[which.max(ratiopost)]))$root
+  upper <- uniroot(function(p) {plik3(p)*densfac-pdens},
+                   interval=c(rvec[which.max(ratiopost)],3))$root
+  c(lower,upper)
+}
+
+## find area between target values
+limarea <- function(pdens) {
+  intlim <- lims(pdens)
+  (integrate(plik3B,intlim[1],intlim[2])$value)*densfac
+}
+
+## find credible interval
+credint <- function(level) {
+  u <- uniroot(function(x) {limarea(x)-level},
+               interval=c(1,1e-5))
+  intlim <- lims(u$root)
+  c(intlim,plik3(intlim[1])*densfac,limarea(u$root))
+}
+
+cred1 <- credint(0.95)
+
+bayesmean <- integrate(function(x)plik3B(x)*x,0.001,0.6)$value*densfac  ## range covers plausible range
+bayesmode <- optimize(plik3B,interval=c(0.001,6),maximum=TRUE)$maximum  ##
+bayeshyp <- integrate(plik3B,1,Inf)$value*densfac
+@   
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op <- par(las=1,lwd=2,cex=1.5,bty="l",mar=c(5,4,4,4)+0.1)
+plot(rvec2,-lprof2,type="l",xlab="",ylab="Log-likelihood")
+mtext(side=1,"Ratio of (pol prob)/(psd prob)",line=2,cex=1.5)
+abline(h=-fit.mle$value,lty=2)
+## plot(rvec2,exp(-lprof),type="l",col=2)
+abline(v=p.mle["pol"]/p.mle["psd"],lty=2)
+abline(v=1/ci.mle[2,],lty=3)
+abline(h=logLik(fit2.mle)+c(0,-qchisq(0.95,1)/2),lty=3)
+##abline(v=1,lty=4)
+par(xpd=NA)
+text(1/coef(fit2.mle)[2],-4.5,"MLE")
+text(12,logLik(fit2.mle),"maximum\nlikelihood",adj=1)
+text(12,logLik(fit2.mle)-qchisq(0.95,1)/2-0.2,"95% cutoff",adj=1)
+text(1/ci.mle[2,],-4.5,c("upper","lower"))
+##text(1,-17,"null",cex=1.5)
+##arrows(c(1.3,2.0),-12,ci.mle[2,],-12,lwd=2)
+par(xpd=FALSE)
+@ 
+\caption{Likelihood curve for the ratio of the
+predation probabilities,
+showing the maximum likelihood estimate and 95\% confidence limits.
+The null value (ratio equal to 1) is just below the lower limit
+of the graph.}
+\label{fig:likprof}
+\end{figure}
+
+The conclusions from this frequentist, maximum-likelihood analysis
+are essentially identical to those of the classical frequentist (Fisher's exact test) analyses.
+The maximum-likelihood estimate equals the
+observed ratio of the probabilities, \Sexpr{round(1/coef(fit2.mle)[2],3)};
+the confidence limits are 
+(\Sexpr{round(1/ci.mle[2,2],2)},
+\Sexpr{round(1/ci.mle[2,1],2)}),
+which do not include 1; and the LRT-based $p$-value for rejecting the null hypothesis
+that the probabilities are the same is \Sexpr{scinot(LRT.p,digits=2)}.
+%$  fake  font-lock mode
+
+Likelihood and classical frequentist analysis share the same
+philosophical underpinnings.  Likelihood analysis is really a
+particular flavor of frequentist analysis, one that focuses on writing
+down a likelihood model and then testing for significant differences
+in the likelihood ratio rather than applying frequentist statistics
+directly to the observed outcomes.  Classical analyses are usually
+easier because they are built into common statistics packages, and
+they may make fewer assumptions than likelihood analyses
+(for example,
+Fisher's test is exact while the LRT is only valid for large data
+sets), but likelihood analyses are often better matched with
+ecological questions.
+
+\subsection{Bayesian}
+
+Frequentist statistics assumes that there is a
+``true'' state of the world (e.g. the difference
+between species in predation probability) 
+which gives rise to a distribution of possible
+experimental outcomes.
+The Bayesian framework
+says instead that the experimental outcome --- what we actually
+saw happen --- is the truth, while the parameter
+values or hypotheses have probability distributions.
+The Bayesian framework solves many of the 
+conceptual problems of frequentist statistics: answers depend on what we
+actually saw and not on a range of hypothetical outcomes, and we can
+legitimately make statements about the probability of different
+hypotheses or parameter values.
+
+The major fly in the ointment of Bayesian statistics is that in order
+to make it work we have to specify our \emph{prior beliefs} about the
+probability of different hypotheses, and these prior beliefs actually
+affect our answers!  One hard-core frequentist ecologist says ``Bayesianism
+means never having to say you're wrong''
+\citep{Dennis1996}.
+It is indeed
+possible to cheat in Bayesian statistics by setting unreasonably
+strong priors\footnote{But if you really want to cheat with statistics you can
+do it in any framework!}. The standard solution to the
+problem of subjectivity is to assume you are completely ignorant
+before the experiment (setting
+a \emph{flat prior}, or ``letting the data speak for themselves''),
+although for technical reasons this isn't always possible.
+For better or worse,
+Bayesian statistics operates in the same way as we typically do science: 
+we down-weight observations that
+are too inconsistent with our current beliefs, while using those
+in line with our current beliefs to strengthen and sharpen those
+beliefs (statisticians are divided on whether this is good or bad).
+
+The big advantages of Bayesian statistics, besides their ease of
+interpretation, come (1) when we actually have data from prior
+observations we want to incorporate; (2) in complex models with
+missing data and several layers of variability; (3) when we are trying
+to make (e.g.) management decisions based on our data (the Bayesian
+framework makes it easier to incorporate the effect of unlikely but
+catastrophic scenarios in decision-making). The only big disadvantage
+(besides the problem of priors) is that problems of small to medium
+complexity are actually harder with Bayesian approaches than with
+frequentist approaches --- at least in part because
+most statistical software is geared toward classical statistics.
+
+How would a Bayesian answer our question about predation rates?  First
+of all, they would say (without looking at the data) that the answer
+is ``yes'' --- the true difference between predation rates is
+certainly not zero.  (This discrepancy reflects the difference in
+perspective between frequentists, who believe that the true value is a
+fixed number and uncertainty lies in what you observe
+[or might have observed], and
+Bayesians, who believe that observations are 
+fixed numbers and the true values are uncertain.)  
+Then they might define a parameter, the ratio
+of the two proportions, and ask questions about the \emph{posterior
+  distribution} of that parameter---our best estimate of the
+probability distribution given the observed data and some prior
+knowledge of its distribution (see Chapter~\ref{chap:stoch}).  
+What is the mode (most
+probable value) of that distribution?  What is its expected value, or
+mean?  What is the \emph{credible interval}, which is the interval with
+equal probability cutoffs below and above the mean within which 95\%
+of the probability falls?
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+## shade interior of credible interval?
+load("ch1bayes.RData")
+op <- par(cex=1.5,lwd=2,bty="l",mgp=c(2.5,1,0),las=1,yaxs="i")
+plot(rvec,ratiopost.norm,type="l",
+     xlab="Ratio of (pol prob)/(psd prob)",
+     ylab="Probability density",xlim=c(0.9,10),ylim=c(0,0.45))
+abline(h=cred1["p"])
+##abline(v=cred1[1:2],lty=2)
+##abline(v=1,lty=3)
+abline(v=bayesmode,lty=1)
+abline(v=bayesmean,lty=3)
+labht <- 0.45
+## text(bayesmean,1.0,"mean",cex=1.5)
+## text(bayesmode,0.9,"mode",cex=1.5)
+rcred <- cred1["p"]
+x1 <- c(rvec[rvec<cred1["lwr"]],cred1["lwr"])
+polygon(c(x1,rev(x1)),c(ratiopost.norm[rvec<cred1[1]],cred1["p"],rep(0,length(x1))),
+        col="gray",border=NA)
+x2 <- c(cred1["upr"],rvec[rvec>cred1["upr"]])
+polygon(c(x2,rev(x2)),c(cred1["p"],ratiopost.norm[rvec>cred1["upr"]],rep(0,length(x2))),
+        col="gray",border=NA)
+lines(rvec,ratiopost.norm)  ## redraw
+##text(1,1,"null",cex=1.5)
+##text(1.7,0.1,"credible\ninterval",cex=1.5)
+##arrows(c(1.4,2.0),0.08,cred1[1:2],0.08,lwd=2)
+arrht <- 0.03
+arrows(cred1[1],arrht,cred1[2],arrht,angle=15,length=0.18,code=3)
+text(mean(cred1[1:2]),0.015,"credible interval",cex=0.65)
+par(xpd=NA)
+labgap <- 0.5
+text(bayesmode-labgap,labht,"mode",adj=1)
+arrows(bayesmode-labgap*0.8,labht,bayesmode,labht,angle=15,length=0.15)
+text(bayesmean+labgap,labht,"mean",adj=0)
+arrows(bayesmean+labgap*0.8,labht,bayesmean,labht,angle=15,length=0.15)
+box()
+par(op)
+@ 
+\caption{Bayesian analysis of seed predation.
+We calculate the
+probability density of the ratio of proportions of seeds
+taken being equal to some particular value, based on our
+prior (flat, assuming perfect ignorance --- and in this
+case \emph{improper} because it doesn't integrate to~1
+[Chapter~\ref{chap:stoch}])
+and on the data.  The most probable value is the mode;
+the expected value is the mean.  The gray shaded areas contain
+5\% of the area under the curve and cut off at the same
+height (probability density); the range between them is
+therefore the 95\% credible interval.}
+\label{fig:bayes0}
+\end{figure}
+
+The Bayesian answers, in a nutshell:
+using a flat prior distribution,
+the mode is \Sexpr{round(bayesmode,2)}
+(near the observed proportion of \Sexpr{round(obs.pratio,2)}).
+The mean is \Sexpr{round(bayesmean,2)}, slightly larger
+than the mode since the posterior probability
+density is slightly asymmetric  --- the density is skewed to the right
+(Figure~\ref{fig:bayes0})\footnote{While Figure~\ref{fig:freq1} showed
+the probability of each possible discrete outcome
+(number of seeds taken), Figure~\ref{fig:bayes0} shows a 
+posterior probability \emph{density} of a continuous
+parameter, i.e. the relative probability that the parameter
+lies in a particular range.  Chapter~\ref{chap:stoch} will
+explain this distinction more carefully.}.
+The 95\% credible interval, from \Sexpr{round(cred1[1],2)}
+to \Sexpr{round(cred1[2],2)}, doesn't include 1, so a
+Bayesian would say that there was good evidence against
+the hypothesis: even more strongly, they could say that
+the probability that the predation ratio is greater than
+1 is \Sexpr{round(bayeshyp,3)} (the probability that
+it is less than 1 is \Sexpr{round(1-bayeshyp,3)}).
+
+If the details of Bayesian statistics aren't perfectly
+clear at this point, don't worry.
+We'll explore Bayes'
+Rule and revisit Bayesian statistics in future chapters.
+
+In this example all three statistical frameworks have given
+very similar answers, but they don't always.
+Ecological statisticians are still hotly debating which
+framework is best, or whether there is a single best
+framework.
+While it is important to be clear on the differences
+among the approaches, knowing what question each
+is trying to answer, statisticians commonly
+move back and forth among them.
+My own approach is eclectic, agreeing
+with the advice of 
+\citet{Crome1997} 
+and
+\citet{Stephens+2005}
+to try to understand the
+strengths and weaknesses of several different
+approaches and use each one as appropriate.
+
+We will
+revisit these frameworks in more detail later.
+Chapter~\ref{chap:stoch} will cover Bayes' rule, which underpins
+Bayesian statistics; Chapters~\ref{chap:lik} and \ref{chap:opt} will
+return to a much more detailed look at the practical details of
+maximum likelihood and Bayesian analysis. 
+(Textbooks like 
+\cite{Dalgaard2003} cover classical frequentist
+approaches very well.)
+
+\section{Frameworks for computing}
+
+In order to construct your own models, you will need to learn
+some of the basics of statistical computing.  There are many
+computer languages and modeling tools with 
+built-in statistical libraries
+(MATLAB, Mathematica) and several statistics
+packages with serious programming capabilities (SAS, IDL).
+We will use a system called \R\ that
+is both a statistics package
+and a computing language.
+
+\subsection{What is \R?}
+
+\R's developers call it a ``language and environment for statistical
+computing and graphics''.
+This awkward phrase gets at the idea that \R\ is more
+than just a statistics package. \R\ is closest in spirit to other
+higher-level modeling languages like MATLAB or MathCAD.
+It is a dialect of the S computing language, which was written at
+Bell Labs in the 1980s as a research tool
+in statistical computing. 
+MathSoft, Inc. (now Insightful Corporation)
+bought the rights to S and developed it into S-PLUS, a
+commercial package with a graphical front-end.
+In the 1990s two New
+Zealand statisticians, Ross Ihaka and Robert Gentleman, 
+re-wrote S from scratch, again as a research project. The re-written
+(and free) version became immensely popular and is now maintained
+by an international
+``core team'' of about a dozen well-respected statisticians and
+computer scientists.
+
+\subsection{Why use \R?}
+
+\R\ is an extremely powerful tool.  It is a full-fledged modern
+computer language with sophisticated data structures; it supports
+a wide range of computations and statistical procedures; it can
+produce graphics ranging from exploratory plots to customized
+publication-quality graphics.
+
+\R\ is free in the sense that you can download it from the Internet,
+make as many copies as you want, and give them away\footnote{In
+programming circles, this freedom is called ``gratis'' or ``free as in beer''.}.  While I don't
+begrudge spending money on software for research, it is certainly
+convenient not to have to pay --- or to deal with licensing paperwork.
+This cheapness is vital, rather than convenient, for teachers, independent
+researchers, people in less-developed countries, and students who are
+frustrated with limited student versions (or pirated versions) of
+commercial software.
+
+More important, \R\ is also free in the sense that you can
+inspect any of the code and change it in any way that you 
+want\footnote{``Libre'' or ``free as in speech''}.  This
+form of freedom is probably abstract to you at this point ---
+you probably won't need to modify 
+\R\ in the course of your modeling career --- but it is a part of the
+same basic philosophy 
+of the free exchange of information
+that underlies scientific and academic research
+in general.
+
+\R\ is the choice of many academic and industrial statisticians,
+who work to improve it and to write extension packages.  If a
+statistical method has made it into print, the odds are good
+that there's an \R\ package somewhere that implements it.
+
+\R\ runs well on many computer platforms, including the ``big three''
+(Microsoft Windows, Mac OS X, and Linux).  There are only tiny, mostly
+cosmetic differences among the way that \R\ runs on
+different machines.  
+You can nearly always
+move data files and code between operating systems and
+get the same answers.
+
+\R\ is rapidly gaining popularity.
+The odds are good that someone
+in your organization is using \R, and there are many resources
+on the Internet including a very active mailing list.
+There are a growing
+number of introductory books using \R\ 
+\citep{Dalgaard2003,Verzani2005,Crawley2005},
+books of examples \citep{MaindonaldBraun2003,HeibergerHolland2004,EverittHothorn2006},
+more advanced and encyclopedic books covering a range
+of statistical approaches \citep{MASS, Crawley2002},
+and books on specific topics such as 
+regression analysis \cite{Fox2002,Faraway2004},
+mixed-effect models \citep{PinheiroBates2000}, 
+phylogenetics \citep{Paradis2006},
+generalized additive models \citep{Wood2006},
+etc. that are geared toward \R\ and S-PLUS users.
+
+\subsection{Why \emph{not} use \R?}
+
+\R\ is more difficult than mainstream statistics packages like
+SYSTAT or SPSS, because it does much more.
+It would be hard to squeeze all of \R's capabilities into
+a simple graphical user interface (GUI) with menus
+to guide you through the process of analyzing
+your data. 
+\R's creators haven't even tried very hard to write
+a GUI, because they have a do-it-yourself philosophy that 
+emphasizes knowing procedures rather than letting the program
+try to tell you what to do next.
+John Fox has written a simple GUI for \R\ (called \code{Rcmdr}), and the
+commercial version of \R, S-PLUS, does have a graphical user interface
+--- if you can afford it. However, for most of what we will be doing in
+this book a GUI would not be very useful.
+
+While \R\ comes with a lot of documentation,
+it's mostly good for reminding you of the syntax of a command
+rather than for finding out how to do something. 
+Unlike SAS, for which you can buy voluminous manuals that tell you the
+details of various statistical procedures and how to 
+run them in SAS, \R\ typically assumes that you have
+a general knowledge of the procedure you want to use
+and can figure out how to make it work in \R\ by reading
+the on-line documentation or a separately published
+book (including this one).
+
+\R\ is slower than so-called lower-level languages like C and
+FORTRAN because it is an \emph{interpreted} language that processes
+strings of commands typed in at the command line or stored in a text
+file, rather than a \emph{compiled} language that first translates
+commands into machine code.  However, computers are so fast these days
+that there's speed to burn. For most problems you
+will encounter the limiting factor will be how fast and easily you can
+write (and debug) the code, not how long the computer takes to
+process it.  Interpreted languages make writing and debugging faster.
+
+\R\ is memory-hungry.
+Unlike SAS, which was developed with
+a metaphor of punch cards being processed one at a time, \R\ tries
+to operate on the whole data set at once.
+If you are lucky enough to have a gigantic data set,
+with hundreds of thousands of observations or more, you will
+need to find ways (such as using \R's capability to connect
+directly to database software) to do your analysis in
+chunks rather than loading it all into memory at once.
+
+Unlike some other 
+software such as Maple or Mathematica, \R\ can't do \emph{symbolic}
+calculation. For example, it can't tell you that the integral of
+$x^2$ is $x^3/3+C$, although it can compute some simple
+derivatives (using the \code{deriv} or \code{D} functions).
+
+No commercial organization supports \R\  --- which may not
+matter as much as you think. The largest software company
+in the world supports Microsoft Excel, but Excel's statistical
+procedures are notoriously unreliable \citep{McCulloughWilson2005}.  On
+the other hand, the community of researchers who build and use \R\ are
+among the best in the world, and \R\ compares well
+with commercial software \citep{KeelingPavur2007}.  
+While every piece of software has bugs,
+the core components of \R\ have been used so extensively by so many
+people that the chances of your finding a bug in \R\ are about the
+same as the chances of finding a bug in a commercial software package
+like SAS or SPSS --- and if you do find one and report it, it will
+probably be fixed within a few days.
+
+It is certainly possible to do the kinds of modeling 
+presented in this
+book with other computing platforms --- particularly MATLAB (with
+appropriate toolboxes), Mathematica, SAS (using the macro language),
+Excel in combination with Visual Basic, and lower-level languages such as
+Delphi, Java, C, or FORTRAN.  However, I have
+found \R's combination of flexibility, power, and cost make it the
+best --- although not the only --- option for statistical modeling in
+ecology.
+
+\section{Outline of the modeling process}
+After all these caveats
+and admonitions and before jumping into the
+nitty gritty details of modeling particular
+data, we need an outline or
+road map of the modeling process (Figure~\ref{fig:modelflow}). 
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=3in]{modelflow-bw}
+\end{center}
+\caption{Flow of the modeling process.}
+\label{fig:modelflow}
+\end{figure}
+
+\begin{enumerate}
+\item{\textbf{Identify the ecological question}:
+you have to know what you want to find out before
+you can start trying to model.  You should know
+what your question is at both a general, conceptual level
+(``does disease select against cannibalism in
+tiger salamander populations?'') and at a specific
+level (``what is the percentage difference in probability
+of becoming a cannibal for tiger salamander 
+individuals taken from populations
+$A$ and $B$?'').  
+Practice switching back and forth
+between these two levels.
+Being either too vague (``I want to explore
+the population genetics of cannibalism'') or too specific
+(``what is the difference in the intercepts of these two
+linear regressions?'') can impede your progress.
+Ultimately, knowing how to ask good questions is one of
+the fundamental skills for any ecologist, or indeed
+any scientist, and (unfortunately) there is no recipe telling
+you how to do it.
+Even though I can't teach you to
+ask good questions, I included it
+in the list because it is
+the first and most important step of any analysis
+and motivates all the other steps.
+\footnote{In an ideal world, you
+would identify
+ecological questions before you designed your
+experiments and gathered data (!), but 
+in this book I will assume you've
+already got data (either your own or someone else's)
+to work with and think about.}}
+\item{\textbf{Choose deterministic model(s):}
+next, you need to choose a particular mathematical
+description of the pattern you are trying to describe.
+The \emph{deterministic} part is the average, or expected
+pattern in the absence of any kind of randomness
+or measurement error.
+It's tempting to call this an ``ecological'' model,
+since traditional ecological models are described in
+deterministic terms, but ecological models
+can be either deterministic or stochastic.
+
+The deterministic model can
+be phenomenological (as simple as 
+``predator density is a linear function of 
+prey density, or $P=a+bV$''); 
+mechanistic (e.g., a type~II
+functional response for predation rate); or
+even a complex individual-based
+simulation model.  Chapter~\ref{chap:determ} will remind you of,
+or introduce you to, a broad range of mathematical
+models that are useful building blocks for
+a deterministic model, and provide general
+tools for getting acquainted with the mathematical
+properties of deterministic models.
+}
+\item{\textbf{Choose stochastic model(s):}
+in order to estimate the parameters of a model, you
+need to know not just the expected pattern but
+also something about the variation around the
+expected pattern.  Typically, you describe
+the stochastic model by specifying a
+reasonable 
+\emph{probability distribution} for the variation.
+For example, we often
+assume that variation that comes from measurement
+error is normally distributed, while variation
+in the number of plants found in a quadrat of a
+specific size is Poisson distributed.
+Ecologists tend to be less familiar with
+stochastic building blocks
+(e.g. the negative binomial or gamma distributions)
+than with deterministic building blocks
+(e.g. linear or Michaelis-Menten functions).
+The former are frequently covered in the first week
+of introductory statistics courses and then
+forgotten as you learn standard
+statistical methods.
+Chapter~\ref{chap:stoch} will (re)introduce some basics
+of probability as well as a wide range of
+probability distributions useful
+in building stochastic models.
+}
+\item{\textbf{Fit parameters:} once you have
+defined your model, you can estimate
+both the deterministic parameters
+(slope, attack rate,
+handling time, \ldots) and stochastic parameters
+(the variance or parameters controlling the variance \ldots).
+This step is a purely technical exercise in figuring out
+how to get the computer to 
+fit the model to the data.
+Unlike the previous steps,
+it provides no particular
+insight into the basic ecological questions.
+The fitting step does require ecological insight both
+as input (for
+most fitting procedures, you must
+start with some
+order-of-magnitude idea of reasonable parameter
+values) and output (the fitted parameters
+are essentially the answers to your ecological
+question).  Chapters~\ref{chap:lik} and~\ref{chap:opt} will go into great 
+detail about the practical aspects of fitting:
+the basic methods, how to make them work
+in \R, and troubleshooting tips.}
+\item{\textbf{Estimate confidence intervals/test hypotheses/select models}:
+you need to know
+more than just the best-fit parameters of the model
+(the \emph{point estimates}, in statistical jargon).
+Without some measurement of uncertainty,
+such estimates are meaningless.
+By quantifying the uncertainty
+in the fit of a model, you can estimate confidence limits
+for the parameters.  You can also test ecological hypotheses,
+from both an ecological and a statistical point of view
+(e.g., can we tell the difference statistically between
+the handling times on two different prey types? are these
+differences large enough to make any practical difference
+in the population dynamics?).
+You also need to quantify uncertainty
+in order to choose the best
+out of a set of competing models, or
+to decide how to weight the predictions of different models.
+All of these
+procedures --- estimating confidence limits, testing
+the differences between parameters in two models
+or between a parameter and a null-hypothesis value
+such as zero, and testing whether one model is significantly
+better than another --- are closely related
+aspects of the modeling process that we will
+discuss in Chapter~\ref{chap:lik}.}
+\item{\textbf{Put the results together to answer questions/
+return to step \#1:} 
+modeling is an iterative process.
+You may have answered your questions with 
+a single pass through steps 1--5,
+but it is far more
+likely that estimating parameters and
+confidence limits will force you 
+to redefine your models (changing
+their form or complexity or the ecological covariates
+they take into account) or even to redefine your
+original ecological questions.
+You may need to ask different questions, or collect another set of
+data, to further understand how your system works.
+Like the first step, this final step is a bit more
+free-form and general, but there are tools
+(likelihood ratio testing, model selection) that
+will help (Chapter~\ref{chap:lik}).
+}
+\end{enumerate}
+
+I use this approach for modeling ecological systems every day.
+It answers
+ecological questions and, more importantly, it shapes the
+way I think about data and about those ecological questions.  
+There is a growing number of studies in ecology that use simple
+but realistic statistical models that do not fit easily into classical
+statistical frameworks
+\citep{ButlerBurns1993,%
+Ribbens+1994,%
+PascualKareiva1996,%
+FerrariSugita1996,%
+Damgaard1999,%
+Strong+1999,%
+Ricketts2001,%
+Lytle2002,%
+Dalling+2002,%
+Ovaskainen2004,%
+Tracey+2005,%
+Fujiwara+2005,%
+SandinPacala2005b,CanhamUriarte2006,Ness+2006,%
+WintleBardos2006,%
+Sack+2006,%
+AgrawalFishbein2006,%
+HorneGarton2006}.
+Like any
+tool, these tools also bias my thinking (``if you have a hammer, everything
+looks like a nail''), and the kinds of questions I like to think
+about.  They are most useful for ecological systems
+where you want to test among
+a well-defined set of plausible mechanisms,
+and where you have measured a
+few potentially important predictor and response variables.
+They work less well for generalized ``fishing expeditions'' where 
+you have measured lots of variables and want to try to sort them out.
+
+% The first seven chapters of the book cover
+% all the basics you need to construct
+% and fit your own models.
+% Chapter~\ref{chap:ex} puts the pieces together
+% with some worked examples.  
+% The remaining chapters
+% go beyond the basics to put the core methods
+% in a more general statistical context (Chapter~\ref{chap:std}),
+% describe how to fit models with more than one
+% kind of variability (Chapter~\ref{chap:var}), and deal with models
+% of ecological processes varying through time (Chapter~\ref{chap:dyn}).
+
+%  move to foreword?
+%When I teach this material as a graduate course,
+% I usually get through chapters 1--8 in about
+% two months, with extra time spent in class teaching
+% some of the details of \R; we focus on
+% student projects for the rest of the semester, with
+% a few lectures selected from the topics in 
+% Chapters~\ref{chap:var} and \ref{chap:dyn}.
+
+<<echo=FALSE>>=
+detach(seedsub)
+@ 
+
+\newpage
+\section{\R\ supplement}
+
+% R notes for Chapter 1
+Each chapter ends with a set of notes on \R, providing
+more details of the commands and ideas introduced in the
+chapter or examples worked in more detail.  For this 
+largely conceptual chapter, the notes are about
+how to get \R\ and how to get it working on your computer.
+
+\subsection{Installing \R; pre-basics}
+
+\begin{itemize}
+\item{\emph{Download \R}: 
+if \R\ is already installed on your computer, skip this step.
+If not, here's how to get it from the web%
+\footnote{These instructions are accurate at press time --- but
+all software, and stuff from the web in particular,
+is subject to change.  So details may vary.}.
+Go to the \R\ project home page (\url{http://www.r-project.org}) or
+to CRAN, the repository for \R\ materials (\url{http://cran.r-project.org}),
+and navigate to the binary (precompiled) distributions.
+Find the latest version for your operating system, download it,
+and follow the instructions to install it.  The installation
+file is moderately large (the Windows installer
+for \R\ version 2.5.0 is 28.5~megabytes) but should
+download easily over a fast connection.  
+It should be fine to accept all the defaults in the 
+installation process.
+
+\R\ should work well on any reasonably modern computer.
+Version 2.5.0 requires MacOS 10.2 (or higher) or
+Windows 98 (or higher), or just about any version
+of Linux; it can also be compiled on other versions
+of Unix.  MacOS version 10.4.4 or higher
+and Windows XP or higher are recommended.
+I developed and ran all the code in the book
+with \R\ 2.5.0 on a dual-core PC laptop running
+at 1.66 GHz under Ubuntu Linux 7.04.
+
+After you have played with \R\ a bit, you may want
+to take a moment to install extra packages (see below).
+} % end download
+\item{\emph{Start \R}: if you are using Windows or MacOS
+there is probably an \R\ icon on your desktop --- click on it.
+Or use the menus your operating system provides to find \R.
+If you are on a Unix system, you
+can probably just type \code{R} on the command line.}
+\item{\emph{Play with \R\ a little bit}: when you start \R, you will
+see a \emph{command prompt} --- a \verb+>+ that waits for you to
+type something and hit ENTER. When you type in an expression, \R\ evaluates
+it and prints the answer:
+<<>>=
+2*8
+sqrt(25)
+@ 
+(the number \code{[1]} before the answer says that the
+answer is the first element in a vector; don't worry
+about this now).
+
+If you use an equals sign to
+assign a value to a \emph{variable},
+then \R\ will silently do what you asked.
+To see the value of the variable,
+type its name at the command prompt:
+<<>>=
+x = sqrt(36)
+x
+@ 
+A variable name can be any sequence of alphanumeric
+characters, as well as ``\verb+_+'' or ``\verb+.+''
+(but no spaces),
+that does not start with a numeral.
+Variable names are case-sensitive,
+so \code{x} and \code{X} are different variables.
+
+For more information, you can read the \emph{Introduction to \R} that
+comes with your copy of \R\ (look in the documentation section of the
+menus), get one of the introductory documents from the \R\ web site,
+dip into an introductory book \citep{Dalgaard2003,Crawley2005},
+or get Lab~1 from \url{http://www.zoo.ufl.edu/bolker/emdbook}.
+}
+\item{\emph{Stopping \R}: 
+to stop \R, type \code{q()} (with the empty parentheses) 
+at the command prompt,
+or choose ``Quit'' from the appropriate menu.
+You can say ``no'' when \R\ asks if you want to save the workspace.
+
+To stop a long computation
+without stopping \R, type \code{Control-C} (in Unix or MacOS if using
+the command-line version), or
+type \code{ESCAPE} or click on the stop sign on the toolbar
+(in Windows or R.app on MacOS).
+}
+\item{\emph{The help system}: if you type \code{help.start()},
+\R\ will open a web browser with help information.  If you type
+\code{?cmd}, \R\ will open a help page with information on a particular
+command (e.g. \code{?sqrt} to get information on the square-root command).
+\code{example(cmd)} will run any examples that are included
+in the help page for command \code{cmd}.
+If you type \code{help.search("topic")} (with quotes),
+\R\ will list information
+related to \code{topic} available in the base system or in any extra installed packages:
+use \code{?topic} to see the information, perhaps using
+\code{library(pkg)} to load the appropriate package first.
+\code{help(package="pkg")} will list all the help pages for
+a loaded package.
+If you type \code{RSiteSearch("topic")}, \R\ will do a search in an 
+on-line database for information on \code{topic}.  Try out one or
+more of these aspects of the help system.}
+\item{\emph{Install extra packages}: \R\ has many
+extra packages.  You may be able to install new packages from
+a menu within \R. You can always type
+<<eval=FALSE>>=
+install.packages("plotrix")
+@
+(for example --- this installs the \code{plotrix} package).
+You can install more than one package at a time:
+<<eval=FALSE>>=
+install.packages(c("ellipse","plotrix"))
+@
+(\code{c} stands for ``concatenate'', and is the command
+for combining multiple things into a single object.)
+If the machine on which you use \R\ is not connected to the
+Internet, you can download the packages to some other medium
+(such as a flash drive or CD)
+and install them later, using the menu or
+<<eval=FALSE>>=
+install.packages("plotrix",repos=NULL)
+@ 
+%\todo{check on other OS}
+
+Installing packages will fail if you do not have
+permission to write to the folder (directory) where R is installed
+on your computer --- which may happen if you are
+working on a public computer.  
+If you can convince the machine's administrator
+to install the packages, then they will be available
+to anyone who uses the machine.
+Otherwise, pick a folder where you do have appropriate
+permissions and install your \R\ packages there.
+For example, if I had created an \code{Rpkgs}
+folder on my desktop:
+<<eval=FALSE>>=
+mypkgdir="c:/Documents and Settings/Bolker/Desktop/Rpkgs"
+# options(repos="http://cran.us.r-project.org")
+install.packages("plotrix",destdir=mypkgdir,lib=mypkgdir)
+@ 
+
+When you load the packages, you then have to tell \R\ where
+to look for them:
+<<eval=FALSE>>=
+library(plotrix,lib=mypkgdir)
+@ 
+
+Here are all the packages used in this book that
+are not included with \R\ by default:
+<<echo=FALSE>>=
+## TO DO: ignore packages? (weaver)
+r1 <- system("grep \"require(\" chap[0-9].Rnw chap[0-9][0-9].Rnw | sed -e 's/^.*require(\\([^),]*\\).*/\\1/'",intern=TRUE)
+r2 <- system("grep \"library(\" chap[0-9].Rnw chap[0-9][0-9].Rnw | sed -e 's/^.*library(\\([^),]*\\).*/\\1/'",intern=TRUE)
+r3 <- c(r1,r2) 
+r3 <- unique(sort(r3[-grep("\\\\",r3)]))
+i1 <- installed.packages()
+omitpkgs <- rownames(i1)[!is.na(i1[,"Priority"])]
+omitpkgs <- c(omitpkgs,"Hmisc","weaver","pkg")
+r4 <- r3[!(r3 %in% omitpkgs)]
+## OVERRIDE: add chron and gtools/gdata
+r4 <- c("adapt","bbmle","chron","coda","ellipse","emdbook","gplots","gtools","gdata",
+     "MCMCpack","odesolve","plotrix","R2WinBUGS","reshape","rgl","scatterplot3d")
+cat(r4,"\n",fill=50)
+@
+If you install the \code{emdbook} package first
+(\code{install.packages("emdbook")}) and then
+run the command \code{get.emdbook.packages()} (you
+do need the empty parentheses) it will install
+these packages for you automatically.
+
+(\code{R2WinBUGS} is an exception to \R's normally
+seamless cross-platform operation: it depends on a 
+Windows program called WinBUGS. WinBUGS will also
+run on Linux, and MacOS on Intel hardware, with the help of a 
+program called WINE: see Chapter~\ref{chap:lik}.)
+
+It will save time if you install these packages now.
+}
+\end{itemize}
+
+\subsection{\R\ interfaces}
+
+While \R\ works perfectly well out of the box, there are interfaces
+that can make your \R\ experience easier.  Editors such as Tinn-R
+(Windows), Kate (Linux), or Emacs/ESS will color \R\ commands 
+and quoted material, allow you to submit lines or blocks of \R\ code to an \R\
+session, and give hints about function arguments: the standard
+MacOS interface has all of these features built in.
+Graphical interfaces such as JGR (cross-platform)
+or SciViews (Windows) include similar editors
+and have extra functions such as a workspace browser
+for looking at all the variables you have defined.
+(All of these interfaces, which are designed to
+facilitate \R\ programming, are in a different category
+from Rcmdr, which tries to simplify basic statistics in \R.)
+If you are using Windows
+or Linux I would strongly recommend that, once you have
+tried \R\ a little bit, you download at least an \R-aware
+editor and possibly a GUI to make your life easier.
+Links to all of these systems can be found
+at \url{http://www.r-project.org/GUI/}.
+
+\subsection{Sample session}
+
+Start \R.  Then:
+
+Start the web interface to the help system:
+<<eval=FALSE>>=
+help.start()
+@
+
+Seed the pseudo-random-number generator, using
+an arbitrary integer, to make
+results match if you start a new session (it's fine to
+skip this step, but the particular values you get
+from the random-number commands will be different
+every time --- you won't get exactly the results
+shown below):
+<<>>=
+set.seed(101)
+@
+
+Create the variable \code{frogs}
+(representing the density
+of adult frogs in each of 20 populations) from scratch by entering
+20 numbers with the \code{c} command.
+Create a second variable \code{tadpoles}
+(the density of tadpoles in each population) by
+generating 20~normally distributed random numbers,
+each with  twice the mean of the
+corresponding \code{frogs} population and a standard deviation of 0.5: 
+<<>>=
+frogs = c(1.1,1.3,1.7,1.8,1.9,2.1,2.3,2.4,2.5,2.8,
+      3.1,3.3,3.6,3.7,3.9,4.1,4.5,4.8,5.1,5.3)
+tadpoles = rnorm(n=20,mean=2*frogs,sd=0.5)
+@
+The \code{+} at the beginning of 
+the second line is a \emph{continuation character}.
+If you hit \code{ENTER}
+and \R\ recognizes that your command is unfinished, it will print
+a \code{+} to tell you that you can continue on the next line.
+Sometimes the continuation character means that you forgot
+to close parentheses or quotes.
+To discard what you've done so far and start
+again, type \code{ESCAPE} (on Windows) or \code{Control-C} (on Linux)
+%% FIXME: Mac?
+or click on the stop sign on the menu.
+
+You can name the \emph{arguments} [\code{n}, \code{mean}, \code{sd} above] in an
+\R\ function, but \R\ can also recognize the order:
+\code{tadpoles = rnorm(20,2*frogs,0.5)} will give the same answer.
+In general, however, it's clearer and safer to name arguments.
+
+Notice that \R\ doesn't tell you what's in these variables unless
+you ask it.  Entering a variable name by itself tells \R\ to
+print the value of the variable:
+<<>>=
+tadpoles
+@ 
+(the numbers at the beginning of the line are indices).
+This rule of printing a variable that is entered
+on a line by itself also explains why typing \code{q} rather
+than \code{q()} prints out \R\ code rather than exiting
+\R.  \R\ interprets \code{q()} as ``run the function \code{q}
+without any arguments''; it interprets \code{q} as ``print
+the contents of variable \code{q}''.
+
+Plot \code{tadpoles} against \code{frogs} (\code{frogs} on
+the $x$ axis, \code{tadpoles} on the $y$ axis) and add a straight line
+with intercept 0 and slope 2 to the plot (the result should appear
+in a new window, looking like Figure~\ref{fig:plotex}):
+<<>>=
+plot(frogs,tadpoles)
+abline(a=0,b=2)
+@
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+plot(frogs,tadpoles)
+abline(a=0,b=2)
+@
+\caption{Plotting example.}
+\label{fig:plotex}
+\end{figure}
+
+Try calculating the (natural) logarithm of \code{tadpoles} and plot
+it instead:
+<<>>=
+log_tadpoles = log(tadpoles)
+plot(frogs,log_tadpoles)
+@ 
+You can get the same plot by typing \code{plot(frogs,log(tadpoles))} or
+a similar plot that adjusts the axes
+rather than the values with \code{plot(frogs,tadpoles,log="y")}.
+Use \code{log10(tadpoles)} to get the logarithm base 10.
+
+Set up a variable \code{n} with integers ranging from
+1 to 20 (the length of the \code{frogs} variable) and plot \code{frogs} against it:
+<<>>=
+n=1:length(frogs)
+plot(n,frogs)
+@ 
+(you'd get almost the same plot typing \code{plot(frogs)}).
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,height=2>>=
+h = rev((1:6)/6)
+xr = seq(0,0.9,length=20)
+xpos = 1.2
+op = par(xpd=TRUE,mar=c(0,0,0,5))
+plot(0:1,range(h),type="n",axes=FALSE,ann=FALSE)
+points(xr,rep(h[1],20),pch=1:20)
+text(xpos,h[1],"pch: point type",adj=1)
+palette(gray((0:19)/19))
+points(xr,rep(h[2],20),col=1:20,pch=16)
+palette("default")
+text(xpos,h[2],"col: point color",adj=1)
+points(xr,rep(h[3],20),cex=seq(0.01,2,length=20))
+text(xpos,h[3],"cex: point size",adj=1)
+text(xr,rep(h[4],20),c(letters[1:5],LETTERS[1:5],0:9))
+text(xpos,h[4],"text",adj=1)
+##text(seq(0.1,0.9,length=20),rep(0.6,20),letters[1:20],cex=seq(0.01,2,length=20))
+nl = 6
+nlsp = 0.1
+lend = 0.95
+##segments(seq(0,0.9,length=nl),rep(h[5],2*nl),
+##         seq(1/nl,1,length=nl),rep(h[5],2*nl),
+## want to go from 0 to lend, in nl segments,
+## using a fraction fr of the space for interspaces
+## each segment + space takes up lend/nl
+## 
+fr = 0.7
+seg1 = seq(0,by=lend/nl,length=nl)
+seg2 = seq(lend/nl,to=lend,by=lend/nl)-(lend*(1-fr)/nl)
+segments(seg1,rep(h[5],nl),
+         seg2,
+         rep(h[5],nl),
+         lty=1:nl,lwd=3)
+text(xpos,h[5],"lty: line type",adj=1)
+nv = 10
+segments(seq(0,1/(1+nlsp),length=nv),rep(h[6],nv),
+         seq(0.05,0.95,length=nv),rep(h[6],nv),
+         lwd=1:10)
+text(xpos,h[6],"lwd: line width",adj=1)
+par(op)
+@
+\caption{Some of \R's graphics parameters.
+Color specification, \code{col}, also applies in many other contexts:
+all colors are set to gray scales here.  See \code{?par}
+for (many more) details on graphics parameters,
+and one or more of \code{?rgb}, \code{?palette},
+or \code{apropos("color")} for more on colors.}
+\label{fig:graphparms}
+\end{figure}
+
+\R's default plotting character is an open circle.
+Open symbols are generally better than closed symbols
+for plotting because it is easier to see where they
+overlap, but you could include \code{pch=16} in the
+\code{plot} command if you wanted closed circles instead.
+Figure~\ref{fig:graphparms} shows several more
+ways to adjust the appearance of lines
+and points in \R.
+
+Calculate the mean, standard deviation, and a
+set of summary statistics for \code{tadpoles}:
+<<>>=
+mean(tadpoles)
+sd(tadpoles)
+summary(tadpoles)
+@
+``\code{1st Qu.}'' and ``\code{3rd Qu.}''
+represent the first and third quartiles of the data.
+The summary statistics are only displayed to three significant
+digits, which can occasionally cause confusion.
+
+Calculate the correlation between frogs and tadpoles:
+<<>>=
+cor(frogs,tadpoles)
+@ 
+
+Test the statistical significance of the correlation:
+<<>>=
+cor.test(frogs,tadpoles)
+@ 
+The $p$ value here is extraordinarily low because
+we made up the data with very little noise:
+you should consider reporting it simply as $p<0.001$.
+\code{cor.test} does a Pearson correlation test
+by default, but you can choose other tests: see \code{?cor.test}.
+
+Look for more information on correlations:
+<<eval=FALSE>>=
+help.search("correlation")
+@ 
+
+Now move onto Chapter~\ref{chap:explore} to
+see how to deal with real data.

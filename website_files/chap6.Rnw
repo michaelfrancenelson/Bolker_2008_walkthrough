@@ -1,0 +1,4952 @@
+\lstset{numbers=left,
+        numberstyle=\small,
+        basicstyle=\ttfamily}
+
+<<echo=FALSE,results=hide>>=
+library(emdbook)
+library(plotrix) ## for corner.loc
+## try(detach("package:nlme"))
+library(bbmle)
+library(lattice)
+library(MASS)
+library(Hmisc,warn=FALSE)
+source("chapskel.R")
+@ 
+
+\section*{Summary}
+This chapter presents the basic concepts and
+methods you need in order to estimate parameters,
+establish confidence limits, and choose among
+competing hypotheses and models.  It defines
+likelihood and
+discusses frequentist, Bayesian,
+and information-theoretic inference based on likelihood.
+
+\section{Introduction}
+Previous chapters have introduced all the ingredients
+you need to define a model --- mathematical functions
+to describe the deterministic patterns and probability
+distributions to describe the stochastic patterns --- and
+shown how to use these ingredients to simulate
+simple ecological systems.  However, you
+need to learn not only how to construct models
+but also how to estimate parameters from data, and 
+how to test models against each other.  
+You may be wondering by now how one actually does this.
+
+In general, to estimate the parameters of a model
+we have to find the parameters that 
+make that model fit the data best.
+To compare among models we have to
+figure out which one fits the data best, and 
+decide if one or more models fit sufficiently much
+better than the rest that we can declare them the winners.
+Our goodness-of-fit metrics will be based on the \emph{likelihood},
+the probability of seeing
+the data we actually collected given a particular model --- which
+in this case will mean both the general form of the
+model and the specific parameter values.
+
+% The chapter will use several examples.
+% For Vonesh's tadpole predation experiment
+% (p.~\pageref{sec:frogpred}) we will estimate
+% the parameters of a discrete distribution (binomial:
+% number of tadpoles eaten out of a fixed
+% total as a function of tadpole size).
+% We will also introduce two new data sets
+% as examples of fitting models for continuous
+% distributions.
+% For the first, which shows how
+% myxomatosis virus concentration in experimentally
+% infected rabbits changes over time
+% \citep[\code{?Myxo} in the \code{emdbook} package:][]{Fenner+1956,Dwyer+1990},
+% we will use a Gamma distribution and Ricker
+% and another comparing growth of fir trees in different population
+% \citep[\code{?FirDBHFec}:][]{SilvertownDodd1999}.
+% For Fenner's myxomatosis data where we will estimate the parameters
+% of a continuous distribution (gamma: titer as a function
+% of day and virus grade).
+ 
+\section{Parameter estimation: single distributions}
+
+Parameter estimation is simplest when we have a
+a collection of independent data that are drawn from
+a distribution (e.g. Poisson, binomial, normal), with the same
+parameters for all observations.
+As an example with discrete data,
+we will select one particular case out of
+Vonesh's tadpole predation data
+(p.~\pageref{sec:frogpred}) --- small
+tadpoles at a density of 10 --- and estimate the parameters of a
+binomial distribution (each individual's probability of being eaten by a
+predator).
+As an example with continuous data,
+we will introduce a new 
+data set on 
+myxomatosis virus concentration 
+in experimentally
+infected rabbits 
+\citep[\code{?Myxo} in the \code{emdbook} package:][]{Fenner+1956,Dwyer+1990}.
+Although the titer actually changes systematically over time,
+we will gloss over that problem for now
+and pretend that all the measurements are
+drawn from the same distribution so
+that we can 
+estimate the parameters of a Gamma
+distribution that describes
+the variation in titer among different rabbits.
+
+\subsection{Maximum likelihood}
+
+We want the \emph{maximum
+likelihood estimates} of the parameters --- those parameter
+values that make the observed data most likely to have happened.  
+Since the
+observations are independent, the joint likelihood of the whole data
+set is the product of the likelihoods of each individual observation.
+Since the observations are identically distributed, we can write the
+likelihood as a product of similar terms.  
+For mathematical convenience, we almost
+always maximize the logarithm of the likelihood (log-likelihood)
+instead of the likelihood itself. 
+Since the logarithm is a monotonically increasing function, the maximum
+log-likelihood estimate is the same as the maximum likelihood
+estimate.  
+Actually, it is conventional to \emph{minimize} the
+negative log-likelihood rather than maximizing the log-likelihood.
+For continuous probability distributions, we compute the
+probability \emph{density} of observing the data rather than the
+probability itself.
+Since we are interested in
+relative (log)likelihoods, not the absolute probability of observing
+the data, we can ignore the distinction between the density
+($P(x)$) and the probability (which includes
+a term for the measurement precision: $P(x)\, dx$).
+
+\subsubsection{Tadpole predation data: binomial likelihood}
+
+For a single observation from the binomial distribution
+(e.g. the number of small tadpoles killed by predators
+in a single tank at a density of 10),
+the 
+likelihood that $k$ out of $N$ individuals 
+are eaten as a function of the 
+\emph{per capita} predation probability $p$ is
+$\mbox{Prob}(k|p,N)=\binom{N}{k} p^k (1-p)^{N-k}$. 
+If we have $n$ observations, each with the same
+total number of tadpoles $N$, and the number
+of tadpoles killed in the $i^{\mbox{th}}$ observation
+is $k_i$,
+then the likelihood is
+\begin{equation}
+\lik = \prod_{i=1}^n 
+\binom{N}{k_i} p^{k_i} (1-p)^{N-k_i}.
+\end{equation}
+The log-likelihood is 
+\begin{equation}
+\llik=\sum_{i=1}^n \left(
+\log \binom{N}{k_i} + k_i \log p + (N-k_i) \log (1-p) \right).
+\end{equation}
+In \R, this would be
+\code{sum(dbinom(k,size=N,prob=p,log=TRUE))}.
+
+\paragraph{Analytical approach}
+In this simple case, we can actually
+solve the problem analytically, by
+differentiating with respect to $p$
+and setting the derivative
+to zero.
+Let $\hat p$ be the maximum likelihood
+estimate, the value of $p$ that satisfies
+\begin{equation}
+\frac{dL}{dp} =
+\frac{d\sum_{i=1}^n \left(
+\log \binom{N}{k_i} + k_i \log p + (N-k_i) \log (1-p) \right)}{dp}  =  0.
+\end{equation}
+Since the derivative of a sum equals the
+sum of the derivatives,
+\begin{equation}
+\sum_{i=1}^n \frac{d \log \binom{N}{k_i}}{dp} +
+\sum_{i=1}^n \frac{d k_i \log p}{dp} +
+\sum_{i=1}^n \frac{d (N-k_i) \log (1-p)}{dp} = 0
+\end{equation}
+The term $\log \binom{N}{k_i}$ is a constant with respect to $p$,
+so its derivative is zero and the first term disappears.
+Since $k_i$ and $(N-k_i)$ 
+are constant factors they come out of the 
+derivatives and
+the equation becomes
+\begin{equation}
+\sum_{i=1}^n k_i \frac{d \log p}{dp} +
+\sum_{i=1}^n (N-k_i) \frac{d  \log (1-p)}{dp} = 0.
+\end{equation}
+The derivative of $\log p$ is $1/p$, 
+so the chain rule says the
+derivative of $\log (1-p)$
+is $d(\log (1-p))/d(1-p) \cdot d(1-p)/dp = -1/(1-p)$.
+We will
+denote the particular value of $p$ we're
+looking for as $\hat p$.  So
+\begin{eqnarray}
+\frac{1}{\hat p} \sum_{i=1}^n k_i - \frac{1}{1-\hat p} \sum_{i=1}^n (N-k_i) & = & 0 
+\nonumber \\
+\frac{1}{\hat p} \sum_{i=1}^n k_i & = & \frac{1}{1-\hat p} \sum_{i=1}^n (N-k_i)
+\nonumber \\
+(1-\hat p) \sum_{i=1}^n k_i & = & \hat p \sum_{i=1}^n (N-k_i) 
+\nonumber \\
+\sum_{i=1}^n k_i & = & \hat p \left( \sum_{i=1}^n k_i + \sum_{i=1}^n (N-k_i) \right)
+ = \hat p \sum_{i=1}^n N 
+\nonumber \\
+\sum_{i=1}^n k_i & = & \hat p n N \nonumber\\
+\hat p & = & \frac{\sum_{i=1}^n k_i}{nN}
+\end{eqnarray}
+So the maximum-likelihood estimate, $\hat p$, is just
+the overall fraction of tadpoles eaten,
+lumping all the observations together:
+a total of $\sum k_i$ tadpoles were eaten
+out of a total of $nN$ tadpoles exposed in
+all of the observations.
+
+We seem to have gone to a lot of effort to prove the
+obvious, that the best estimate of the \emph{per capita}
+predation probability is the observed frequency of predation.
+Other simple distributions like the Poisson behave similarly.
+If we differentiate the likelihood, or the log-likelihood,
+and solve for the maximum likelihood estimate,
+we get a sensible answer.
+For the Poisson,
+the estimate of the rate parameter $\hat \lambda$ is equal to
+the mean number of counts observed per sample.
+For the normal distribution, with two
+parameters $\mu$ and $\sigma^2$, we have to compute
+the partial derivatives of the likelihood with
+respect to both parameters and solve the
+two equations simultaneously
+($\partial L/\partial \mu =\partial L/\partial \sigma^2 = 0$).
+The answer is again obvious in hindsight:
+$\hat \mu=\bar x$ (the estimate of the
+mean is the observed mean) and $\hat{\sigma^2}=\sum (x_i-\bar x)^2/n$
+(the estimate of the variance is the variance of the sample%
+\footnote{Maximum likelihood estimation actually gives
+a biased estimate of the variance, dividing the sum of squares
+$\sum (x_i-\bar x)^2$ by $n$ instead of $n-1$.}.).
+
+For some simple distributions like the negative binomial, and
+for all the complex problems we will be dealing with
+hereafter, there is no easy
+analytical solution and we have to find the maximum likelihood
+estimates of the parameters numerically.
+The point of the algebra here is just to convince you that
+maximum likelihood estimation makes sense in simple cases.
+
+\paragraph{Numerics}
+This chapter presents the
+basic process of computing and maximizing
+likelihoods (or minimizing negative log-likelihoods
+in \R; Chapter~\ref{chap:opt} will go into much more detail
+on the technical details.
+First, you need to define a function that calculates
+the negative log-likelihood for a particular set of
+parameters.
+Here's the \R\ code for
+a binomial negative log-likelihood function:
+<<>>=
+binomNLL1 = function(p,k,N) {
+  -sum(dbinom(k,prob=p,size=N,log=TRUE))
+}
+@ 
+The \code{dbinom} function calculates the binomial
+likelihood for a specified 
+data set (vector of number of successes) \code{k},
+probability \code{p},
+and number of trials \code{N};
+the \code{log=TRUE} option gives the log-probability
+instead of the probability (more accurately
+than taking the log of the product of
+the probabilities); \code{-sum}
+adds the log-likelihoods and changes the sign
+to get an overall negative log-likelihood for the data set.
+
+Load the data and extract the subset we plan to work with:
+<<>>=
+data(ReedfrogPred)
+x = subset(ReedfrogPred,pred=="pred" & density==10 & size=="small")
+k = x$surv
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=10>>=
+op=par(mfrow=c(1,2),lwd=2,bty="l",las=1,cex=1.5)
+p.mle <- sum(k)/40
+mlik <- exp(sum(dbinom(k,size=10,prob=p.mle,log=TRUE)))
+pvec <- seq(0,1,length=100)
+liks <- sapply(pvec,function(x)sum(dbinom(k,size=10,prob=x,log=TRUE)))
+plot(pvec,exp(liks),type="l",xlab="Predation probability\nper capita",
+     ylab="Likelihood",log="y",ylim=c(1e-20,1),axes=FALSE)
+axis(side=1,at=seq(0,1,by=0.25))
+## if axTicks worked ...
+loc2 = seq(-20,0,by=5)
+axis(side=2,at=10^loc2,
+     do.call("c",lapply(loc2,
+            function(z)substitute(expression(10^x),list(x=z)))))
+abline(v=p.mle,lty=2)
+abline(h=mlik,lty=2)
+par(xpd=NA)
+text(p.mle,10^(par("usr")[4]+0.5),
+     expression(hat(p)==0.75)) 
+text(0,mlik*10,expression(L[max]==5.1 %*% 10^-4),adj=0)
+box()
+par(xpd=TRUE)
+plot(table(factor(k,levels=0:10))/4,xlab="# of successes",
+     ylab="Probability")
+points(0:10,dbinom(0:10,size=10,prob=0.75),pch=16,col="darkgray")
+par(op)
+@ 
+\caption{Likelihood curves for a simple distribution:
+binomial-distributed predation.}
+\label{fig:mlbinom1}
+\end{figure}
+<<echo=FALSE>>=
+
+ptry <- function() {
+  x <- rbinom(4,prob=0.75,size=10)
+  sum(dbinom(x,prob=0.75,size=10,log=TRUE))
+}
+rprobs <- replicate(1000,ptry())
+binom.pval <- sum(rprobs<log(mlik))/1000
+@ 
+
+We can use the \code{optim} function to 
+numerically \textbf{optim}ize (by default,
+minimizing rather than maximizing) this function.
+You need
+to give \code{optim} the
+\emph{objective function} --- the function you want to minimize
+(\code{binomNLL1} in this case) --- and a vector of starting parameters.
+You can also give it other information, such as a data
+set, to be passed on to the objective function.  The starting
+parameters don't have to be very accurate 
+(if we had accurate estimates already we
+wouldn't need \code{optim}), but they do have to be reasonable.
+That's why we spent so much time 
+in Chapters~\ref{chap:determ} and~\ref{chap:stoch}
+on eyeballing curves and the method of moments.
+
+<<echo=FALSE>>=
+set.seed(1001)
+npts <- 50
+r.true <- 0.008 ## 5% for every 10 m
+d.true <- 8
+k.true <- 2
+poisdatamean= d.true*exp(-r.true*20)
+poisdata <- rpois(npts,poisdatamean)
+nbdata <- rnbinom(npts,mu=d.true*exp(-r.true*20),size=k.true)
+pdata.x <- runif(npts,0,100)
+det.y <- d.true*exp(-r.true*pdata.x)
+pdata.y <-  rpois(npts,det.y)
+@ 
+
+<<>>=
+O1=optim(fn=binomNLL1,par=c(p=0.5),N=10,k=k,
+  method="BFGS")
+@ 
+
+\code{fn} is the argument
+that specifies the objective function and \code{par}
+specifies the vector of starting parameters.
+Using \code{c(p=0.5)} names the parameter \code{p} --- probably
+not necessary here but very useful 
+for keeping track when you start fitting
+models with more parameters.
+The rest of the
+command specifies other parameters and data and
+optimization details; Chapter~\ref{chap:opt}
+explains
+%The \R\ supplement and Chapter~\ref{chap:opt} give more tips
+%on using \code{optim} (and explain 
+why you should use \code{method="BFGS"} for a single-parameter fit.
+
+Check the estimated parameter value and
+the maximum likelihood --- we need to 
+change sign and exponentiate
+the minimum negative log-likelihood that \code{optim}
+returns to get the maximum log-likelihood:
+<<>>=
+O1$par
+exp(-O1$value)
+@ 
+
+The \code{mle2} function
+in the \code{bbmle} package
+provides a ``wrapper'' for \code{optim} that
+gives prettier output and
+makes standard tasks easier\footnote{Why \code{mle2}?
+There is an \code{mle} function in the \code{stats4} package
+that comes with \R, but I added some features --- and then renamed
+it to avoid confusion with the original \R\ function.}.
+Unlike \code{optim},
+which is designed for general-purpose optimization, 
+\code{mle2} assumes that the objective
+function is a negative log-likelihood function.  
+The names of the arguments are easier
+to understand: \code{minuslogl} instead of \code{fn} 
+for the negative log-likelihood function, \code{start} instead
+of \code{par} for the starting parameters, and \code{data} for
+additional parameters and data.
+
+<<>>=
+library(bbmle)
+m1=mle2(minuslogl=binomNLL1,start=list(p=0.5),data=list(N=10,k=k))
+m1
+@ 
+
+The \code{mle2} package has a shortcut for simple likelihood
+functions.  Instead of writing an \R\ function to compute the negative
+log-likehood, you can specify a formula:
+<<results=hide>>=
+mle2(k~dbinom(prob=p,size=10),start=list(p=0.5))
+@ 
+gives exactly the same answer as the previous commands.
+\R\ assumes that the variable on the left-hand side
+of the formula is the response
+variable (\code{k} in this case)
+and that you want to sum the negative log-likelihood
+of the expression on the right-hand side for all values of 
+the response variable.
+
+One final option
+for finding maximum likelihood estimates 
+for data drawn from most simple distributions --- %
+although not for the binomial distribution --- 
+is the \code{fitdistr} command in
+the \code{MASS} package, 
+which will even guess reasonable starting values for you.
+However, it only works in the very simple case where none
+of the parameters of the distribution depend on other
+covariates.
+
+The estimated value of the \emph{per capita} predation probability,
+\Sexpr{round(O1$par,5)}, is very close to the analytic solution of  0.75.
+The estimated value of the maximum likelihood (Figure~\ref{fig:mlbinom1})
+is quite small ($\lik=$\Sexpr{scinot(mlik,digits=3)}).
+That is, the probability of \emph{this particular outcome} is low%
+\footnote{I randomly simulated 1000 samples of four
+values drawn from the binomial distribution with $p=0.75$,
+$N=10$. The maximum likelihood was smaller than the observed
+value given in the text 
+\Sexpr{round(100*binom.pval)}\% of the time. 
+Thus, although it is small this likelihood is not
+significantly lower than would be expected by chance.}.
+In general, however, we will only be interested in 
+the relative likelihoods (or log-likelihoods) of
+different parameters and models rather than their absolute
+likelihoods.
+
+Having fitted a model to the data (even a very simple
+one), it's worth plotting the predictions of the model.
+In this case the data set is so small (4~points)
+that sampling variability
+dominates the plot (Figure~\ref{fig:mlbinom1}b).
+
+% Clean up:
+<<echo=FALSE>>=
+rm(k,x)
+@ 
+
+\subsubsection{Myxomatosis data: Gamma likelihood}
+
+As part of the effort to use myxomatosis as a biocontrol agent
+against introduced European rabbits in Australia,
+Fenner and co-workers studied the virus concentrations
+(\emph{titer}) in the skin of rabbits that had
+been infected with different virus strains
+\citep{Fenner+1956}.
+We'll choose a Gamma distribution
+to model these continuously distributed,
+positive data%
+\footnote{We
+could also use a log-normal distribution or (since the minimum
+values are far from zero and the distributions are reasonably
+symmetric) a normal distribution.}.
+For the sake of illustration,
+we'll use just the data for one viral strain (grade~1).
+<<>>=
+data(MyxoTiter_sum)
+myxdat = subset(MyxoTiter_sum,grade==1)
+@ 
+
+The likelihood equation for Gamma-distributed
+data is hard to maximize
+analytically, so we'll go straight to a numerical solution.
+The negative
+log-likelihood function looks just 
+very much like the one for binomial data%
+\footnote{\code{optim} insists
+that you specify all of the parameters packed into a single
+numeric vector in your negative log-likelihood
+function. \code{mle} prefers the parameters as
+a list. \code{mle2} will accept either a list,
+or, if you use \code{parnames} to specify
+the parameter names, a numeric vector  (p.~\pageref{parnames})}.
+<<>>=
+gammaNLL1 = function(shape,scale) {
+  -sum(dgamma(myxdat$titer,shape=shape,scale=scale,log=TRUE))
+}
+@ 
+\label{gammalik}
+It's harder to find starting parameters for the Gamma distribution.
+We can use the method of moments
+(Chapter~\ref{chap:stoch}) to determine 
+reasonable starting values for the
+scale (=variance/mean=coefficient of variation [CV])
+and shape(=variance/mean$^2$=mean/CV) parameters%
+\footnote{Because the estimates of
+the shape and scale are very strongly
+correlated in this case, I ended up
+having to tweak the starting conditions slightly
+away from the method of moments estimates, to
+\{45.8,0.151\}.}.
+%we will investigate these in the \R\ supplement}.
+<<>>=
+gm = mean(myxdat$titer)
+cv = var(myxdat$titer)/mean(myxdat$titer)
+@ 
+
+Now fit the data:
+<<eval=FALSE>>=
+m3 = mle2(gammaNLL1,
+  start=list(shape=gm/cv,scale=cv))
+@ 
+<<echo=FALSE>>=
+m3 = mle2(gammaNLL1,
+  start=list(shape=45.8,scale=0.151))
+@ 
+<<>>=
+m3
+@ 
+
+I could also use the formula interface,
+<<eval=FALSE>>=
+m3 = mle2(myxdat$titer~dgamma(shape,scale=scale),
+  start=list(shape=gm/cv,scale=cv))
+@ 
+Since the default parameterization of the Gamma
+distribution in \R\ uses the rate parameter instead
+of the scale parameter, I have to make sure to
+specify the scale parameter explicitly.
+Or I could use \code{fitdistr} from
+the \code{MASS} package:
+<<>>=
+f1 =fitdistr(myxdat$titer,"gamma")
+@ 
+\code{fitdistr} gives
+slightly different values
+for the parameters and the likelihood,
+but not different enough to worry about.
+A greater possibility for confusion
+is that \code{fitdistr} reports
+the rate (=1/scale) instead
+of the scale parameter.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=10>>=
+op=par(mfrow=c(1,2),lwd=2,bty="l",las=1,cex=1.5)
+v = curve3d(gammaNLL1(x,y),from=c(25,0.05),to=c(85,0.3),
+        sys3d="contour",
+  xlab="Shape",ylab="Scale",drawlabels=FALSE,axes=FALSE)
+axis(side=2)
+axis(side=1,at=c(30,50,70))
+box()
+contour(v$x,v$y,v$z,add=TRUE,levels=seq(0,190,by=20),col="gray",
+        drawlabels=FALSE)
+## persp3d(v$x,v$y,-v$z,col="blue")
+cmle <- coef(m3) 
+points(cmle[1],cmle[2])
+text(cmle[1],cmle[2]+0.02,"MLE")
+plot(density(myxdat$titer),main="",xlab="Virus titer",
+     ylab="Probability density",zero.line=FALSE,col="darkgray")
+n <- nrow(myxdat)
+points(myxdat$titer,runif(n,0,0.02))
+curve(dgamma(x,shape=cmle["shape"],scale=cmle["scale"]),add=TRUE)
+curve(dnorm(x,mean(myxdat$titer),sd(myxdat$titer)),lty=2,add=TRUE)
+text(7.8,0.45,"density",col="darkgray",adj=0)
+text(4.2,0.38,"Gamma")
+arrows(4.43,0.36,5.9,0.32,angle=15)
+par(xpd=NA)
+text(8.5,0.33,"normal",adj=0)
+arrows(8.4,0.33,7.7,0.33,angle=15)
+par(op)
+@ 
+\caption{Likelihood curves for a simple distribution:
+Gamma-distributed virus titer.
+Black contours are spaced 200 log-likelihood units apart;
+gray contours are spaced 20 log-likelihood units apart.
+In the right-hand plot, the gray line is a kernel
+density estimate; solid line is the Gamma fit;
+and dashed line is the normal fit.
+}
+\label{fig:mlgamma1}
+\end{figure}
+
+Figure~\ref{fig:mlgamma1} shows the 
+negative log-likelihood (now a 
+negative log-likelihood \emph{surface} as a function of two parameters,
+the shape and scale) and the fit of the model to the data
+(virus titer for grade 1).
+Since the ``true'' distribution of the data is hard to
+visualize (all of the distinct values of
+virus titer are displayed as jittered values
+along the bottom axis), I've plotted the
+nonparametric (kernel) estimate of the probability
+density in gray for comparison.
+The Gamma fit is very similar, although it takes
+account of the lowest point (a virus titer of 4.2)
+by spreading out slightly rather than allowing
+the bump in the left-hand tail that the nonparametric
+density estimate shows.
+The large shape parameter of the
+best-fit Gamma distribution (shape=\Sexpr{round(coef(m3)["shape"],2)}) 
+indicates that the distribution is nearly
+symmetrical and approaching normality (Chapter~\ref{chap:stoch}).  Ironically, in this
+case the plain old normal distribution actually fits slightly
+better than the Gamma distribution, despite the fact that we
+would have said the Gamma was a better model on biological
+grounds (it doesn't allow virus titer to be negative).
+However, according to criteria we will discuss later in the
+chapter, the models are not significantly different and you
+could choose either on the basis of convenience and
+appropriateness for the rest of the story you were telling.
+If we fitted a more skewed distribution, like the
+wrasse settlement distribution, the Gamma would certainly
+win over the normal.
+
+\subsection{Bayesian analysis}
+
+Bayesian estimation also uses the likelihood,
+but it differs in two ways from maximum
+likelihood analysis.
+First, we combine the likelihood with a prior probability distribution
+in order to determine a posterior probability distribution.
+Second, we often report the mean of
+the posterior distribution rather than its mode (which would 
+equal the MLE if we were using 
+a completely uninformative or ``flat'' prior).  
+Unlike the mode, which
+reflects only local information about the 
+peak of the distribution, the mean
+incorporates the entire pattern of the distribution, 
+so it can be harder to compute.
+
+\subsubsection{Binomial distribution: conjugate priors}
+
+In the particular case when we have so-called \emph{conjugate priors}
+for the distribution of interest, Bayesian estimation is easy.
+As introduced in Chapter~\ref{chap:stoch},
+a conjugate prior is a choice of the prior distribution that 
+matches the likelihood model so that the posterior distribution
+has the same form as the prior distribution.  Conjugate priors also
+allow us to interpret the strength of the prior in simple ways.
+
+For example, the conjugate
+prior of the binomial likelihood that we used
+for the tadpole predation data is the Beta distribution.
+If we pick a Beta prior with
+shape parameters $a$ and $b$, and if our data include a total
+of $\sum k$ ``successes'' (predation events) and
+$nN - \sum k$ ``failures'' (surviving tadpoles) out of a total
+of $nN$ ``trials'' (exposed tadpoles),
+the posterior distribution is a Beta distribution with shape parameters
+$a+\sum k$ and $b+(nN-\sum k)$.
+If we interpret $a-1$ as the total number
+of previously observed successes and $b-1$ as the number of 
+previously observed failures,
+then the new distribution just combines the total number of
+successes and failures in the complete
+(prior plus current) data set.
+When $a=b=1$, the Beta distribution is flat, corresponding
+to no prior information ($a-1=b-1=0$).
+As $a$ and $b$ 
+increase, the prior
+distribution gains more information and becomes
+peaked.
+We can also see that, as far as a Bayesian is concerned,
+it doesn't matter how we divide our experiments up.
+Many small
+experiments, aggregated with successive
+uses of Bayes' Rule, give the same information as one big
+experiment (\emph{provided} of course that there is no
+variation in per-trial probability among sets of observations, which we
+have assumed in our statistical model for both the likelihood
+and the Bayesian analysis).
+
+<<echo=FALSE>>=
+x = subset(ReedfrogPred,pred=="pred" & density==10 & size=="small")
+k = x$surv
+@ 
+
+We can also examine the effect of different
+priors on our estimate of the mean
+(Figure~\ref{fig:bayes1A}).  
+If we have
+no prior information and choose a
+flat prior with $a=b=1$,
+% (an
+% \emph{improper prior} that may fail badly if
+%there is too little information in the data to estimate the parameters),
+then our final answer is 
+that the per-capita predation probability is
+distributed as a Beta distribution with
+shape parameters
+$a=\sum k+1=\Sexpr{sum(k)+1}$,
+$b=nN-\sum k +1=\Sexpr{40-sum(k)+1}$.
+The mode of this Beta distribution 
+occurs at $(a-1)/(a+b-2)=\sum k/(nN)=\Sexpr{sum(k)/40}$ %
+--- exactly the
+same as the maximum likelihood estimate of the per-capita
+predation probability.
+Its mean is $a/(a+b)=\Sexpr{round((sum(k)+1)/42,3)}$ --- very
+slightly shifted toward 0.5 (the mean of our prior distribution)
+from the MLE.
+If we wanted a distribution whose 
+\emph{mean} was equal to
+the maximum likelihood estimate,
+we could generate a \emph{scaled likelihood} 
+by normalizing the likelihood so that it
+integrated to 1.
+However, to create the Beta prior that would lead to
+this posterior distribution
+we would have to take the limit 
+as $a$ and $b$ go to zero,
+implying a very peculiar prior distribution
+with infinite spikes at 0 and 1.
+
+<<echo=FALSE>>=
+a=121
+b=81
+@ 
+If we had much more prior data --- say a set of experiments with
+a total of $(nN)_{\mbox{\small prior}}=200$ tadpoles, of which $\sum k_{\mbox{\small prior}}=120$ 
+were eaten --- %
+then the parameters of prior distribution would be $a=121$, $b=81$,
+the posterior mode would be \Sexpr{round(150/240,3)},
+and the posterior mean would be \Sexpr{round(151/242,3)}.
+Both the posterior mode and mean are much closer to the 
+prior values than
+to the maximum likelihood estimate because
+the prior information is much stronger
+than the information we can obtain from the data.
+
+%%
+%% Poisson: x^N e^-x/N!
+%% gamma: x^(a-1) e^-(x/s)
+%% combine: x^(a-1+N) e^-x(1/s+1)
+%%  
+If our data were
+Poisson, we could use a 
+conjugate prior Gamma distribution with shape $\alpha$
+and scale $s$
+and interpret the parameters
+as $\alpha$=total counts in previous observations and 
+$1/s$=number of previous observations.
+Then if we observed $C$ counts in our data,
+the posterior would be a Gamma distribution
+with $\alpha'=\alpha+C$, $1/s'=1/s+1$.
+
+The conjugate prior for the mean of a normal distribution,
+if we know the variance, is another normal distribution.
+The posterior mean is an average of the prior mean and
+the observed mean, weighted by the \emph{precisions} ---
+the reciprocals of the prior and observed variances.
+The conjugate prior for the precision
+if we know the mean is the Gamma distribution.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5)
+curve(dbeta(x,shape1=sum(k)+1,shape2=40-sum(k)+1),
+      xlab="Predation probability\nper capita",
+      ylab="Probability density",
+      from=0,to=1,ylim=c(0,13))
+curve(dbeta(x,shape1=sum(k),shape2=40-sum(k)),
+      add=TRUE,lwd=3)
+curve(dbeta(x,shape1=1,shape2=1),col="darkgray",add=TRUE,
+      type="s")
+curve(dbeta(x,shape1=121,shape2=81),
+      add=TRUE,lty=2,col="darkgray")
+curve(dbeta(x,shape1=151,shape2=91),
+      add=TRUE,lty=2,n=200)
+tlocs <- list(x=c(0.44,0.13,0.82,0.75,0.95),
+              y=c(10,3.1,10.8,8,5.9))
+text(tlocs$x,tlocs$y,c("prior\n(121,81)",
+                       "prior\n(1,1)",
+                       "posterior\n(151,111)",
+                       "posterior\n(31,11)",
+                       "scaled\nlikelihood"),
+     cex=0.6)
+alocs <- list(x=c(0.151,0.464,0.734,0.720,0.924,
+                  0.18, 0.547,0.656,0.725,0.843),
+              y=c(2.3,9.047,10.806,7.241,4.833,
+                  1.02,7.195,9.973,5.898,3.212))
+arrows(alocs$x[1:5],alocs$y[1:5],alocs$x[6:10],alocs$y[6:10],
+       angle=15,col=rep(c("darkgray","black"),c(2,3)))
+par(op)
+@
+\caption{Bayesian priors and posteriors for the tadpole predation
+data.  The scaled likelihood is the normalized likelihood
+curve, corresponding to the weakest prior possible.
+Prior(1,1) is weak, corresponding to zero prior samples
+and leading to a posterior (31,11) that is
+almost identical to the scaled likelihood curve.
+Prior(121,81) is strong, corresponding to a previous sample size of 200 trials
+and leading to a posterior (151,111) that is much closer to the prior
+than to the scaled likelihood.}
+\label{fig:bayes1A}
+\end{figure}
+
+<<echo=FALSE>>=
+rm(k)
+@ 
+
+\subsubsection{Gamma distribution: 
+multiparameter distributions and non-conjugate priors}
+
+Unfortunately simple conjugate priors 
+aren't always available,
+and we often have to resort to numerical integration
+to evaluate Bayes' Rule.
+Just plotting the numerator of Bayes' Rule,
+($\mbox{prior}(p) \times L(p)$), is easy:
+for anything else, we need to integrate (or use
+summation to approximate an integral).
+
+In the absence of
+much prior information for the myxomatosis parameters $a$ (shape)
+and $s$ (scale), I chose a weak,
+independent prior distribution:
+\begin{eqnarray}
+\mbox{Prior}(a) & \sim & \mbox{Gamma}(\mbox{shape}=0.01,\mbox{scale}=100) 
+\nonumber \\
+\mbox{Prior}(s) & \sim &  \mbox{Gamma}(\mbox{shape}=0.1,\mbox{scale}=10)
+\nonumber \\
+\mbox{Prior}(a,s) & = & \mbox{Prior}(a) \cdot \mbox{Prior}(s).
+\nonumber
+\end{eqnarray}
+Bayesians often use the Gamma as a prior distribution
+for parameters that must be positive.
+Using a small shape parameter
+gives
+the distribution a large variance (corresponding to
+little prior information) and means that the distribution will be peaked
+at small values but is likely to be flat over the range
+of interest.  Finally, the scale is usually set large enough
+to make the mean of the parameter ($=\mbox{shape}\cdot\mbox{scale}$)
+reasonable.  Finally, I made the probabilities of $a$ and $s$
+independent, which keeps the form of the prior simple.
+
+As introduced in Chapter~\ref{chap:stoch}, the
+posterior probability is proportional
+to the prior times the likelihood.
+To compute the actual posterior probability, we need to divide
+the numerator $\mbox{Prior}(p) \times L(p)$ by its
+integral to make sure the total area (or volume)
+under the probability distribution is 1:
+$$
+\mbox{Posterior}(a,s) = \frac{\mbox{Prior}(a,s) \times L(a,s)}{%
+\iint \mbox{Prior}(a,s) L(a,s) \, da \, ds}
+$$
+Figure~\ref{fig:bayes2} shows the 
+(two-dimensional) posterior distribution
+for the myxomatosis data.  As is typical for
+reasonably large data sets, the probability density
+is very sharp.
+The contours shown on the plot 
+illustrate a rapid decrease from a probability
+density of 0.01 at the mode 
+down to a probability density
+of $10^{-10}$, and most of the posterior density
+is even lower than this minimum contour line.
+
+If we want to know the
+distribution of each parameter individually, we
+have to calculate its \emph{marginal} distribution:
+that is, what is the probability that
+$a$ or $s$ fall within a particular range,
+independent of the value of the other variable?
+To calculate the marginal distribution, 
+we have to integrate (take the expectation)
+over all possible values of the other parameter:
+\begin{equation}
+\begin{split}
+\mbox{Posterior}(a) & =  \int \mbox{Posterior}(a,s) s \, ds  \\
+\mbox{Posterior}(s) & =  \int \mbox{Posterior}(a,s) a \, da
+\end{split}
+\end{equation}
+Figure~\ref{fig:bayes2} also shows the marginal distributions
+of $a$ and $s$.
+
+What if we want to summarize the results still further
+and give a single value for each parameter (a \emph{point estimate})
+representing our conclusions about the virus titer?
+Bayesians generally prefer to quote
+the mean of a parameter (its expected value)
+rather than the mode (its most probable value).
+Neither summary statistic is more correct than the other --- they
+give different information about the distribution --- but they
+can lead to radically different inferences about
+ecological systems \citep{Ludwig1996}.
+The differences will be largest when the posterior distribution
+is asymmetric (the only 
+time the mean can differ from the mode) and when uncertainty is large.
+In Figure~\ref{fig:bayes2}, the mean and the mode
+are close together.
+
+To compute mean values for the parameters, we need to
+compute some more integrals, finding
+the weighted average of the parameters over the
+posterior distribution:
+\begin{eqnarray}
+\bar a & = & \int \mbox{Posterior}(a) \cdot a \, da  
+\nonumber \\
+\bar s & = & \int \mbox{Posterior}(s) \cdot s \, ds
+\nonumber
+\end{eqnarray}
+(we can also compute these means from the
+full rather than the marginal distributions:
+e.g. $\bar a = \iint \mbox{Posterior}(a,s) a \, da \, ds$)%
+\footnote{The means of the marginal distributions are
+the same as the mean of the full distribution.
+Confusingly, the modes of the marginal distributions are \emph{not}
+the same as the mode of the full distribution.}.
+
+\R\ can compute all of these integrals numerically.
+We can define functions
+<<>>=
+prior.as = function(a,s) {
+  dgamma(a,shape=0.01,scale=100)*
+  dgamma(s,shape=0.1,scale=10)
+}
+unscaled.posterior = function(a,s) {
+  prior.as(a,s)*exp(-gammaNLL1(shape=a,scale=s))
+}
+@ 
+and use \code{integrate} (for 1-dimensional
+integrals) or \code{adapt} (in the \code{adapt}
+package; for multi-dimensional integrals) to do the integration.
+More crudely, we can approximate the integral by a sum,
+calculating values of the integrand for discrete values,
+(e.g. $s=0, 0.01, \ldots 10$) and then calculating
+$\sum P(s) \Delta s$ --- this is how I created Figure~\ref{fig:bayes2}.
+
+However, integrating probabilities is tricky for two reasons.
+(1) Prior probabilities 
+and likelihoods are often tiny
+for some parameter values, leading to
+roundoff error; tricks like calculating log-probabilities
+for the prior and likelihood, adding, and then exponentiating
+can help.
+(2) You must pick the number and
+range of points at which to evaluate the integral carefully.  
+Too coarse a grid leads to approximation error, which may
+be severe if the function has sharp peaks.
+Too small a range,
+or the wrong range, can miss important parts of the surface.
+Large, fine grids are very slow.
+The numerical integration functions built in to \R\ help --- you
+give them a range and they try to evaluate the number of points
+at which to evaluate the integral --- but they can still
+miss peaks in the function if the initial range is set too
+large so that their initial grid fails to pick up the peaks.
+Integrals over more than two dimensions make these problem
+even worse, since you have to compute a huge number of
+points to cover a reasonably fine grid.
+This problem is the first appearance of the
+\emph{curse of dimensionality} (Chapter~\ref{chap:opt}).
+
+<<echo=FALSE,cache=TRUE>>=
+## (log) prior for a
+aprior = function(a) dgamma(a,shape=0.01,scale=100,log=TRUE)
+## (log) prior for s
+sprior = function(s) dgamma(s,shape=0.1,scale=10,log=TRUE)
+## library(adapt)
+## calc mean value (and find mode)
+postfun = function(p,log=FALSE) {
+  a <- p[1]
+  s <- p[2]
+  v <- aprior(a)+sprior(s)+sum(dgamma(myxdat$titer,shape=a,scale=s,log=TRUE))
+  if (log) v else exp(v)
+}
+prifun = function(p) {
+  a <- p[1]
+  s <- p[2]
+  exp(aprior(a)+sprior(s))
+}
+unsc.post <- curve3d(postfun(c(x,y)),from=c(10,0.07),
+                     n=c(91,101),
+                     to=c(100,0.5),sys3d="none")
+avec <- unsc.post$x
+svec <- unsc.post$y
+unsc.post$z <- unsc.post$z/sum(unsc.post$z)
+amat <- avec[row(unsc.post$z)]
+smat <- svec[col(unsc.post$z)]
+amean <- sum(amat*unsc.post$z)
+smean <- sum(smat*unsc.post$z)
+amarg <- rowSums(unsc.post$z)
+smarg <- colSums(unsc.post$z)
+amean2 <- sum(amarg*avec)
+smean2 <- sum(smarg*svec)
+amode <- amat[unsc.post$z==max(unsc.post$z)]       
+smode <- smat[unsc.post$z==max(unsc.post$z)]       
+amode2 <- avec[which.max(amarg)]
+smode2 <- svec[which.max(smarg)]
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=10,height=10>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5,mar=c(4,4,2,2)+0.1)
+nf <- layout(matrix(c(2,1,0,3), 2, 2, byrow=TRUE),
+             widths=c(1,3),heights=c(3,1))
+## don't know why this needs to be repeated ... but it does
+par(cex=1.5)
+contour(unsc.post$x,unsc.post$y,
+        unsc.post$z,
+        levels=10^seq(-10,-2),drawlabels=FALSE,
+        xlab="Shape",ylab="",lwd=1,col="darkgray")
+mtext("Scale",side=2,at=0.3,line=2.5,cex=1.5,las=0)
+points(amean,smean,pch=1)
+points(amode,smode,pch=2)
+arrows(c(41,56),c(0.27,0.18),
+       c(45,48.5),c(0.175,0.15),angle=15)
+text(c(41,56),c(0.28,0.19),
+     c("mean","mode"))
+par(mar=c(4,1,2,2)+0.1)
+plot(-smarg,svec,type="l",axes=FALSE,xlab="",ylab="")
+axis(side=4)
+axis(side=1,at=c(-0.04,0),labels=c(0.04,0))
+## have to hand-draw box
+u <- par("usr")
+segments(c(u[1],u[2]),
+         c(u[3],u[3]),
+         c(u[2],u[2]),
+         c(u[3],u[4]),lwd=2)
+par(mar=c(2,4,0.5,2)+0.1)
+plot(avec,amarg,type="l",xlab="",ylab="",axes=FALSE,
+     ylim=c(0,0.04))
+axis(side=1)
+axis(side=2,at=c(0,0.04))
+box()
+par(op)
+@ 
+\caption{Bivariate and marginal posterior distributions
+for the myxomatosis titer data.
+Contours are drawn, logarithmically spaced, at probability levels
+from 0.01 to $10^{-10}$.  Posterior distributions are weak
+and independent, Gamma(shape=0.1, scale=10) for scale and
+Gamma(shape=0.01, scale=100) for shape.}
+\label{fig:bayes2}
+\end{figure}
+
+<<echo=FALSE,eval=FALSE>>=
+## junk
+zz <- log(unsc.post$z)
+zz[!is.finite(zz)] <- -750
+## library(rgl); persp3d(unsc.post$x,unsc.post$y,zz,col="red")
+unsc.post.log <- curve3d(postfun(c(x,y),log=TRUE),
+                         from=c(1,0.01),to=c(100,1),n=c(71,71),
+                         sys3d="rgl",col="blue")
+persp3d(unsc.post.log$x,unsc.post.log$y,exp(unsc.post.log$z),col="red")
+x = unsc.post.log$x
+y = unsc.post.log$y
+image(x,y,log(-unsc.post.log$z))
+curve(0.003056+6.808135/x,add=TRUE)
+contour(x,y,-unsc.post.log$z,levels=49,add=TRUE)
+peaks = which(-unsc.post.log$z<48,arr.ind=TRUE)
+points(x[peaks[,1]],y[peaks[,2]],col="blue",cex=0.5,pch=16)
+##
+avec = 1:100
+svec = 0.003056+6.808135/avec
+g = mapply(gammaNLL1,avec,svec)
+plot(g,ylim=c(35,50))
+g2 = -mapply(function(x,y)postfun(c(x,y),log=TRUE),avec,svec)
+plot(g2,ylim=c(46,50))
+##
+plot2 <- curve3d(log(-postfun(c(x,y),log=TRUE)),
+                 from=c(20,0.1),to=c(60,0.2),n=c(71,71),
+                         sys3d="image")
+contour(plot2$x,plot2$y,plot2$z,levels=seq(3.8,3.9,by=0.01),
+        add=TRUE)
+curve(0.003056+6.808135/x,add=TRUE,col="blue",lwd=2)
+
+numfuna0 = function(a,s,x) {
+  exp(aprior(a)+sprior(s)+dgamma(x,shape=a,scale=s,log=TRUE)+log(a))
+}
+numfuns0 = function(p) {
+  a <- p[1]
+  s <- p[2]
+  exp(aprior(a)+sprior(s)+dgamma(x,shape=a,scale=s,log=TRUE)+log(s))
+}
+numfunas0 = function(a,s,x) {
+  exp(aprior(a)+sprior(s)+dgamma(x,shape=a,scale=s,log=TRUE)+log(s)+log(a))
+}
+numfuna <- function(a) {
+  sapply(a,numfuna0)
+}
+numfuns <- function(s) {
+  sapply(a,numfuns0)
+}
+numa = adapt(2,lower=c(0,0),upper=c(200,200),minpts=10000,functn=numfuns0)
+subdiv=10000
+limits=c(0,15)
+bval2 =integrate(numfun,lower=limits[1],upper=limits[2],subdivisions=subdiv)$value/
+  integrate(denomfun,lower=limits[1],upper=limits[2],subdivisions=subdiv)$value
+@ 
+
+In practice, brute-force numerical integration is no longer feasible with
+models with more than about two parameters.
+The only practical
+alternatives are \emph{Markov chain Monte Carlo} approaches,
+introduced later in this chapter and in more detail in Chapter~\ref{chap:opt}.
+
+For the myxomatosis data, the posterior mode
+is ($a=\Sexpr{round(amode,2)}, s=\Sexpr{round(smode,2)}$),
+close to the maximum likelihood estimate of
+($a=\Sexpr{round(coef(m3)["shape"],2)},
+  s=\Sexpr{round(coef(m3)["scale"],2)}$) (the differences
+are probably caused more by round-off error than by the
+effects of the prior).
+The posterior mean is
+($a=\Sexpr{round(amean,2)}, s=\Sexpr{round(smean,2)}$).
+
+\section{Estimation for more complex functions}
+So far we've estimated 
+the parameters of a single distribution
+(e.g. $X \sim \mbox{Binomial}(p)$ or
+$X \sim \mbox{Gamma}(a,s)$).
+We can easily extend these techniques to more interesting
+ecological models like the ones simulated in Chapter~\ref{chap:sim},
+where the mean or variance parameters of the
+model vary among groups or depend on covariates.
+
+\subsection{Maximum likelihood}
+
+
+<<echo=FALSE>>=
+data(ReedfrogFuncresp)
+attach(ReedfrogFuncresp)
+binomNLL2 = function(p,N,k) {
+  a = p[1]
+  h = p[2]
+  predprob = a/(1+a*h*N)
+  -sum(dbinom(k,prob=predprob,size=N,log=TRUE))
+}
+O2 = optim(fn=binomNLL2,par=c(a=0.5,h=0.0125),N=Initial,k=Killed)
+parnames(binomNLL2) = c("a","h")
+m2 = mle2(binomNLL2,start=c(a=0.5,h=0.0125),data=list(N=Initial,k=Killed))
+gammaNLL2 = function(a,b,shape) {
+  meantiter = a*myxdat$day*exp(-b*myxdat$day)
+  -sum(dgamma(myxdat$titer,shape=shape,scale=meantiter/shape,log=TRUE))
+}
+m4 = mle2(gammaNLL2,start=list(a=1,b=0.2,shape=50),
+  method="Nelder-Mead")
+detach(ReedfrogFuncresp)
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=10>>=
+op=par(mfrow=c(1,2),lwd=2,bty="l",las=1,cex=1.5)
+## frog data
+plot(ReedfrogFuncresp$Initial,ReedfrogFuncresp$Killed,
+     xlab="Initial density",ylab="Number killed")
+with(as.list(coef(m2)),
+     {
+       curve(a*x/(1+a*h*x),add=TRUE)
+       curve(qbinom(0.025,size=floor(x),prob=a/(1+a*h*x)),lty=2,add=TRUE,
+             type="s")
+       curve(qbinom(0.975,size=floor(x),prob=a/(1+a*h*x)),lty=2,add=TRUE,
+             type="s")
+     })
+plot(myxdat$day,myxdat$titer,
+     xlab="Day since infection",ylab="Virus titer",xlim=c(0,10),
+     ylim=c(0,9))
+with(as.list(coef(m4)),
+     {
+       curve(a*x*exp(-b*x),add=TRUE)
+       curve(qgamma(0.025,shape=shape,scale=a*x*exp(-b*x)/shape),
+                    lty=2,add=TRUE)
+       curve(qgamma(0.975,shape=shape,scale=a*x*exp(-b*x)/shape),
+                    lty=2,add=TRUE)
+     })
+par(op)
+@ 
+\caption{Maximum-likelihood fits to tadpole predation 
+(Holling type~II/binomial)
+and myxomatosis (Ricker/Gamma) models.}
+\label{fig:fits2}
+\end{figure}
+
+\subsubsection{Tadpole predation}
+We can combine deterministic and stochastic functions
+to calculate likelihoods, just as we did to
+simulate ecological processes in Chapter~\ref{chap:sim}.
+For example, suppose tadpole predators
+have a Holling type~II functional response
+(attack rate = $aN/(1+ahN)$),
+meaning that the \emph{per capita} predation
+rate of tadpoles decreases hyperbolically with density
+($=a/(1+ahN)$).
+The distribution of the actual number eaten is 
+likely to be binomial with this probability.
+If $N$ is the number of tadpoles in a tank,
+\begin{equation}
+\begin{split}
+p & =  \frac{a}{1 + a h N} \\
+k & \sim \mbox{Binom}(p,N).
+\end{split}
+\label{eq:fpmodel}
+\end{equation}
+
+Since the distribution and density functions in \R\ 
+(such as \code{dbinom}) operate on vectors just as do the random-deviate
+functions (such as \code{rbinom}) used in Chapter~\ref{chap:sim},
+I can translate this model definition
+directly into \R, using a numeric vector \code{p}=$\{a,s\}$ for
+the parameters:
+<<>>=
+binomNLL2 = function(p,N,k) {
+  a = p[1]
+  h = p[2]
+  predprob = a/(1+a*h*N)
+  -sum(dbinom(k,prob=predprob,size=N,log=TRUE))
+}
+@ 
+
+Now we can dig out the data from the functional response
+experiment of \cite{VoneshBolker2005}, which contains
+the variables \code{Initial} ($N$) and \code{Killed}
+($k$).
+Plotting the data (Figure~\ref{fig:frogcurves})
+and eyeballing the
+initial slope and asymptote gives us
+crude starting estimates of
+$a$ (initial slope) at around 0.5 
+and $h$ (1/asymptote) at around $1/80=0.0125$.
+<<>>=
+data(ReedfrogFuncresp)
+attach(ReedfrogFuncresp)
+O2 = optim(fn=binomNLL2,par=c(a=0.5,h=0.0125),N=Initial,k=Killed)
+@ 
+
+This optimization gives us parameters
+($a=\Sexpr{round(O2$par["a"],3)}$,
+$h=\Sexpr{round(O2$par["h"],3)}$) --- so
+our starting guesses were pretty good.
+
+\label{parnames}
+In order to use \code{mle2} for this purpose,
+you would normally have to rewrite
+the negative log-likelihood function
+with the parameters \code{a} and \code{h}
+as separate arguments
+(i.e. \code{function(a,h,p,N,k)}).
+However, \code{mle2}
+will let you pass the parameters
+inside a vector 
+as long as you use \code{parnames} to
+attach the names of the parameters
+to the function.
+
+<<>>=
+parnames(binomNLL2) = c("a","h")
+m2 = mle2(binomNLL2,start=c(a=0.5,h=0.0125),data=list(N=Initial,k=Killed))
+m2
+@
+The answers are very slightly different from the \code{optim}
+results (\code{mle2} uses a different numerical optimizer by default).
+
+<<echo=FALSE>>=
+z = as.list(coef(m2))
+prob = with(z,a/(1+a*h*50))
+pval = pbinom(5,size=50,prob=prob)
+@ 
+As always, we should plot the fit to the data to make
+sure it is sensible.
+Figure~\ref{fig:fits2}a shows the expected number killed
+(a Holling type~II function) and uses the \code{qbinom}
+function to plot the 95\% confidence intervals of the binomial
+distribution\footnote{These confidence limits, sometimes called
+\emph{plug-in estimates}, ignore the uncertainty in the
+parameters.}.
+One point falls outside of the confidence limits: for
+16~points, this isn't surprising (we would expect one point
+out of 20 to fall outside the limits on average), although
+this point is quite low (5/50, compared to an expectation of
+\Sexpr{round(prob*50,2)} --- the probability of
+getting this extreme an outlier is only \Sexpr{scinot(pval,digits=2)}).
+
+\subsubsection{Myxomatosis virus}
+
+When we looked at the 
+myxomatosis titer data before we treated it as though
+it all came from a single distribution.
+In reality, titers typically change considerably
+as a function of the time since infection.
+Following \cite{Dwyer+1990},
+we will fit a Ricker model
+to the mean titer level.
+Figure~\ref{fig:fits2} shows the data
+for the grade~1 virus:
+as a function that starts from zero,
+grows to a peak, and then declines,
+the Ricker seems to make sense
+although for
+the grade~1 virus we have only biological common sense,
+and the evidence from the other virus grades to say that the
+titer would eventually decrease.
+Grade~1 is so virulent that rabbits die before titer has
+a chance to 
+drop off.  We'll stick with the Gamma distribution
+for the distribution of titer $T$ at time $t$,
+but parameterize it with shape ($s$) and mean
+rather than shape and scale parameters (i.e. scale=mean/shape):
+\begin{equation}
+\begin{split}
+m  & = a t e^{-b t} \\
+T & \sim \mbox{Gamma}(\mbox{shape}=s,\mbox{scale}=m/a)
+\end{split}
+\label{eq:myxomodel}
+\end{equation}
+
+Translating this into \R\ is straightforward:
+<<>>=
+gammaNLL2 = function(a,b,shape) {
+  meantiter = a*myxdat$day*exp(-b*myxdat$day)
+  -sum(dgamma(myxdat$titer,shape=shape,scale=meantiter/shape,log=TRUE))
+}
+@ 
+
+We need initial values, which we can
+guess knowing from Chapter~\ref{chap:determ} that
+$a$ is the initial slope of the Ricker function
+and $1/b$ is the $x$-location of the peak.
+Figure~\ref{fig:fits2} suggests that
+$a \approx 1$, $1/b \approx 5$.
+I knew from the previous fit that the shape
+parameter is large, so I started with shape=50.
+When I tried to fit the model with the default optimization method
+I got a warning that the optimization had not converged,
+so I used an alternative optimization method, the Nelder-Mead
+simplex (p.~\pageref{sec:NM}).
+<<>>=
+m4 = mle2(gammaNLL2,start=list(a=1,b=0.2,shape=50),
+  method="Nelder-Mead")
+m4
+@ 
+\label{myxomleest}
+We could run the same analysis a bit more compactly,
+without explicitly defining a negative
+log-likelihood function, using \code{mle2}'s formula interface:
+<<results=hide>>=
+mle2(titer~dgamma(shape,scale=a*day*exp(-b*day)/shape),
+     start=list(a=1,b=0.2,shape=50),data=myxdat,
+     method="Nelder-Mead")
+@ 
+Specifying \code{data=myxdat} lets us use \code{day}
+and \code{titer} in the formula instead
+of \code{myxdat\$day} and \code{myxdat\$titer}.
+
+\subsection{Bayesian analysis}
+%% R2WinBUGS
+
+<<echo=FALSE>>=
+library(R2WinBUGS)
+@ 
+
+<<echo=FALSE,cache=TRUE>>=
+initial <- ReedfrogFuncresp$Initial
+killed <- ReedfrogFuncresp$Killed
+n <- length(initial)
+inits <- list(list(a=0.5,h=0.02),list(a=1,h=0.015),
+              list(a=0.1,h=0.5))
+frogpred1.bugs <- bugs(data=list("initial","killed","n"),
+                       inits,parameters.to.save=c("a","h"),
+                       model.file="frogpred.bug",
+                       n.chains=length(inits),n.iter=6000,n.thin=1)
+@ 
+
+%\verbatiminput{frogpred.bug}
+
+Extending the tools to use a Bayesian approach is straightforward,
+although the details are
+more complicated than maximum likelihood estimation.
+We can use the same likelihood models (e.g. (\ref{eq:fpmodel})
+for the tadpole predation data or (\ref{eq:myxomodel}) for
+myxomatosis).
+All we have to do to complete the model definition
+for Bayesian analysis is specify prior probability
+distributions for the parameters.
+However, defining the model is not the end of the story.
+For the binomial model, which has only two parameters,
+we could proceed more or
+less as in the Gamma distribution example above (Figure~\ref{fig:bayes2}),
+calculating the posterior density for many combinations of
+the parameters and computing integrals to calculate marginal
+distributions and means.
+To evaluate integrals for the three-parameter
+myxomatosis model we would have to integrate the posterior distribution
+over a three-dimensional grid, which would 
+quickly become impractical.
+
+\label{MCMC}
+\emph{Markov chain Monte Carlo} (MCMC) is a numerical
+technique that makes Bayesian analysis 
+of more complicated models feasible.
+BUGS is a program that allows you to run
+MCMC analyses without doing lots of programming.
+Here is the BUGS code
+for the myxomatosis example:
+%\verbatiminput{myxo1.bug}
+\lstinputlisting{myxo1.bug}
+BUGS's modeling language is similar but not identical
+to \R.  For example, BUGS requires you to use \verb+<-+
+instead of \verb+=+ for assignments.
+
+As you can see, the BUGS model also looks a lot like
+the likelihood model (eq. \ref{eq:myxomodel}).
+Lines 3--5 specify the model
+(BUGS uses shape and rate parameters 
+to define the Gamma distribution
+rather than shape and scale
+parameters: differences in parameterization
+are some of the most important differences
+between the BUGS and \R\ languages.)
+Lines 8--10 give the prior distributions for the
+parameters, all Gamma in this case.
+The BUGS model is more explicit than eq.~\ref{eq:myxomodel} --- %
+in particular, you have to put in an explicit
+\code{for} loop to calculate the expected values for each
+data point --- but the broad outlines are the same, even
+up to using a tilde (\verb+~+) to mean ``is distributed
+as''.
+
+You can either run BUGS either as a standalone program, or
+from within \R, using
+the {\tt R2WinBUGS} package
+as an interface to the WinBUGS program
+for running BUGS on Windows\footnote{WinBUGS runs on Windows
+and on Intel machines under Linux or MacOS (using Wine or
+Crossover Office). Chapter~\ref{chap:opt}
+gives more details.}.
+<<>>=
+library(R2WinBUGS)
+@ 
+You have to specify
+the names of the data exactly as they are listed in the
+BUGS model (given above, but
+stored in a separate text file \code{myxo1.bug}):
+<<>>=
+titer = myxdat$titer
+day = myxdat$day
+n = length(titer)
+@ 
+You also have to specify starting points for multiple chains,
+which should vary among reasonable values (p.~\ref{multchain}),
+as a list of lists:
+
+<<>>=
+inits <- list(list(a=4,b=0.2,shape=90),
+              list(a=1,b=0.1,shape=50),
+              list(a=8,b=0.4,shape=150))
+@ 
+(I originally started $b$ at 1.0 for the third chain,
+but WinBUGS kept giving me an error saying
+``cannot bracket slice for node $a$''. By trial
+and error --- by eliminating chains and changing
+parameters --- I established that the value of
+$b$ in chain~3 was the problem.)
+
+Now you can run the model through WinBUGS:
+<<cache=TRUE>>=
+myxo1.bugs <- bugs(data=list("titer","day","n"),
+                       inits,parameters.to.save=c("a","b","shape"),
+                       model.file="myxo1.bug",
+                   n.chains=length(inits),n.iter=3000)
+  
+@ 
+
+<<echo=FALSE>>=
+detach(ReedfrogFuncresp)  ## why??
+mvals <- signif(myxo1.bugs$summary[,"mean"],3)
+@ 
+
+As we will see shortly, you can recover lots of information
+for a Bayesian analysis from a WinBUGS run --- for now, 
+you can use \code{print(myxo1.bugs,digits=4)}
+to see that the estimates of the means,
+$\{a=\Sexpr{mvals[1]}, b=\Sexpr{mvals[2]}, s=\Sexpr{mvals[3]} \}$,
+are reassuringly close to the maximum-likelihood estimates 
+(p.~\pageref{myxomleest}).
+
+\section{Likelihood surfaces, profiles,
+and confidence intervals}
+
+So far, we've used \R\ or WinBUGS to
+find point estimates (maximum likelihood estimates
+or posterior means) automatically,
+without looking very carefully 
+at the curves and surfaces that describe
+how the likelihood varies with
+the parameters.
+This approach gives little
+insight when things go wrong with the fitting (as
+happens all too often).
+Furthermore, point estimates are
+useless without measures of uncertainty.
+We really want to know the uncertainty associated with
+the parameter estimates, both individually (univariate
+confidence intervals) and together (bi- or
+multivariate confidence regions).
+This section will show how to draw and interpret 
+goodness-of-fit curves
+(likelihood curves and profiles, Bayesian posterior
+joint and marginal distributions) and
+their connections to confidence intervals.
+
+\subsection{Frequentist analysis: likelihood curves and profiles}
+The most basic tool for understanding how likelihood
+depends on one or more parameters is the \emph{likelihood curve}
+or \emph{likelihood surface},
+which is just the likelihood plotted as a function of parameter values
+(e.g. Figure \ref{fig:mlbinom1}).
+By convention, 
+we plot the negative log-likelihood rather than log-likelihood,
+so the best estimate is a minimum rather than a maximum.
+(I sometimes call negative log-likelihood curves
+\emph{badness-of-fit} curves, since higher points indicate a poorer
+fit to the data.)
+Figure~\ref{fig:binomfit}a shows the negative log-likelihood curve
+(like Figure~\ref{fig:mlbinom1} but upside-down and with a different
+$y$ axis), indicating
+the minimum negative log-likelihood (=maximum likelihood)
+point, and lines showing the upper and lower 
+95\% confidence limits
+(we'll soon see how these are defined).
+Every point on a likelihood curve or surface represents 
+a different fit to the data:
+Figure~\ref{fig:binomfit}b
+shows the observed distribution of the
+binomial data along with three separate curves corresponding
+to the lower estimate ($p=0.6$), best fit ($p=0.75$), 
+and upper estimate ($p=0.87$) of the \emph{per capita}
+predation probability.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=10>>=
+x = subset(ReedfrogPred,pred=="pred" & density==10 & size=="small")
+k = x$surv
+op=par(mfrow=c(1,2),lwd=2,bty="l",las=1,cex=1.5)
+pchs = c(1,2,5)
+plot(pvec,-liks,type="l",xlab="Predation probability\nper capita (p)",
+     ylab="Negative log-likelihood",ylim=c(5,30))
+p.conf <- confint(m1,quietly=TRUE)
+v <- c(p.mle,p.conf)
+h <- sapply(c(p.mle,p.conf),binomNLL1,k=k,N=10)
+points(v,h,pch=pchs)
+abline(v=v[2:3],lty=3)
+abline(h=h[2],lty=3)
+corner.label("a")
+####
+plot(table(factor(k,levels=0:10))/4,xlab="Tadpoles eaten",
+     ylab="Probability",lwd=4,col="gray")
+points(0:10,dbinom(0:10,size=10,prob=0.75),pch=pchs[1],
+       type="b")
+points(0:10,dbinom(0:10,size=10,prob=p.conf[1]),pch=pchs[2],
+       type="b")
+points(0:10,dbinom(0:10,size=10,prob=p.conf[2]),pch=pchs[3],
+       type="b")
+text(c(3.4,7.2,10.6),c(0.18,0.31,0.34),
+     paste("p=",round(c(p.conf[1],0.75,p.conf[2]),2),sep=""),
+     xpd=NA,cex=0.8)
+corner.label("b")
+par(op)
+@ 
+\caption{(a) Negative log-likelihood curve and confidence intervals
+for binomial-distributed predation of tadpoles.
+(b) Comparison of fits to data. Gray vertical bars show proportion
+of trials with different outcomes; lines and symbols show fits
+corresponding to different parameters indicated on the negative
+log-likelihood curve in (a).}
+\label{fig:binomfit}
+\end{figure}
+
+%\begin{figure}
+<<echo=FALSE,fig=TRUE,width=10,eval=FALSE>>=
+attach(ReedfrogFuncresp)
+Lvec = seq(5,9,by=0.1) 
+likfun = function(lambda) { -sum(dpois(poisdata,lambda,log=TRUE)) }
+likcurve = sapply(Lvec,likfun)
+m0 = mle2(minuslogl=likfun,start=list(lambda=4))
+prof0 = profile(m2)
+c95 = confint(prof0,level=0.95)
+c99 = confint(prof0,level=0.99)
+op=par(mfrow=c(1,2))
+plot(table(factor(poisdata,levels=0:14))/length(poisdata),
+     ylab="Probability",xlab="Clutch size")
+points(0:14,dpois(0:14,coef(m0)),type="b",pch=16,lwd=2,add=TRUE)
+points(0:14,dpois(0:14,poisdatamean),type="b",pch=1,lty=2,lwd=2,add=TRUE)
+points(0:14,dpois(0:14,c99[2]),type="b",pch=2,lty=3,add=TRUE)
+points(0:14,dpois(0:14,c99[1]),type="b",pch=3,lty=4,add=TRUE)
+legend(8,0.2,
+       c("best estimate",
+         "true",
+         "1%","99%"),
+       pch=c(16,2,2,3),
+       lwd=c(2,2,1,1),
+       lty=1:4)
+plot(Lvec,likcurve,type="l",xlab=expression(paste("Estimated "),lambda),
+     ylab="Negative log likelihood")
+abline(h=-logLik(m0))
+abline(v=coef(m0),lwd=2)
+abline(v=c95,lty=2)
+abline(v=confint(prof0,level=0.99),lty=3)
+abline(h=qchisq(c(0.95,0.99),df=1)/2-logLik(m0),lty=c(2,3))
+abline(v=poisdatamean,lty=2,lwd=2)
+points(c(coef(m0),poisdatamean,c99[1],c99[2]),
+       sapply(c(coef(m0),poisdatamean,c99[1],c99[2]),likfun),
+       pch=c(16,1,2,3))
+par(op)
+detach(ReedfrogFuncresp)
+@ 
+%\caption{Poisson data: plots of fits to data and likelihood curve}
+%\label{fig:poissfit}
+%\end{figure}
+
+<<echo=FALSE>>=
+rvec <- seq(0,0.025,length=75)
+dvec <- seq(4,15,length=75)
+prof <- profile(m1)
+## will generate errors -- OK
+## profwide <- profile(m1,zmax=8)
+rm(x)
+rm(k)
+@ 
+
+
+\begin{figure}
+<<echo=FALSE>>=
+attach(ReedfrogFuncresp)
+bsurf = curve3d(binomNLL2(c(x,y),N=ReedfrogFuncresp$Initial,k=ReedfrogFuncresp$Killed),
+  sys="none",from=c(0.3,0.002),to=c(0.75,0.03),n=c(91,91))
+prof <- profile(m2)
+conflim95 <- confint(prof,level=0.95)
+conflim99 <- confint(prof,level=0.99)
+m2.p <- coef(m2)
+p2 <- profile(m2,which="a")
+p2h <- profile(m2,which="h")
+detach(ReedfrogFuncresp)
+@ 
+<<echo=FALSE,fig=TRUE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5,mar=c(5,5,4,2)+0.1)
+image(bsurf$x,bsurf$y,log(bsurf$z),xlab="Attack rate (a)",
+      ylab="",col=gray((20:0)/20))
+mtext("Handling time (h)",side=2,at=0.017,line=3.5,cex=1.5,las=0)
+points(m2.p[1],m2.p[2],pch=16)
+#contour(bsurf$x,bsurf$y,bsurf$z,add=TRUE,drawlabels=FALSE,col="gray")
+contour(bsurf$x,bsurf$y,bsurf$z,levels=-logLik(m2)+qchisq(0.95,2)/2,add=TRUE,
+        drawlabels=FALSE)
+contour(bsurf$x,bsurf$y,bsurf$z,levels=-logLik(m2)+qchisq(0.95,1)/2,add=TRUE,lty=3,
+        drawlabels=FALSE)
+lines(prof@profile$a$par.vals[,"a"],prof@profile$a$par.vals[,"h"],lty=2)
+lines(prof@profile$h$par.vals[,"a"],prof@profile$h$par.vals[,"h"],lty=4)
+abline(v=conflim95["a",],lty=3,col="darkgray")
+abline(h=conflim95["h",],lty=3,col="darkgray")
+abline(h=coef(m2)["h"],lty=5,col="darkgray")
+text(c(0.65,0.74),c(0.028,0.025),c("h","a"))
+text(c(0.5,0.59),c(0.008,0.013),c("univariate","bivariate"),adj=0,cex=0.75)
+arrows(0.495,0.008,0.475,0.009,angle=25,length=0.1)
+pt3 = prof@profile$a$par.vals[2,]
+pt3 = c(pt3,binomNLL2(pt3,N=ReedfrogFuncresp$Initial,k=ReedfrogFuncresp$Killed))
+pt4 = c(pt3[1],coef(m2)["h"])
+pt4 = c(pt4,binomNLL2(pt4,N=ReedfrogFuncresp$Initial,k=ReedfrogFuncresp$Killed))
+points(pt3["a"],pt3["h"],pch=2)
+points(pt4["a"],pt4["h"],pch=8)
+text(0.3,coef(m2)["h"]+0.0015,"slice",adj=0)
+par(op)
+@ 
+\caption{Likelihood surface for tadpole predation data,
+showing univariate and bivariate 95\% confidence limits
+and likelihood profiles for $a$ and $h$.
+Darker shades of gray represent higher negative log-likelihoods.
+Solid line shows the 95\% bivariate confidence region.
+Dotted black and gray lines indicate
+95\% univariate confidence regions.
+Dash-dotted line and dashed line
+show likelihood profiles for $h$
+and $a$.
+Long-dash gray line shows the likelihood slice with varying
+$a$ and constant $h$.
+The black dot indicates the maximum likelihood estimate;
+the star is an alternate fit along the slice
+with the same handling time; the triangle is
+an alternate fit along the likelihood profile for
+$a$.
+}
+\label{fig:lsurf1}
+\end{figure}
+
+
+<<echo=FALSE>>=
+profpic <- function(prof,param,trueval,best,which,alpha=c(0.95,0.99),
+                    legend=TRUE,legpos=NULL,ylab="Negative log likelihood",...) {
+  prof1 = prof@profile[[param]]
+  nll = (prof1$z)^2/2+prof@summary@m2logL/2
+  plot(prof1$par.vals[,param],nll,type="l",xlab=param,ylab=ylab,...)
+  abline(h=-logLik(best))
+  abline(v=coef(best)[param],lwd=2)
+  if (!missing(trueval)) abline(v=trueval,lwd=2,lty=2)
+  nalpha = length(alpha)
+  for (i in seq(along=alpha)) {
+    crit <- qchisq(alpha[i],1)/2
+    abline(h=-logLik(m1)+crit,lty=i+1)
+    conflim <- confint(prof,parm=param,level=alpha[i])
+    abline(v=conflim,lty=i+1)
+  }
+  if (legend) {
+    if (is.null(legpos)) legpos <- corner.loc(1,1,xoff=0.2)
+    legend(legpos$x,legpos$y,
+         c(paste("alpha=",alpha,sep=""),
+           "true",
+           "observed"),
+           lty=c(1:nalpha,2,1),
+           lwd=c(rep(1,nalpha),2,2),bg="white")
+  }
+}
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+sqrprofplot <- function (x, levels, conf = c(99, 95, 90, 80, 50)/100, nseg = 50,
+          plot.confstr = FALSE, confstr = NULL, absVal = TRUE, sqrVal=FALSE, add = FALSE,
+          col.minval="green", lty.minval=2,
+          col.conf="magenta", lty.conf=2,
+          col.prof="blue", lty.prof=1,
+          xlabs=nm, ylab="score", xlim, ylim, ...)
+{
+    ## Plot profiled likelihood
+    ## Based on profile.nls (package stats)
+    obj <- x@profile
+    confstr <- NULL
+    if (missing(levels)) {
+        levels <- sqrt(qchisq(pmax(0, pmin(1, conf)), 1))
+        confstr <- paste(format(100 * conf), "%", sep = "")
+    }
+    if (any(levels <= 0)) {
+        levels <- levels[levels > 0]
+        warning("levels truncated to positive values only")
+    }
+    if (is.null(confstr)) {
+        confstr <- paste(format(100 * pchisq(levels^2, 1)), "%", sep = "")
+    }
+    mlev <- max(levels) * 1.05
+    nm <- names(obj)
+    ##    opar <- par(mar = c(5, 4, 1, 1) + 0.1)
+    for (i in seq(along = nm)) {
+      ## <FIXME> This does not need to be monotonic
+      ## cat("**",i,obj[[i]]$par.vals[,i],obj[[i]]$z,"\n")
+      ## browser()
+      yvals <- obj[[i]]$par.vals[,nm[i],drop=FALSE]
+      sp <- splines::interpSpline(yvals, obj[[i]]$z,
+                                  na.action=na.omit)
+      bsp <-splines:: backSpline(sp)
+      ## </FIXME>
+      x0 <- predict(bsp,0)$y
+      if (missing(xlim)) xlim <- predict(bsp, c(-mlev, mlev))$y
+      if (is.na(xlim[1]))
+        xlim[1] <- min(yvals)
+      if (is.na(xlim[2]))
+        xlim[2] <- max(yvals)
+      if (sqrVal) {
+        if (!add) {
+          if (missing(ylim)) ylim <- c(0,mlev^2)
+          plot(I(z^2) ~ par.vals[, i], data = obj[[i]], xlab = xlabs[i],
+               ylim = ylim, xlim = xlim, ylab = ylab,
+               type = "n", ...)
+        }
+        avals <- rbind(as.data.frame(predict(sp)),
+                       data.frame(x = drop(yvals),
+                                  y = obj[[i]]$z))
+        avals$y <- avals$y^2
+        lines(avals[order(avals$x), ], col = col.prof, lty=lty.prof)
+      } else {
+        if (absVal) {
+          if (!add) {
+            if (missing(ylim)) ylim <- c(0,mlev)
+            plot(abs(z) ~ par.vals[, i], data = obj[[i]], xlab = nm[i],
+                 ylim = ylim, xlim = xlim, ylab = expression(abs(z)),
+                 type = "n", ...)
+          }
+          avals <- rbind(as.data.frame(predict(sp)),
+                         data.frame(x = yvals,
+                                    y = obj[[i]]$z))
+          avals$y <- abs(avals$y)
+          lines(avals[order(avals$x), ], col = col.prof, lty=lty.prof)
+        } else {
+          if (!add) {
+            if (missing(ylim)) ylim <- c(-mlev,mlev)
+            plot(z ~ par.vals[, i], data = obj[[i]], xlab = nm[i],
+                 ylim = ylim, xlim = xlim, ylab = expression(z),
+                 type = "n", ...)
+          }
+          lines(predict(sp), col = col.prof, lty=lty.prof)
+        }
+      }
+      abline(v = x0, h=0, col = col.minval, lty = lty.minval)
+      for (i in 1:length(levels)) {
+        lev <- levels[i]
+        confstr.lev <- confstr[i]
+        ## Note: predict may return NA if we didn't profile
+        ## far enough in either direction. That's OK for the
+        ## "h" part of the plot, but the horizontal line made
+        ## with "l" disappears.
+        pred <- predict(bsp, c(-lev, lev))$y
+        ## horizontal
+        if (absVal || sqrVal) levs=rep(lev,2) else levs=c(-lev,lev)
+        if (sqrVal) lines(pred, levs^2, type = "h", col = col.conf, lty = lty.conf)
+        else lines(pred, levs, type = "h", col = col.conf, lty = 2)
+        ## vertical
+        pred <- ifelse(is.na(pred), xlim, pred)
+        if (sqrVal) lines(pred, rep(lev^2,2), type = "l", col = col.conf, lty = lty.conf)
+        else if (absVal) lines(pred, rep(lev, 2), type = "l", col = col.conf, lty = lty.conf)
+        else {
+          lines(c(x0,pred[2]), rep(lev, 2), type = "l", col = col.conf, lty = lty.conf)
+          lines(c(pred[1],x0), rep(-lev, 2), type = "l", col = col.conf, lty = lty.conf)
+        }
+        if (plot.confstr) {
+          if (sqrVal) text(labels=confstr.lev,x=x0,y=lev^2,col=col.conf)
+          else text(labels=confstr.lev,x=x0,y=lev^2,col=col.conf)
+        }
+      }
+    }
+    ## par(opar)
+  }
+
+op=par(lwd=2,bty="l",las=1,cex=1.5)
+## attach(ReedfrogFuncresp)
+sqrprofplot(p2,sqrVal=TRUE,axes=FALSE,conf=0.95,col.conf="gray",
+     col.prof="black",col.minval=NA,ylim=c(0,40),xlim=c(0.3,0.75),
+     xlab="Attack rate (a)",
+     ylab="Negative log-likelihood")
+axis(side=1)
+## convert scale (deviance) 
+##  scale = 2*(L-Lmin)
+##  L = scale/2+Lmin
+ylocs <- c(47,seq(50,75,by=5))
+axis(side=2,at=2*(ylocs+logLik(m2)),labels=ylocs)
+box()
+aslice = sapply(bsurf$x,
+  function(a)binomNLL2(c(a,coef(m2)["h"]),
+                       N=ReedfrogFuncresp$Initial,
+                       k=ReedfrogFuncresp$Killed))
+lines(bsurf$x,2*(aslice+logLik(m2)),lty=3,xpd=NA)
+points(coef(m2)["a"],0,pch=16)
+points(pt3["a"],2*(pt3[3]+as.numeric(logLik(m2))),pch=2)
+points(pt4["a"],2*(pt4[3]+as.numeric(logLik(m2))),pch=8)
+par(xpd=NA)
+text(c(0.36,0.72),c(28,11),c("slice","profile"),cex=1,
+     adj=0)
+par(xpd=FALSE)
+##detach(ReedfrogFuncresp)
+par(op)
+@
+\caption{Likelihood profile and
+slice for the tadpole data, for
+the attack rate parameter $a$.
+Gray dashed lines show the 
+negative log-likelihood cutoff and
+95\% confidence limits for $a$.
+Points correspond to parameter
+combinations marked in Figure~\ref{fig:binomfit}.
+}
+\label{fig:profile-slice}
+\end{figure}
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5)
+## frog data
+par(mar=c(5,4,2,4)+0.1)
+plot(ReedfrogFuncresp$Initial,ReedfrogFuncresp$Killed,
+     xlab="Initial density",ylab="Number killed")
+tmpf <- function(pars,...) {
+  with(as.list(pars),curve(a*x/(1+a*h*x),add=TRUE,...))
+}
+tmpf(coef(m2))
+tmpf(pt3[1:2],lty=2)
+tmpf(pt4[1:2],lty=3)
+avals <- c(coef(m2)["a"],pt3["a"],pt4["a"])
+hvals <- c(coef(m2)["h"],pt3["h"],pt4["h"])
+hts <- avals*104/(1+avals*hvals*100)
+points(rep(110,3),hts,pch=c(16,2,8),xpd=NA)
+text(rep(114,3),hts,c("MLE","profile","slice"),xpd=NA,adj=0)
+@ 
+\caption{Fits to tadpole predation data
+corresponding to the parameter values marked
+in Figures~\ref{fig:lsurf1} and \ref{fig:profile-slice}.}
+\label{fig:frog2}
+\end{figure}
+
+For models with more than one parameter, we
+draw likelihood surfaces instead of curves.
+Figure~\ref{fig:lsurf1} shows the 
+negative log-likelihood surface of
+the tadpole predation data as a function
+of attack rate $a$ and handling time $h$.
+The minimum is where we found it before,
+at ($a=\Sexpr{round(coef(m2)["a"],3)}$, $h=\Sexpr{round(coef(m2)["h"],3)}$).
+The likelihood contours are roughly elliptical and are tilted
+near a 45 degree angle, which means (as we will see) that
+the estimates of the parameters are correlated.
+Remember that each point on the likelihood surface corresponds to
+a fit to the data, which we can (and should) look at in terms
+of a curve through the actual data values:
+Figure~\ref{fig:frog2} shows the fit of several sets of parameters
+(the ML estimates, and two other less well-fitting
+$a$-$h$ pairs) on the scale of the original data.
+
+If we want to deal with models with more than two parameters,
+or if we want to analyze a single parameter at a time,
+we have to find a way to isolate the effects of one or
+more parameters while still accounting for the rest.
+A simple, but usually wrong, way of doing
+this is to calculate a likelihood \emph{slice}, fixing
+the values of all but one parameter (usually at their
+maximum likelihood estimates) and then calculating the
+likelihood for a range of values of the focal parameter.
+The horizontal line in the middle of Figure~\ref{fig:lsurf1}
+shows a likelihood slice for $a$, with $h$ held constant
+at its MLE.
+Figure~\ref{fig:profile-slice}
+shows an elevational view, the negative log-likelihood
+for each value of $a$. 
+Slices can be useful for visualizing the geometry of
+a many-parameter likelihood surface near its minimum,
+but they are statistically misleading because
+they don't allow the other parameters to vary and thus
+they don't show the minimum negative log-likelihood achievable
+for a particular value of the focal parameter.
+
+Instead, we calculate likelihood \emph{profiles}, which
+represent ``ridgelines'' in parameter space showing
+the minimum negative log-likelihoods
+for particular values of a single parameter.
+To calculate
+a likelihood profile for a focal parameter, we have to 
+set the focal parameter in turn to a range of values, and for each value
+optimize the likelihood with respect to all of the other parameters.
+The likelihood profile for $a$ 
+in Figure~\ref{fig:lsurf1}
+runs through the contour lines (such as the confidence regions
+shown) at the points
+where the contours run exactly vertical.
+Think about
+looking for the minimum along a fixed-$a$ transect (varying $h$ --- vertical
+lines in Figure~\ref{fig:lsurf1});
+the minimum will occur at a point where the transect
+is just touching (tangent to) a contour line.
+Slices are always
+steeper than profiles,
+ (e.g. Figure~\ref{fig:profile-slice}),
+because they don't allow the other parameters to adjust
+to changes in the focal parameter.
+Figure~\ref{fig:frog2} shows that the fit corresponding
+to a point on the profile (triangle/dashed line) has a 
+lower value of $h$ (handling time, corresponding to a higher
+asymptote) that compensates for its enforced lower value of $a$
+(attack rate/initial slope), while
+the equivalent point from the slice (star/dotted line) 
+has the same handling time as the MLE fit, and hence 
+fits the data worse --- corresponding to the 
+higher negative log-likelihood in Figure~\ref{fig:profile-slice}.
+
+<<eval=FALSE,echo=FALSE>>=
+library(rgl)
+bsurf2 = bsurf
+bsurf2$z = pmin(bsurf2$z,55)
+lev <- -logLik(m2)+qchisq(0.95,c(1,2))/2
+cL = contourLines(bsurf$x,bsurf$y,bsurf$z,
+  levels = lev)
+ll <- -logLik(m2)
+persp3d(bsurf$x,bsurf$y,bsurf2$z,col="gray",alpha=0.8)
+grid3d(side="x-")
+grid3d(side="z-")
+grid3d(side="y-")
+## add contours?
+lines3d(cL[[1]]$x,cL[[1]]$y,rep(lev[1],length(cL[[1]]$x)),col="red",size=2)
+lines3d(cL[[2]]$x,cL[[2]]$y,rep(lev[2],length(cL[[2]]$x)),col="blue",size=2)
+lines3d(prof@profile$a$par.vals[,"a"],prof@profile$a$par.vals[,"h"],
+        ll+prof@profile$a$z^2/2,size=2,col="green")
+lines3d(prof@profile$h$par.vals[,"a"],prof@profile$h$par.vals[,"h"],
+        ll+prof@profile$h$z^2/2,size=2,col="yellow")
+## etc.: various bugs to work out
+@ 
+
+\subsubsection{The Likelihood Ratio Test}
+
+On a negative log-likelihood curve or surface, higher points represent
+worse fits.  The steeper and narrower the valley (i.e. the faster
+the fit degrades as we move away from the best fit), the more precisely
+we can estimate the parameters. 
+Since the negative
+log-likelihood for a set of independent observations
+is the sum of the individual negative log-likelihoods,
+adding more data makes likelihood
+curves steeper.
+For example, doubling
+the number of observations will double the negative log-likelihood
+curve across the board --- in particular, doubling the slope
+of the negative log-likelihood surface\footnote{Doubling the sample
+size also typically doubles the minimum negative log-likelihood
+as well, which may seem odd --- why would adding more data worsen
+the fit of the model? --- until you remember that 
+we're not really interested in the probability of a
+\emph{particular} set of data,
+just the relative likelihood of different models and parameters.
+The probability of flipping 
+a fair coin ($p=0.5$) twice and getting one head and one tail 
+is 0.5.  The probability of flipping the same coin 1000 times
+and getting 500 heads and 500 tails is only 
+\Sexpr{round(dbinom(500,size=1000,prob=0.5),3)}; that doesn't
+mean that we should reject the hypothesis that the coin is fair.}.
+
+It makes sense to determine confidence limits by setting some 
+upper limit on the negative log-likelihood and declaring
+that any parameters that fit the data at least that well are
+within the confidence limits.  
+The steeper the likelihood surface, the faster we reach
+the limit and the narrower are the confidence limits.
+Since we only care about the relative fit of different
+models and parameters, the limits should be relative to
+the maximum log-likelihood (minimum negative log-likelihood).
+
+For example, \cite{Edwards1992} suggested
+that one could set reasonable confidence regions
+by including all parameters within 2 log-likelihood units 
+of the maximum log-likelihood, corresponding
+to all fits that gave likelihoods within a factor of $\approx 7.4$ of
+the maximum.  However, this approach lacks a
+frequentist probability interpretation %
+--- there is no corresponding $p$-value.
+This deficiency may be an
+advantage, since it makes dogmatic null-hypothesis testing
+impossible.
+
+%% log-likelihood is sum(log likelihoods)
+%% why is delta-log-likelihood ~ chi-squared (df)?
+
+\newcommand{\lrestr}{\lik_{\mbox{\small restr}}}
+\newcommand{\labs}{\lik_{\mbox{\small abs}}}
+If you insist on $p$-values,
+you can also use differences in log-likelihoods
+(corresponding to ratios of likelihoods) in a frequentist approach
+called the \emph{Likelihood Ratio Test} (LRT).
+Take some likelihood function $\lik(p_1, p_2, \ldots , p_n)$, and find
+the overall best (maximum likelihood) value, $\labs = \lik(\hat p_1, \hat p_2,
+\ldots \hat p_n)$ (``abs'' stands for ``absolute'').
+Now fix some of the parameters (say $p_1 \ldots p_r$)
+to specific values $(p_1^*, \ldots p_r^*)$, and maximize with
+respect to the remaining parameters to get $\lrestr=
+\lik(p_1^*, \ldots, p_r^*, \hat p_{r+1}, \ldots, \hat p_n)$
+(``restr'' stands for ``restricted'', sometimes also
+called a \emph{reduced} or \emph{nested} model).
+The Likelihood Ratio Test says that the distribution of
+twice the negative log of the likelihood ratio,
+$-2 \log(\lrestr/\labs)$,
+called the \emph{deviance},
+is approximately 
+$\chi^2$ (``chi-squared'') distribution
+with $r$ degrees of freedom%
+\footnote{You may associate the $\chi^2$ distribution with
+contingency table analysis, \code{chisq.test} in \R, but
+it is a distribution that appears much more broadly
+in statistics.}%
+\footnote{Here's a heuristic
+explanation: you can prove that the distribution of
+the maximum likelihood estimate is asymptotically normally distributed
+(i.e. with sufficiently large sample sizes).
+You can also show, by Taylor expanding, that the
+log-likelihood surface is quadratic, with curvature determined
+by the variances of the parameters.
+If we are restricting $r$ parameters, then we are moving
+away from the maximum likelihood of the more
+complex model in $r$ directions, by a normally distributed
+amount $\theta_i$ in each direction.
+Since the log-likelihood surface is quadratic,
+the drop in the negative log-likelihood
+is $\sum_{i=1}^r \theta_i^2$.
+Since the $\theta_i$ values
+(likelihood estimates of each parameter) are each normally distributed,
+the sum of squares of $r$ of them is $\chi^2$ distributed
+with $r$ degrees of freedom. 
+(This explanation is necessarily crude;
+for the real derivation,
+see \cite{KendallStuart1979}.)}.
+
+The log of the likelihood ratio is the difference in the
+log-likelihoods, so
+\begin{equation}
+2 \left(-\log \lrestr-(-\log \labs) \right) \sim \chi^2_r.
+\end{equation}
+
+The definition of the LRT echoes the definition of the likelihood profile, 
+where we fix one
+parameter and maximize the likelihood/minimize the negative
+log-likelihood with respect to all the other parameters: $r=1$ in the
+definition above.  Thus, for \emph{univariate} confidence limits
+we cut off the likelihood profile at (min. neg. log. likelihood +
+$\chi_1^2(1-\alpha)/2$), where $\alpha$
+is our chosen confidence level (0.95, 0.99, etc.).
+(The cutoff is a one-tailed test, since we are looking only at
+differences in likelihood that are larger than expected under 
+the null hypothesis.)
+Figure~\ref{fig:prof1} shows the likelihood profiles for
+$a$ and $h$, along with the 95\% and 99\% confidence intervals:
+you can see how the confidence intervals on the parameters are
+drawn as vertical lines through the intersection points of
+the (horizontal) likelihood cutoff levels with the profile.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=10>>=
+source("sqrprofplot.R")
+op=par(mfrow=c(1,2),lwd=2,bty="l",las=1,cex=1.5)
+par(mar=c(5,4,2,4)+0.1,mgp=c(2,1,0))
+sqrprofplot(p2,sqrVal=TRUE,col.minval="gray",col.conf="gray",
+     col.prof="black",conf=c(0.95,0.99),
+     xlab="Attack rate (a)",
+     ylab=expression(paste(Delta,"Negative log-likelihood")),axes=FALSE,
+     ylim=c(0,8))
+par(bty="u")
+box()
+axis(side=1)
+axis(side=2,at=c(0,4,8),labels=c(0,2,4))
+axis(side=4,at=qchisq(c(0.95,0.99),df=1),
+     labels=c(expression(frac(chi[1]^2*(0.95),2)),
+       expression(frac(chi[1]^{2}*(0.99),2))),cex.axis=0.8)
+hts = qchisq(c(0.95,0.99),1)
+arrows(conflim95[1,1],hts[1],conflim95[1,2],hts[1],code=3)
+text(coef(m2)["a"],hts[1]+0.3,"95%")
+arrows(conflim99[1,1],hts[2],conflim99[1,2],hts[2],code=3)
+text(coef(m2)["a"],hts[2]+0.3,"99%")
+sqrprofplot(p2h,sqrVal=TRUE,col.minval="gray",col.conf="gray",
+     col.prof="black",conf=c(0.95,0.99),
+     xlab="Handling time (h)",
+     ylab=expression(paste(Delta,"Negative log-likelihood")),axes=FALSE,
+     ylim=c(0,8))
+box()
+axis(side=1)
+axis(side=2,at=c(0,4,8),labels=c(0,2,4))
+axis(side=4,at=qchisq(c(0.95,0.99),df=1),
+     labels=c(expression(frac(chi[1]^2*(0.95),2)),
+       expression(frac(chi[1]^{2}*(0.99),2))),cex.axis=0.8)
+arrows(conflim95[2,1],hts[1],conflim95[2,2],hts[1],code=3)
+text(coef(m2)["h"],hts[1]+0.3,"95%")
+arrows(conflim99[2,1],hts[2],conflim99[2,2],hts[2],code=3)
+text(coef(m2)["h"],hts[2]+0.3,"99%")
+par(op)
+@
+\caption{Likelihood profiles 
+and LRT confidence intervals for tadpole predation data.}
+\label{fig:prof1}
+\end{figure}
+
+The 99\% confidence intervals have a higher cutoff 
+than the 95\% confidence intervals
+($\chi^2_1(0.99)/2 = \Sexpr{round(qchisq(0.99,1)/2,2)} >
+\chi^2_1(0.95)/2 = 
+\Sexpr{round(qchisq(0.95,1)/2,2)}$),
+and hence the 99\% intervals are wider.
+
+Here are the numbers:
+<<echo=FALSE,results=tex>>=
+alpha=c(0.95,0.95,0.99,0.99)
+cval = qchisq(alpha,1)/2
+cval2 = -logLik(m2)+cval
+var = rep(c("$a$","$h$"),2)
+vals <- rbind(conflim95,conflim99)
+rownames(vals) <- NULL
+ctab = data.frame(alpha,cval,cval2,var,vals)
+ctab[,-4] = signif(ctab[,-4],3)
+ctab[2,1:3]=ctab[4,1:3]=NA
+colnames(ctab) <- c("$\\alpha$","$\\frac{\\chi_1^2(\\alpha)}{2}$",
+                              "$-\\llik+\\frac{\\chi_1^2(\\alpha)}{2}$",
+                              "variable","lower","upper")
+latex(ctab,file="",table.env=FALSE,title="",rowname=NULL)
+
+@
+% \newcommand{\ctrcol}[1]{\multicolumn{1}{c}{#1}}
+% \begin{center}
+% \begin{tabular}{rrrrrr}
+% \ctrcol{$\alpha$} &
+% \ctrcol{$\frac{\chi_1^2(\alpha)}{2}$} &
+% \ctrcol{$-\llik+\frac{\chi_1^2(\alpha)}{2}$} &
+% \ctrcol{variable} & \ctrcol{lower} & \ctrcol{upper} \\
+% \hline
+% 0.95 & \Sexpr{signif(ctab[1,2],3)} &
+%        \Sexpr{signif(ctab[1,3],3)} &
+%        $a$ & 
+%        \Sexpr{signif(ctab[1,5],3)} &
+%        \Sexpr{signif(ctab[1,6],3)}  \\
+% .    & .    & .      & $h$ & 
+%        \Sexpr{signif(ctab[2,5],3)} &
+%        \Sexpr{signif(ctab[2,6],3)}  \\
+% 0.99 & \Sexpr{signif(ctab[3,2],3)} &
+%        \Sexpr{signif(ctab[3,3],3)} &
+%        $a$ & 
+%        \Sexpr{signif(ctab[3,5],3)} &
+%        \Sexpr{signif(ctab[3,6],3)}  \\
+% .    & .    & .      & $h$ & 
+%        \Sexpr{signif(ctab[4,5],3)} &
+%        \Sexpr{signif(ctab[4,6],3)} 
+% \end{tabular}
+% \end{center}
+
+\R\ can compute profiles and
+profile confidence limits automatically.
+Given an \code{mle2} fit \code{m},
+\code{profile(m)} will compute a likelihood
+profile and \code{confint(m)} will compute
+profile confidence limits.  
+\code{plot(profile(m2))} will plot the profile,
+square-root transformed so that 
+a quadratic profile will appear V-shaped
+(or linear if you specify \code{absVal=FALSE}).
+This transformation makes it easier to
+see whether the profile is quadratic, since
+it's easier to see whether a line is straight
+than it is to see whether it's quadratic.
+Computing the profile can be slow, so if you
+want to plot the profile and find confidence
+limits, or find several different confidence limits,
+you can save the profile and then use \code{confint}
+on the profile:
+<<echo=FALSE>>=
+attach(ReedfrogFuncresp)
+@ 
+<<results=hide>>=
+p2 = profile(m2)
+confint(p2)
+@ 
+<<echo=FALSE>>=
+detach(ReedfrogFuncresp)
+@ 
+
+
+It's also useful to know how to calculate profiles
+and profile confidence limits yourself, both to understand
+them better and for the not-so-rare times when the
+automatic procedures break down.
+Because profiling requires many separate optimizations,
+it can fail if your likelihood surface has multiple
+minima (p.~\pageref{sec:multmin}) or if the optimization
+is otherwise finicky.  You can try to tune your optimization
+procedures using the techniques discussed in
+Chapter~\ref{chap:opt}, but in difficult cases you may
+have to settle for approximate quadratic confidence intervals
+(Section~\ref{sec:quadconf}).
+
+To compute profiles by hand,
+you need to write a new negative log-likelihood function
+that holds one of the parameters fixed while minimizing the
+likelihood with respect to the rest.  For 
+example, to compute the profile for $a$ (minimizing with
+respect to $h$ for many values of $a$), you could
+use the following reduced negative log-likelihood function:
+<<>>=
+binomNLL2.a = function(p,N,k,a) {
+  h = p[1]
+  p = a/(1+a*h*N)
+  -sum(dbinom(k,prob=p,size=N,log=TRUE))
+}
+@ 
+
+Compute the profile likelihood for a range of
+$a$ values:
+<<>>=
+avec = seq(0.3,0.8,length=100)
+aprof = numeric(100)
+for (i in 1:100) {
+  aprof[i] = optim(binomNLL2.a,
+         par=0.02,k=ReedfrogFuncresp$Killed,N=ReedfrogFuncresp$Initial,
+         a = avec[i],
+         method="BFGS")$value
+}
+@ 
+The curve drawn by \code{plot(avec,aprof)}
+would look just like the one in Figure~\ref{fig:prof1}a.
+
+To find the profile confidence limits for $a$,
+we have to take one branch of the profile at a time.
+Starting with the lower branch,
+the values below the minimum negative log-likelihood:
+<<>>=
+prof.lower = aprof[1:which.min(aprof)]
+prof.avec = avec[1:which.min(aprof)]
+@ 
+
+Finally, use the \code{approx} function 
+to calculate the $a$ value for which 
+$-\log L = -\log L_{\mbox{\small min}}+\chi^2_1(0.95)/2$:
+<<print=FALSE>>=
+approx(prof.lower,prof.avec,xout=-logLik(m2)+qchisq(0.95,1)/2)
+@ 
+
+Now let's go back and look at the \emph{bivariate} confidence region
+in Figure~\ref{fig:lsurf1}.
+The 95\% bivariate confidence region (solid black line)
+occurs at negative log-likelihood equal to
+$-\log \hat{\lik}+\chi_2^2(0.95)/2=-\log \hat{\lik}+\Sexpr{round(qchisq(0.95,2),3)}/2$.
+This is about 3 log-likelihood units up from the minimum.
+I've also drawn the univariate region ($\log
+\hat{\lik}+\chi_1^2(0.95)/2$ contour).
+That region is not really appropriate for this figure,
+because it applies to a single parameter at a time,
+but it illustrates that univariate intervals are smaller than the bivariate confidence region, and that the confidence intervals,
+like the profiles, are tangent to the univariate confidence region.
+
+The LRT is only correct \emph{asymptotically}, for
+large data sets.
+For small data sets it is an approximation, although one
+that people use very freely.  The other limitation of the LRT that
+frequently arises, although it is often ignored, is that it only works
+when the best estimate of the parameter is not on the edge of its
+allowable range \citep{PinheiroBates2000}.
+For example, if you are fitting an exponential model $y=\exp(r x)$
+that must be decreasing, so that $r\le 0$,
+and your best estimate of $r$ is equal to 0, then the LRT estimate
+for the upper bound of the confidence limit is not technically correct
+(see p.~\pageref{sec:lrtboundary}).
+
+\subsection{Bayesian approach: posterior distributions and marginal distributions}
+What about the Bayesians?  Instead of drawing likelihood curves,
+Bayesians draw the posterior distribution (proportional to
+$\mbox{prior} \times L$, e.g. Figure~\ref{fig:bayes2}).
+Instead of calculating confidence
+limits using the (frequentist) LRT, they define the \emph{credible
+interval}, which is the
+region in the center of the distribution containing 95\% (or
+some other standard proportion) of the probability of the distribution,
+bounded by values on either side that have the same
+probability (or probability density).
+\newcommand{\xlower}{x_1}%{x_{\text{\small lower}}}
+\newcommand{\xupper}{x_2}%{x_{\text{\small upper}}}
+Technically, the credible interval is
+the interval $[\xlower,\xupper]$
+such that $P(\xlower)=P(\xupper)$
+and $C(\xupper)-C(\xlower)=1-\alpha$,
+where $P$ is the probability density and $C$ is the cumulative density.
+The credible interval is slightly different
+from the frequentist confidence interval,
+which is defined as $[\xlower,\xupper]$ such that
+$C(\xlower)=\alpha/2$ and $C(\xupper)=1-\alpha/2$.
+For empirical samples, use
+\code{quantile} to compute confidence intervals
+and \code{HPDinterval}
+(``highest posterior density interval''),
+ in the \code{coda} package, to compute
+credible intervals.
+For theoretical distributions, use
+the appropriate ``\code{q}'' function
+(e.g. \code{qnorm}) to compute confidence intervals
+and
+\code{tcredint}, in the \code{emdbook}
+package, to compute credible intervals.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+x = subset(ReedfrogPred,pred=="pred" & density==10 & size=="small")
+k = x$surv
+op=par(lwd=2,bty="l",las=1,cex=1.5)
+curve(dbeta(x,shape1=sum(k)+1,shape2=40-sum(k)+1),
+      xlab="Predation probability\nper capita",
+      ylab="Probability density",
+      from=0.4,to=1,yaxs="i")
+c1 = tcredint("beta",list(shape1=sum(k)+1,shape2=40-sum(k)+1),
+  verbose=TRUE)
+v = with(as.list(c1),seq(lower,upper,length=100))
+w = dbeta(v,shape1=sum(k)+1,shape2=40-sum(k)+1)
+polygon(c(v,rev(v)),c(w,rep(0,length(w))),col="gray")
+curve(dbeta(x,shape1=sum(k)+1,shape2=40-sum(k)+1),add=TRUE)
+abline(h=c1["p"],lty=2)
+qs = qbeta(c(0.025,0.975),shape1=sum(k)+1,shape2=40-sum(k)+1)
+v2 = seq(0.4,qs[1],length=100)
+w2 = dbeta(v2,shape1=sum(k)+1,shape2=40-sum(k)+1)
+polygon(c(v2,rev(v2)),c(w2,rep(0,length(w2))),density=10)
+v3 = seq(qs[2],1,length=100)
+w3 = dbeta(v3,shape1=sum(k)+1,shape2=40-sum(k)+1)
+polygon(c(v3,rev(v3)),c(w3,rep(0,length(w3))),density=10)
+text(0.75,2.1,"95%\ncredible\ninterval")
+text(0.5,1.4,"2.5% tails")
+arrows(c(0.5,0.5),c(1.2,1.2),c(0.58,0.88),
+       c(0.27,0.30),angle=15)
+par(op)
+rm(x)
+rm(k)
+@
+\caption{Bayesian 95\% credible interval (gray),
+and 5\% tail areas (hashed), for the tadpole predation
+data (weak prior: shape=(1,1)).}
+\label{fig:bayes3}
+\end{figure}
+
+Figure~\ref{fig:bayes3} shows the posterior distribution
+for the tadpole predation (from Figure~\ref{fig:bayes2}),
+along with the 95\% credible interval and
+the lower and upper 2.5\% tails for comparison.  The credible interval
+is symmetrical in height;
+the cutoff value on either end of the distribution
+has the same posterior probability.  The extreme tails
+are symmetrical in area; the likelihood of extreme values
+in either direction is the same.  The
+credible interval's height symmetry leads to
+a uniform probability cutoff: we never
+include a less probable value at the one boundary
+than the other.  To a Bayesian, this property makes
+more sense than insisting (as the frequentists
+do in defining confidence intervals)
+that the probabilities of extremes in
+either direction are the same.
+
+For multi-parameter models, 
+the likelihood surface is analogous to a 
+bivariate or multivariate probability 
+distribution (Figure~\ref{fig:bayessurf}).
+The \emph{marginal probability density} is the Bayesian analogue
+of the likelihood profile.
+Where frequentists use
+likelihood profiles
+to make inferences about a single parameter while
+taking the effects of the other parameters into account,
+Bayesians use the marginal posterior probability density, 
+the overall probability for a particular value of a focal
+parameter integrated over all the other parameters.
+Figure~\ref{fig:bayessurf} shows the 95\% credible
+intervals for the tadpole predation analysis, both
+bivariate and marginal (univariate).  In this
+case, when the prior is weak and the posterior distribution
+is reasonably symmetrical, there is little difference between the bivariate
+95\% confidence region
+and the bivariate 95\% credible interval
+(Figure~\ref{fig:bayessurf}),
+but Bayesian and frequentist conclusions will not always be
+so similar.
+
+\begin{figure}
+<<echo=FALSE,cache=TRUE>>=
+post1 = with(frogpred1.bugs$sims.list,kde2d(a,h,n=40))
+dx = diff(post1$x[1:2])
+dy = diff(post1$y[1:2])
+sz = sort(post1$z)
+c1 = cumsum(sz)*dx*dy
+c95 = approx(c1,sz,xout=0.05)
+dens.h = density(frogpred1.bugs$sims.list$h,
+  from=post1$y[1],to=post1$y[length(post1$y)],n=length(post1$y))
+dens.a = density(frogpred1.bugs$sims.list$a,
+  from=post1$x[1],to=post1$x[length(post1$x)],n=length(post1$x))
+frog.coda <- lump.mcmc.list(as.mcmc.bugs(frogpred1.bugs))
+cred.h = HPDinterval(frog.coda[,"h"])
+cred.a = HPDinterval(frog.coda[,"a"])
+## plot(sz,c1,type="l")
+## abline(v=qval$y)
+## abline(h=qval$x)
+## sum(sz[sz>qval$y])*dx*dy
+##  get contour lines, discard edgy ones
+cl1 = contourLines(post1$x,post1$y,post1$z,level=c95)[[5]]
+mean.a <- mean(frogpred1.bugs$sims.list$a)
+mean.h <- mean(frogpred1.bugs$sims.list$h)
+wmode <- which(post1$z==max(post1$z),TRUE)
+mode.a <- post1$x[wmode[1]]
+mode.h <- post1$y[wmode[2]]
+@ 
+<<echo=FALSE,fig=TRUE,width=10,height=10>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5)
+nf <- layout(matrix(c(2,1,0,3), 2, 2, byrow=TRUE),
+             widths=c(1,3),heights=c(3,1))
+par(cex=1.5)
+plot(cl1$x,cl1$y,type="l",
+     xlab="Attack rate",ylab="",lwd=1,
+     xlim=range(post1$x),ylim=range(post1$y))
+mtext("Handling time",side=2,at=0.018,line=3,cex=1.5,las=0)
+points(mean.a,mean.h,lwd=1)
+points(mode.a,mode.h,pch=2,lwd=1)
+points(coef(m2)[1],coef(m2)[2],pch=3,lwd=1)
+text(c(0.55,0.53,0.49),c(0.0176,0.0149,0.0174),
+     c("mean","mode","MLE"),adj=0,cex=0.7)
+contour(bsurf$x,bsurf$y,bsurf$z,levels=-logLik(m2)+qchisq(0.95,2)/2,
+        add=TRUE,
+        drawlabels=FALSE,lty=2)
+legend("topright",
+       c("bivariate credible region",
+         "bivariate confidence region"),
+       lty=1:2,
+       lwd=2,bty="n")
+oldmar = par(mar=c(5.1,0.5,4.1,0.5))$mar
+plot(-dens.h$y,dens.h$x,type="l",axes=FALSE,xlab="",ylab="",xaxs="i",
+     xlim=c(-81,0))
+axis(side=4,labels=FALSE)
+axis(side=1,at=c(-80,0),labels=c(80,0))
+dh <- subset(data.frame(x=dens.h$x,y=dens.h$y),
+             dens.h$x>cred.h[,"lower"] & dens.h$x<cred.h[,"upper"])
+polygon(c(-dh$y,rep(0,length(dh$x))),c(dh$x,rev(dh$x)),col="gray")
+## have to hand-draw box
+u <- par("usr")
+segments(c(u[1],u[2]),
+         c(u[3],u[3]),
+         c(u[2],u[2]),
+         c(u[3],u[4]),lwd=2)
+par(mar=c(2,4,0,1)+0.1)
+plot(dens.a$x,dens.a$y,type="l",xlab="",ylab="",axes=FALSE,
+     ylim=c(0,6),yaxs="i",lwd=2)
+axis(side=1)
+axis(side=2,at=c(0,6))
+box()
+da <- subset(data.frame(x=dens.a$x,y=dens.a$y),
+             dens.a$x>cred.a[,"lower"] & dens.a$x<cred.a[,"upper"])
+polygon(c(da$x,rev(da$x)),c(da$y,rep(0,length(da$x))),col="gray")
+par(op)
+@ 
+\caption{Bayesian credible intervals (bivariate and marginal)
+for tadpole predation analysis.}
+\label{fig:bayessurf}
+\end{figure}
+
+\section{Confidence intervals for complex models:
+quadratic approximation}
+\label{sec:quadconf}
+
+The methods I've discussed so far (calculating likelihood profiles
+or marginal likelihoods numerically) 
+work fine when you have only two, or maybe three, parameters,
+but become impractical for models with many parameters.
+To calculate a likelihood
+profile for $n$ parameters, you have to optimize over $n-1$ parameters
+for every point in a univariate likelihood profile. 
+If you want to look at the bivariate confidence limits of
+any two parameters you can't just compute a likelihood surface.
+To compute a 2-D likelihood profile,
+the analogue of the 1-D profiles we
+calculated previously, you would have to take every combination of
+the two parameters you're interested in (e.g. a $50 \times 50$ grid of
+parameter values) and maximize with respect to all the other
+$n-2$ parameters for \emph{every point} on that surface, and then use the
+values you've calculated to draw contours.  Especially when the
+likelihood function itself is hard to calculate, this 
+procedure can be extremely tedious.
+
+A powerful, general, but approximate shortcut is to examine the second
+derivative(s) of the log-likelihood as a function of the parameter(s).
+The second derivatives provide information about the curvature of the surface, 
+which tells us how rapidly the log-likelihood gets worse,
+which allows us to estimate the confidence intervals.  This
+procedure involves a second level of approximation (like the LRT,
+becoming more accurate as the number of data points increases), but it can be
+useful when you run into numerical difficulties calculating the
+profile confidence limits, when you want
+to compute bivariate confidence regions for complex models,
+or more generally explore correlations in high-dimensional parameter spaces.
+
+To motivate this 
+procedure, let's briefly go back to a one-dimensional normal
+distribution and compute an 
+analytical expression for the profile confidence limits.
+The likelihood of a set of independent samples from a normal 
+distribution is 
+$\lik=\prod_{i=1}^n \frac{1}{\sqrt{2 \pi} \sigma} \exp(-(x_i-\mu)^2/(2 \sigma^2))$\footnote{The symbol $\prod$ denotes a product, like
+$\sum$ but for multiplication.}.
+That means the 
+negative log-likelihood as a function of the parameters $\mu$ and $\sigma$ is
+\begin{equation}
+-\log \lik(\mu,\sigma) =  C+n \log \sigma +
+ \sum_i \left(\frac{(x_i-\mu)^2}{2 \sigma^2}\right),
+\label{eq:normlik2}
+\end{equation}
+where we've lumped the parameter-independent parts of the likelihood
+into the constant $C$.
+We could differentiate this expression with
+respect to $\mu$ and solve
+for $\mu$ when the derivative is zero to show that $\hat \mu=\sum x_i/n$.
+We could then substitute $\mu=\hat mu$ into (\ref{eq:normlik2}) to find the
+minimum negative log-likelihood.
+Once we have done this we want to calculate
+the width of the profile confidence interval $c$ --- that is,
+what is the value of $c$ such that 
+\begin{equation}
+-\log L(\hat \mu \pm c,\sigma) = -\log L(\hat \mu,\sigma)+\chi^2_1(\alpha)/2 \qquad ?
+\end{equation}
+Some slightly nasty algebra leads to:
+\begin{equation}
+c  =  \sqrt{\chi^2_1(\alpha)} \cdot \frac{\sigma}{\sqrt{n}}
+\label{eq:norm1}
+\end{equation}
+
+This expression might look familiar: we've just rederived the expression
+for the confidence limits of the mean!
+The term $\sigma/\sqrt{n}$ is the
+standard error of the mean;
+it turns out that the term
+$\sqrt{\chi^2_1(\alpha)}$
+is the same as the $\alpha/2$ quantile
+for the normal distribution\footnote{try \texttt{sqrt(qchisq(0.95,1))} and
+\texttt{qnorm(0.975)} in \R\ to test this idea [use 0.975 instead
+of 0.95 in the second expression because
+this procedure involves a two-tailed test on the normal distribution but a
+one-tailed test on the $\chi^2$ distribution, because the $\chi^2$ is
+the distribution of a \emph{squared} normal deviate]}.
+The test uses the quantile of a normal distribution, rather than a Student
+$t$ distribution, because we have assumed the variance is known.
+
+How does this relate to the second derivative?
+For the normal distribution, 
+the second derivative of the negative log-likelihood
+with respect to $\mu$ is
+\begin{equation}
+D_2 = \frac{d^2 \left(\sum(x_i-\mu)^2/(2 \sigma^2)\right)}{d\mu^2}  =  \frac{n}{(\sigma^2)}
+\end{equation}
+So we can rewrite the term $\sigma/\sqrt{n}$ in (\ref{eq:norm1})
+as $\sqrt{1/D_2}$; the standard deviation of the parameter,
+which determines the width of the confidence interval,
+is proportional to the square root of the reciprocal
+of the curvature (i.e., the second derivative).
+
+While we have derived these conclusions for the normal
+distribution, they're true for any model \emph{if} the data
+set is large enough.
+In general, for a one-parameter model with parameter
+$p$, the width of our confidence region is 
+\begin{equation}
+N(\alpha)\left(\frac{d^2(\log \lik)}{d p^2}\right)^{-1/2},
+\end{equation}
+where $N(\alpha)$ is the appropriate quantile for the
+standard normal distribution.
+This equation gives us a general recipe for finding the
+confidence region without doing any extra computation, if
+we know the second derivative of the negative
+log-likelihood at the maximum likelihood estimate.
+We can find that second derivative either by calculating it analytically
+(sometimes feasible), or by calculating it numerically
+by \emph{finite differences}, extending the general rule that
+the derivative $df(p)/dp$ is approximately $(f(p+\Delta p)-f(p))/\Delta p$:
+\begin{equation}
+\left. \frac{d^2 f}{d p^2} \right|_{p=m}
+\approx  \frac{f(m+2 \Delta p) - 2 f(m+\Delta p) + f(m)}{(\Delta p)^2}.
+\end{equation}
+The \code{hessian=TRUE} option in \code{optim}
+tells \R\ to calculate the second derivative in this way;
+this option is set automatically in \code{mle2}.
+
+The same idea works for multi-parameter models,
+but we have to know a little bit more about
+second derivatives to understand it.  
+A multi-parameter likelihood surface has
+more than one second partial derivative: in fact, we get a
+\emph{matrix} of second partial derivatives, called the
+\emph{Hessian}.  When calculated for a
+likelihood surface, the
+negative of the expected value of the Hessian is called the
+\emph{Fisher information}; when evaluated
+at the maximum likelihood estimate, it is the
+\emph{observed information} matrix.
+The second partial derivatives with respect
+to the same variable twice (e.g. $\partial^2 L/\partial \mu^2$)
+represent the curvature of the likelihood surface along a particular
+axis; the \emph{cross-derivatives}, e.g. $\partial^2 L/(\partial \mu \partial \sigma)$,
+describe how the slope in one direction changes as you move along 
+another direction.
+For example, for the log-likelihood $\llik$ of the normal
+distribution with parameters $\mu$ and $\sigma$, the Hessian is:
+\begin{equation}
+\left( \begin{array}{cc}
+\frac{\partial^2 L}{\partial \mu^2}  &
+\frac{\partial^2 L}{\partial \mu \partial \sigma}  \\
+\frac{\partial^2 L}{\partial \mu \partial \sigma}  &
+\frac{\partial^2 L}{\partial \sigma^2}.
+\end{array}
+\right).
+\end{equation}
+
+In the simplest case of a one-parameter model,
+the Hessian reduces to a single
+number (i.e. $d^2 L/d p^2$),
+the curvature of the likelihood curve at the MLE, and the
+estimated standard deviation of the parameter is just  $(\partial^2 L/\partial
+\mu^2)^{-1/2}$ as above.
+
+In simple two-parameter models such
+as the normal distribution the parameters are uncorrelated,
+and the matrix is diagonal: 
+\begin{equation}
+\left( \begin{array}{cc}
+\frac{\partial^2 L}{\partial \mu^2}  &
+0 \\
+0 &
+\frac{\partial^2 L}{\partial \sigma^2}
+\end{array}
+\right).
+\end{equation}
+The off-diagonal zeros mean that the slope of the surface in one
+direction doesn't change as you move in the other direction,
+and hence the shape of the likelihood surface in the $\mu$ direction
+and the $\sigma$ direction are unrelated.
+In this case we can compute the standard deviations of each parameter
+independently---they're the inverse square roots
+of the second partial derivative with respect to each parameter (i.e.,
+$(\partial^2 L/\partial \mu^2)^{-1/2}$ and 
+$(\partial^2 L/\partial \sigma^2)^{-1/2}$).
+
+In general, when the off-diagonal elements are different from zero, we have
+to invert the matrix numerically, which we can do with \code{solve}.
+For a two-parameter model with parameters $a$ and $b$ 
+we obtain the variance-covariance matrix
+\begin{equation}
+\mathbf{V} = \left( \begin{array}{cc}
+\sigma^2_a & 
+\sigma_{ab} \\
+\sigma_{ab} &
+\sigma^2_b
+\end{array}
+\right),
+\end{equation}
+where $\sigma^2_a$ and $\sigma^2_b$ are the variances of $a$ and $b$
+and $\sigma_{ab}$ is the covariance between them; the correlation
+between the parameters is $\sigma_{ab}/(\sigma_a \sigma_b)$.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5)
+bsurf3 =  curve3d(binomNLL2(c(x,y),N=ReedfrogFuncresp$Initial,k=ReedfrogFuncresp$Killed),
+  sys="contour",from=c(0.3,0.001),to=c(0.82,0.04),n=c(51,51),
+  levels=-logLik(m2)+qchisq(c(0.8,0.995),2)/2,
+  drawlabels=FALSE,
+  xlab="Attack rate (a)",ylab="Handling time (h)")
+library(ellipse)
+lines(ellipse(vcov(m2),centre=coef(m2),level=0.8),col="gray")
+lines(ellipse(vcov(m2),centre=coef(m2),level=0.995),col="gray")
+legend("topleft",c("profile","information"),lty=1,col=c("black","gray"),
+       bty="n")
+text(c(0.65,0.72),c(0.027,0.036),c("80%","99.5%"))
+par(op)
+@ 
+\caption{Likelihood ratio and information-matrix confidence limits
+on the tadpole predation model parameters.}
+\end{figure}
+
+Comparing the (approximate) 80\% and 99.5\%
+confidence ellipse to the profile
+confidence regions
+for the tadpole predation data set,
+they don't look too bad.  The profile
+region is slightly skewed---it includes more points where $d$
+and $r$ are both larger than the maximum likelihood estimate, and
+fewer where both are smaller---while the approximate ellipse is
+symmetric around the maximum likelihood estimate.
+
+This method extends to more than two parameters, even though it
+is difficult to draw the pictures.
+The information matrix of a $p$-parameter model is a $p \times p$ matrix.
+Using \code{solve} to invert the information matrix gives
+the variance-covariance matrix 
+\begin{equation}
+\mathbf{V} = \left( \begin{array}{cccc}
+\sigma^2_1 &  \sigma_{12} & \ldots & \sigma_{1p} \\
+\sigma_{21} &  \sigma^2_2 & \ldots & \sigma_{2p} \\
+\vdots & \vdots & \ddots & \vdots \\
+\sigma_{p1} &  \sigma_{p2} & \ldots & \sigma^2_{p} \\
+\end{array}
+\right),
+\end{equation}
+where $\sigma_i^2$ is the estimated variance of variable $i$ and
+where $\sigma_{ij}=\sigma_{ji}$ is the estimated covariance between
+variables $i$ and $j$: the correlation between $i$ and $j$ is
+$\sigma_{ij}/(\sigma_i \sigma_j)$.
+For an \code{mle2} fit \code{m},
+\code{vcov(m)} will give the approximate variance-covariance matrix
+computed in this way and \code{cov2cor(vcov(m))} will scale
+the variance-covariance matrix by the variances to give
+a correlation matrix with entries of 1 on the diagonal
+and parameter correlations for the off-diagonal elements.
+
+The shape of the likelihood surface contains 
+essentially all of the information about the model fit and its uncertainty.
+For example, a large curvature or steep slope
+in one direction corresponds to high precision for
+the estimate of that parameter or combination of parameters.  If the curvature
+is different in different directions (leading to ellipses that are
+longer in one direction than another) then 
+the data provide unequal amounts
+of precision for the different estimates.  If the contours
+are oriented vertically or horizontally, then the
+estimates of the parameters are independent,
+but if they are diagonal then the parameter estimates
+are correlated. If the contours
+are roughly elliptical (at least near the MLE),
+then the surface can be described by a quadratic
+function.
+
+<<eval=FALSE,echo=FALSE>>=
+m = matrix(c(0.5,1,1,2),nrow=2)
+banana <- function(x,y,rot=FALSE,theta=pi/4){
+  if (rot) {
+    newx = cos(theta)*x+sin(theta)*y
+    newy = -sin(theta)*x+cos(theta)*y
+    x=newx
+    y=newy
+  }
+  100*(y-x^2)^2+(1-x)^2
+} 
+m1 = mle2(banana,start=list(x=1,y=1),data=list(rot=TRUE))
+cov2cor(vcov(m1))
+curve3d(banana(x,y,rot=TRUE),from=c(-1,-1),to=c(2,2),sys3d="contour",
+        levels=0:10)
+points(0,sqrt(2))
+@ 
+<<echo=FALSE,cache=TRUE>>=
+gourd <- function(x,y,s1=0,s2=3,a=1,s1exp=1,rot=FALSE,theta=pi/4){
+  if (rot) {
+    newx = cos(theta)*x+sin(theta)*y
+    newy = -sin(theta)*x+cos(theta)*y
+    x=newx
+    y=newy
+  }
+  a*((exp(s1+s1exp*y)*x)^2+(s2*y)^2)
+} 
+fun1 = function(x,y) gourd(x,y,s1exp=0,a=0.5)
+fun2 = function(x,y) gourd(x,y,s1exp=0,a=0.5,rot=TRUE)
+fun3 = function(x,y) gourd(x,y,s1exp=2,a=1)
+fun4 = function(x,y) gourd(x,y,s1exp=2,a=1.2,rot=TRUE)
+c1 = curve3d(fun1,from=c(-3,-2),to=c(3,2),
+          sys3d="none")
+c2 = curve3d(fun2,from=c(-3,-2),to=c(3,2),
+          sys3d="none")
+c3 = curve3d(fun3,from=c(-3,-2),to=c(3,2),
+          sys3d="none",n=c(71,71))
+c4 = curve3d(fun4,from=c(-3,-2),to=c(3,2),
+          sys3d="none",n=c(91,91))
+tmpf <- function(fun0,c0,heights=c(-2.3,-1.7,-2),
+                 xpos = 2.35,
+                 quadlty=1,quadcol="darkgray",
+                 legend=FALSE) {
+  ## 2D (univariate) confidence region
+  contour(c0$x,c0$y,c0$z,
+          levels=qchisq(0.95,1)/2,
+          drawlabels=FALSE,axes=FALSE,
+          xlab="",ylab="",
+          xlim=c(-3,3.4),
+          ylim=c(-2.4,1.8))
+  box(col="gray")
+  m = mle2(fun0,start=list(x=0,y=0))
+  p = profile(m)
+  s = slice(m)
+  sliceconf.x = approx(s@profile$x$z,
+    s@profile$x$par.vals[,"x"],
+    xout = qnorm(c(0.025,0.975)))$y
+  profconf.x = confint(p)["x",]
+  profconf.y = approx(p@profile$x$z,
+    y=p@profile$x$par.vals[,"y"],
+    xout = qnorm(c(0.025,0.975)))$y
+  ellconf.x = confint(m,method="quad")["x",]
+  v = vcov(m)
+  slope = v[1,2]/v[1,1]
+  ellconf.y = ellconf.x*slope
+  lines(ellipse(vcov(m),centre=coef(m),
+                t=sqrt(qchisq(0.95,1))),lty=quadlty,
+        col=quadcol)
+  ## redraw
+  contour(c0$x,c0$y,c0$z,
+          levels=qchisq(0.95,1)/2,
+          drawlabels=FALSE,add=TRUE)
+  lines(p@profile$x$par.vals[,"x"],p@profile$x$par.vals[,"y"],lty=2)
+  abline(a=0,b=slope)
+  points(ellconf.x,ellconf.y,pch=2)
+  points(profconf.x,profconf.y,pch=5)
+  points(sliceconf.x,rep(0,2),pch=8)
+  points(ellconf.x,rep(heights[1],2),pch=2)
+  segments(ellconf.x[1],heights[1],ellconf.x[2],heights[1],pch=2)
+  points(profconf.x,rep(heights[2],2),pch=5)
+  segments(profconf.x[1],heights[2],profconf.x[2],heights[2])
+  points(sliceconf.x,rep(heights[3],2),pch=8)
+  segments(sliceconf.x[1],heights[3],sliceconf.x[2],heights[3])
+  text(rep(xpos,3),heights,c("quad","profile","slice"),cex=0.75,adj=0)
+  if (legend) {
+    legend("topleft",
+           c("conf. region",
+             "quadratic",
+             "profile"),
+           lwd=2,
+           lty=c(1,quadlty,2),
+           col=c(1,quadcol,1),
+           bty="n",cex=0.75)
+  }
+}
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,print=FALSE,cache=TRUE>>=
+op=par(mfrow=c(2,2),lwd=2,bty="l",las=1,cex=1.5,
+  mar=c(0,0,0,0))
+tmpf(fun1,c1)
+tmpf(fun2,c2)
+tmpf(fun3,c3,legend=TRUE)
+tmpf(fun4,c4)
+par(op)
+@ 
+\caption{Varying shapes of likelihood contours
+and the associated profile confidence intervals,
+approximate information matrix (quadratic) confidence intervals,
+and slice intervals.}
+\label{fig:confshape}
+\end{figure}
+
+These characteristics also help determine which methods and
+approximations will work well
+(Figure~\ref{fig:confshape}).  If the parameters are uncorrelated
+(contours oriented horizontally/vertically),
+then you can estimate them separately and still get the
+correct confidence intervals: the likelihood slice is the
+same as the profile (Figure~\ref{fig:confshape}a).
+If they are correlated, on the other
+hand, you will need to calculate a profile (or solve the
+information matrix) to allow for variation in the other
+parameters (Figure~\ref{fig:confshape}b,d).
+If the likelihood contours are
+elliptical --- which happens when the likelihood surface
+has a quadratic shape --- the information matrix approximation
+will work well (Figure~\ref{fig:confshape}a,b):
+otherwise, a full profile likelihood may
+be necessary to calculate the confidence intervals
+accurately.
+
+You can usually handle non-quadratic 
+and correlated surfaces
+by computing profiles rather than
+using the simpler quadratic approximations, but in extreme cases
+these characteristics
+can cause problems for fitting (Chapter~\ref{chap:opt}).
+All other things being equal,
+smaller confidence regions (i.e., for
+larger and less noisy data sets and for higher
+$\alpha$ levels), are more elliptical.
+Reparameterizing functions can sometimes make
+the likelihood surface closer to quadratic
+and decrease correlation between the parameters.
+For example, one might fit the asymptote and
+half-maximum of a Michaelis-Menten function
+rather than the asymptote and initial slope,
+or fit log-transformed parameters.
+
+<<eval=FALSE,echo=FALSE>>=
+## a = initial slope
+## h = 1/asymptote
+## half-maximum=
+binomNLL3 = function(p,N,k) {
+  a = p[1]
+  h = p[2]*p[1]
+  p = a/(1+a*h*N)
+  -sum(dbinom(k,prob=p,size=N,log=TRUE))
+}
+parnames(binomNLL3) <- c("a","ha")
+m5 = mle2(binomNLL3,start=c(a=0.5,ha=0.01),data=list(N=ReedfrogFuncresp$Initial,k=ReedfrogFuncresp$Killed))
+curve3d(binomNLL3(c(x,y),N=ReedfrogFuncresp$Initial,k=ReedfrogFuncresp$Killed),
+        from=c(0.3,0.001),to=c(0.7,0.05),sys3d="contour",levels=40:60)
+@ 
+
+\section{Comparing models}
+
+The last topic for this chapter, a controversial and important one, is
+\emph{model comparison} or \emph{model selection}.
+Model comparison and selection are closely related to the 
+techniques for estimating confidence regions that we have just
+covered.
+
+Dodd and Silvertown did a series of studies
+on fir (\emph{Abies balsamea}) in New York state, exploring
+the relationships among growth, size, age, competition, and
+number of cones produced in a given year
+\citep{SilvertownDodd1999,DoddSilvertown2000}:
+see \code{?Fir} in the \code{emdbook} package.
+% \emph{Abies balsamea} is a
+% particularly convenient species for such life-history studies because
+% its growth and fecundity can be measured retrospectively by
+% counting and measuring the position of the cone rachises
+% (attachment points of the cones, which remain on the tree after
+% the seeds have been shed).
+Figure~\ref{fig:firfec} shows the relationship between size
+(diameter at breast height, DBH) and the total fecundity
+over the study period, contrasting populations that
+have experienced wave-like die-offs (``wave'') with those that
+have not (``nonwave'').
+A power-law (\emph{allometric}) 
+dependence of expected fecundity on size
+allows for increasing fecundity with
+size while preventing the fecundity from being negative
+for any parameter values.
+It also agrees with the general observation in 
+morphology that different traits increase as
+a power function of size.
+A negative binomial distribution in size around
+the expected fecundity describes discrete count
+data with potentially high variance.
+The resulting model is
+\begin{equation}
+\begin{split}
+\mu & = a \cdot \mbox{DBH}^b \\
+Y & \sim \mbox{NegBinom}(\mu,k)
+\end{split}
+\end{equation}
+where the subscripts $i$ denote different populations --- wave ($i=w$)
+or non-wave ($i=n$).
+
+We might ask any of these biological/statistical questions:
+\begin{itemize}
+\item{Does fir fecundity (total number of cones)
+change (increase) with size
+(DBH)?}
+\item{Do the confidence intervals 
+(credible intervals) of the slope
+parameters $b_i$ include zero (no change)?
+Do they include 1 (isometry)?}
+\item{Are the allometric parameters $b_i$ significantly
+different from (greater than) zero? One?}
+\item{Does a model incorporating the allometric parameters
+fit the data significantly better than a model
+without a allometric parameter,
+or equivalently
+where the allometric parameter is set to zero ($\mu = a_i$)
+or one ($\mu=a_i \cdot \mbox{DBH}$?)}
+\item{What is the best model to explain, or predict,
+fir fecundity? does it include DBH?}
+\end{itemize}
+
+<<echo=FALSE>>=
+data(FirDBHFec)
+X = na.omit(FirDBHFec[,c("TOTCONES","DBH","WAVE_NON")])
+X$TOTCONES = round(X$TOTCONES)
+attach(X)
+@ 
+
+<<echo=FALSE,cache=TRUE>>=
+## all kinds of computation so we can draw the figure up front
+nbNLL.ab = function(a.w,b.w,a.n,b.n,k) {
+  wcode = as.numeric(WAVE_NON)
+  a = c(a.n,a.w)[wcode]
+  b  = c(b.n,b.w)[wcode]
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbNLL.0 = function(a,b,k) {
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbNLL.a = function(a.n,a.w,b,k) {
+  wcode = as.numeric(WAVE_NON)
+  a = c(a.n,a.w)[wcode]
+  b  = b
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbNLL.b = function(a,b.n,b.w,k) {
+  wcode = as.numeric(WAVE_NON)
+  b  = c(b.n,b.w)[wcode]
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbNLL.abk = function(a.n,a.w,b.n,b.w,k.n,k.w) {
+  wcode = as.numeric(WAVE_NON)
+  a = c(a.n,a.w)[wcode]
+  b  = c(b.n,b.w)[wcode]
+  k = c(k.n,k.w)[wcode]
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbfit.0 = mle2(nbNLL.0,start=list(a=1,b=1,k=1))
+a = coef(nbfit.0)["a"]
+b = coef(nbfit.0)["b"]
+k = coef(nbfit.0)["k"]
+nbfit.ab = mle2(nbNLL.ab,
+  start=list(a.n=a,a.w=a,b.n=b,b.w=b,k=k))
+nbfit.a = mle2(nbNLL.a,
+  start=list(a.n=a,a.w=a,b=b,k=k))
+nbfit.abk = mle2(nbNLL.abk,
+  start=list(a.n=a,a.w=a,b.n=b,b.w=b,
+    k.n=k,k.w=k))
+nbNLL.ak = function(a.n,a.w,b,k.n,k.w) {
+  wcode = as.numeric(WAVE_NON)
+  a = c(a.n,a.w)[wcode]
+  k = c(k.n,k.w)[wcode]
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbfit.ak = mle2(nbNLL.ak,
+  start=list(a.n=a,a.w=a,b=b,k.n=k,k.w=k))
+nbNLL.bk = function(a,b.n,b.w,k.n,k.w) {
+  wcode = as.numeric(WAVE_NON)
+  b  = c(b.n,b.w)[wcode]
+  k = c(k.n,k.w)[wcode]
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbfit.bk = mle2(nbNLL.bk,
+  start=list(a=a,b.n=b,b.w=b,k.n=k,k.w=k))
+nbNLL.k = function(a,b,k.n,k.w) {
+  wcode = as.numeric(WAVE_NON)
+  k = c(k.n,k.w)[wcode]
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbfit.k = mle2(nbNLL.k,
+  start=list(a=a,b=b,k.n=k,k.w=k))
+nbNLL.b = function(a,b.n,b.w,k) {
+  wcode = as.numeric(WAVE_NON)
+  b  = c(b.n,b.w)[wcode]
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbfit.b = mle2(nbNLL.b,
+  start=list(a=a,b.n=b,b.w=b,k=k))
+@ 
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5)
+plot(TOTCONES~DBH,pch=as.numeric(WAVE_NON),cex=0.8,
+     xlab="Size (DBH)",ylab="Fecundity (total cones)")
+par(xpd=NA)
+legend(c(4,10),
+       c(250,350),pch=c(1:2,NA),
+       lty=c(2,3,1),
+       c("nonwave","wave","combined"),bty="n",merge=FALSE)
+par(xpd=FALSE)
+with(as.list(coef(nbfit.ab)), {
+  curve(a.n*x^b.n,add=TRUE,lty=2)
+  curve(a.w*x^b.w,add=TRUE,lty=3)
+})
+with(as.list(coef(nbfit.0)), {
+  curve(a*x^b,add=TRUE,lty=1)
+})
+par(op)
+@ 
+\caption{Fir fecundity as a function of DBH
+for wave and non-wave populations.
+Lines show estimates of the model $y=a\cdot \mbox{DBH}^b$
+fitted to the populations separately and combined.}
+\label{fig:firfec}
+\end{figure}
+
+<<echo=FALSE>>=
+detach(X)
+@ 
+
+Figure~\ref{fig:firfec} shows very
+clearly that fecundity does increase with size:
+while we might want to know \emph{how much}
+it increases (based on the estimation and confidence-limits
+procedures discussed above), any statistical test
+of the null hypothesis $b=0$ would be
+\emph{pro forma}.
+More interesting questions in this case ask
+whether and how the size-fecundity curve differs
+in wave and non-wave populations.  We can
+extend the model to allow for differences
+between the two populations:
+\begin{equation}
+\begin{split}
+\mu & = a_i \cdot \mbox{DBH}^{b_i} \\
+Y_i & \sim \mbox{NegBinom}(\mu,k_i)
+\end{split}
+\end{equation}
+where the subscripts $i$ denote different populations --- wave ($i=w$)
+or non-wave ($i=n$).
+
+Now our questions become:
+\begin{itemize}
+\item{Is fecundity the same for small trees in
+both populations?  (Can we reject the null hypothesis
+$a_n=a_w$?  Do the confidence intervals of $a_n-a_w$
+include zero? Does a model with $a_n \neq a_w$ fit
+significantly better?)}
+\item{Does fecundity increase with DBH at the same
+rate in both population?
+ (Can we reject the null hypothesis
+$b_n=b_w$?  Do the confidence intervals of $b_n-b_w$
+include zero? Does a model with $b_n \neq b_w$ fit
+significantly better?)}
+\item{Is variability around the
+mean the same in both populations?
+ (Can we reject the null hypothesis
+$k_n=k_w$?  Do the confidence intervals of $k_n-k_w$
+include zero? Does a model with $k_n \neq k_w$ fit
+significantly better?)}
+\end{itemize}
+
+We can boil any of these questions down to the
+same basic statistical question:
+for any one of $a$, $b$, and $k$, does
+a simpler model (with a single parameter for both populations
+rather than separate parameters for each population) fit
+adequately?  Does adding extra parameters improve the fit
+sufficiently much to justify the additional complexity?
+
+As we will see, there are many ways to translate
+these questions into statistical
+hypotheses and tests.  While there are stark differences in the
+assumptions and philosophy behind different statistical approaches,
+and hot debate over which ones are best,
+it's worth remembering that in many cases they will all give
+reasonably consistent answers to the underlying ecological questions.
+The rest of this introductory section explores some general
+ideas about model selection.
+The following sections describe the basics of different
+approaches, and the final section summarizes
+the pros and cons of various approaches.
+
+If we ask ``does fecundity change with size?'' or
+``do two populations differ?'', we know as ecologists
+that the answer is ``yes'' --- \emph{every} ecological
+factor has some impact, and all populations differ in 
+some way.  The real questions are,
+given the data we have, whether we can
+tell what the differences are,
+and how we decide which model best explains
+the data or predicts new results.
+
+\emph{Parsimony} (sometimes called ``Occam's razor'') is a
+general argument for choosing simpler models
+even though we know the world is complex.
+All other things being equal,
+we should prefer a simpler model
+to a more complex one --- %
+especially when the data don't tell a clear story.
+Model selection approaches typically
+go beyond parsimony to say that a more complex model must be
+not just better than, but a specified amount better than, a
+simpler model.  If the more complex model doesn't exceed a threshold
+of improvement in fit (we will see below exactly where this
+threshold comes from), we typically reject it in favor
+of the simpler model.
+
+\label{biasvar}
+Model complexity also affects our predictive ability.
+\cite{WaltersLudwig1981} simulated fish
+population dynamics using a complex age-structured model
+and showed that in many cases,
+when data were realistically sparse and noisy, they could
+best predict future (simulated) dynamics using a simpler
+non-age-structured model.  In other words, even though they knew for
+sure that juveniles and adults had different mortality rates (because
+they simulated the data from a model
+with mortality differences), a model that ignored this
+distinction gave more accurate predictions.
+This apparent paradox is an example of the
+\emph{bias-variance tradeoff} introduced
+in Chapter~\ref{chap:sim}. As we add more parameters to a model,
+we necessarily get an increasingly accurate fit to the particular
+data we have observed (the bias of our predictions decreases), 
+but our precision
+for predicting future observations decreases
+as well (the variance of our predictions increases). 
+Data contain a fixed amount of information; as we
+estimate more and more parameters we spread the
+data thinner and thinner.
+Eventually the gain in accuracy from
+having more details in the model is outweighed by the loss
+in precision from estimating the effect
+of each of those details more poorly. 
+In Ludwig and Walters's case, spreading the data
+out across age classes meant there was not enough data
+to estimate each age class's dynamics accurately.
+
+\begin{figure}
+<<echo=FALSE>>=
+tmpf = function(x,a=0.4,b=0.1,c=2,d=1) {
+  (a+b*x+c*x^2)*exp(-d*x)
+}
+dpars = formals(tmpf)[-1]
+set.seed(1005)
+npts = 10
+x = runif(npts,min=1,max=7)
+y_det = tmpf(x)
+y = y_det+rnorm(npts,sd=0.35)
+y2 = y_det+rnorm(npts,sd=0.35)
+ymax=2
+n1 = nls(y~tmpf(x,a,b,c,d),start=list(a=0.4,b=0.1,c=2,d=1))
+n2 = nls(y~a*x*exp(-b*x),start=list(a=1,b=0.5))
+p0 = rep(mean(y),length(y))
+p1 = predict(n1)
+xvec = seq(0,7,length=150)
+p1vec = predict(n1,newdata=list(x=xvec))
+p2vec = predict(n2,newdata=list(x=xvec))
+p2 = predict(n2)
+calc_r2 = function(y) {
+  s0 = sum((y-p0)^2)
+  s1 = sum((y-p1)^2)
+  s2 = sum((y-p2)^2)
+  c(1-s1/s0,1-s2/s0,s0,s1,s2,which.min(c(s0,s1,s2)))
+}
+r2.0 = calc_r2(y)
+r2.1 = calc_r2(y2)
+r2vec = t(replicate(500,calc_r2(y_det+rnorm(npts,sd=0.35))))
+r2vec_mean = colMeans(r2vec)[1:5]
+tv = table(r2vec[,6])
+@ 
+
+<<echo=FALSE,fig=TRUE,width=8>>=
+op = par(mfrow=c(1,2))
+par(lwd=2,bty="l",las=1,cex=1.5, mgp=c(2.5,1,0))
+par(mar=c(5,4,2,0.5)+0.1)
+plot(x,y,ylim=c(0,max(c(y,ymax))),xlim=c(0,7),axes=FALSE,
+      xlab="",ylab="")
+points(x[7],y[7],pch=16)
+abline(h=p0)
+axis(side=1,at=c(0,3,6))
+axis(side=2)
+box()
+tcol = "gray"
+curve(tmpf,add=TRUE,from=0,col=tcol)
+lines(xvec,p1vec,lty=2)
+lines(xvec,p2vec,lty=3)
+par(xpd=NA)
+legend(c(3.1,8.6),c(1.2,2),
+       c("constant",
+         "Ricker",
+         "gen Ricker",
+         "true"),
+       col=rep(c("black",tcol),c(3,1)),
+       lty=c(1,3,2,1),
+       bty="n",
+       cex=0.75)     
+par(xpd=FALSE)
+par(mar=c(5,1,2,3.5)+0.1)
+plot(x,y2,ylim=c(0,max(c(y,ymax))),xlim=c(0,7),axes=FALSE,
+     xlab="",ylab="")
+points(x[7],y2[7],pch=16)
+curve(tmpf,add=TRUE,from=0,col=tcol)
+abline(h=p0)
+xvec = seq(0,7,length=150)
+lines(xvec,predict(n1,newdata=list(x=xvec)),lty=2)
+lines(xvec,predict(n2,newdata=list(x=xvec)),lty=3)
+axis(side=1,at=c(0,3,6))
+axis(side=2,labels=FALSE)
+box()
+@ 
+\caption{Fits to
+simulated ``data'' generated with
+$y=(\Sexpr{dpars$a}+\Sexpr{dpars$b} \cdot x + \Sexpr{dpars$c} 
+\cdot x^2) e^{-x}$,
+%$
+plus normal error with $\sigma=0.35$.
+Models fitted: constant ($y=\bar x$),
+Ricker ($y=a e^{-bx}$), and
+generalized Ricker ($y=(a+bx+cx^2)e^{-dx}$).
+The highlighted point at $x \approx 1.5$
+drives much of the fit to the original data,
+and much of the failure to fit new data sets.
+Left: original data, right: a new data set.}
+\label{fig:overfit}
+\end{figure}
+
+The left-hand plot of
+Figure~\ref{fig:overfit} shows
+a set of simulated data generated 
+from a generalized Ricker model,
+$Y \sim \mbox{Normal}((a+bx+cx^2)e^{-dx})$.
+I fitted these data with a constant
+model ($y$ equal to the mean of data),
+a Ricker model ($y=ae^{-bx}$),
+and the generalized Ricker model.
+Despite being the true model that
+generated the data,
+the generalized Ricker model
+is overly flexible and
+adjusts the fit to go through
+an unusual point at
+(\Sexpr{round(x[7],1)},\Sexpr{round(y[7],2)}).
+It fits the first data set
+better than the Ricker
+($R^2=\Sexpr{round(r2.0[1],2)}$
+for the generalized Ricker
+vs. $R^2=\Sexpr{round(r2.0[2],2)}$
+for the Ricker).
+However, the
+generalized Ricker has \emph{overfitted}
+these data.
+It does poorly when we try to
+fit new data generated
+from the same underlying model.
+In the new set of data shown in
+Figure~\ref{fig:overfit}, the generalized
+Ricker fit misses the point near $x=\Sexpr{round(x[7],1)}$
+so badly that it actually fits the data worse
+than the constant model and has a negative $R^2$!
+In 500 new simulations, the Ricker prediction
+did best \Sexpr{round(tv[3]/500*100)}\% of the
+time, while the generalized Ricker prediction
+only won \Sexpr{round(tv[2]/500*100)}\% of the time:
+the rest of the time, the constant model was best.
+
+\subsection{Likelihood Ratio test: nested models}
+
+How can we tell when we are overfitting real data?
+We can use the Likelihood Ratio Test,
+which we used before to find confidence intervals and
+regions, to choose models
+in certain cases.
+A simpler model (with fewer parameters) is \emph{nested} in another,
+more complex, model (with more parameters)
+if the complex model reduces
+to the simpler model by setting some parameters
+to particular values (often zero).
+For example, a constant model, $y=a$,
+is nested in the linear model, $y=a+bx$
+because setting $b=0$ makes the linear model
+constant.
+The linear model is nested in turn in the quadratic model, $y=a+bx+cx^2$.
+The linear model is also nested
+in the Beverton-Holt model, $y=ax/(1+(a/b)x)$, 
+for $b \to \infty$.
+The Beverton-Holt is
+in turn nested in the Shepherd model, $y=ax/(1+(a/b)x^d)$,
+for $d=1$.
+(The nesting of the linear model in the Beverton-Holt 
+model is clearer if we use the parameterization
+of the Holling type~II model, $y=ax/(1+ahx)$.
+The handling time $h$ is equivalent
+to $1/b$ in the Beverton-Holt.
+When $h=0$ predators handle prey
+instantaneously and their \emph{per capita} consumption rate
+increases linearly forever as prey densities
+increase.)
+
+\label{contrasts}
+Comparisons among different groups
+can also be framed as a comparison of nested models.
+If the more complex
+model has the mean of group~1 equal to $a_1$ and
+the mean of group~2 equal to $a_2$, then the
+nested model (both groups equivalent) applies
+when $a_1=a_2$.  It is also common to parameterize
+this model as $a_2=a_1+\delta_{12}$, where
+$\delta_{12} = a_2-a_1$, so that
+the simpler model applies when $\delta_{12}=0$.
+This parameterization works better for model comparisons
+since testing the hypothesis that the more complex
+model is better becomes a test of the value of
+one parameter ($\delta_{12}=0$?) rather than a test
+of the relationship between two parameters ($a_1=a_2$?)%
+\footnote{We can also interpret these parameterizations
+geometrically. In ($a_1$,$a_2$) parameter
+space, we're testing to see whether the best fit
+falls on the line through the origin $a_1=a_2$;
+in ($a_1$, $\delta_{12}$) parameter space, we're
+testing whether the best fit lies on the
+line $\delta_{12}=0$.  To explore further
+how different parameterizations relate to testing
+different hypotheses, look for the topic of
+\emph{contrasts} (in \cite{Crawley2002}
+or \cite{MASS}).}.
+
+%%\todo{note might want to fix $k$ at value for most complex model}
+
+To prepare to ask these questions with the fir data,
+we read in the data, drop \code{NA}s, pull out the variables
+we want, and \code{attach} the resulting data frame
+so that we can refer to the variables directly:
+<<>>=
+data(FirDBHFec)
+X = na.omit(FirDBHFec[,c("TOTCONES","DBH","WAVE_NON")])
+X$TOTCONES = round(X$TOTCONES)
+@ 
+
+\label{mle2groups}
+Using \code{mle2}'s formula interface 
+is the easiest way to estimate the
+nested series of models in \R.
+The reduced model (no variation among populations) is
+<<>>=
+nbfit.0 = mle2(TOTCONES~dnbinom(mu=a*DBH^b,size=k),
+  start=list(a=1,b=1,k=1),data=X)
+@ 
+\label{mle2params}
+To fit more complex models,
+use the \code{parameters} argument to
+specify which parameters differ among groups.
+For example, the argument
+\verb+list(a~WAVE_NON,b~WAVE_NON)+
+would allow $a$ and $b$ to
+have different values for
+wave and non-wave populations,
+corresponding to the hypothesis that the
+populations differ in both $a$ and $b$ but
+not in variability ($a_w \neq a_n$, $b_w \neq b_n$, 
+$k_w = k_n$). The statistical model is
+$Y_i \sim \mbox{NegBinom}(a_i \cdot \mbox{DBH}^{b_i},k)$,
+and the \R\ code is
+<<>>=
+start.ab = as.list(coef(nbfit.0))
+nbfit.ab = mle2(TOTCONES~dnbinom(mu=a*DBH^b,size=k),
+  start=start.ab, data=X,
+  parameters=list(a~WAVE_NON,b~WAVE_NON))
+@
+Here I have used the best-fit
+parameters of the simpler model
+as starting parameters for the
+complex model.  
+Using the best
+available starting parameters avoids many
+optimization problems.
+
+\code{mle2}'s formula interface
+automatically expands the starting parameter
+list (which only includes a single value for
+each of $a$ and $b$) to include the appropriate
+number of parameters.  \code{mle2} uses default
+starting parameter values corresponding to equality of
+all groups, which for this parameterization means that
+all of the additional parameters for groups other
+than the first are set to zero. 
+
+
+<<eval=FALSE,echo=FALSE>>=
+start.ab3=list(a.WAVE_NONn=0.3,
+    a.WAVE_NONw=0.3,
+    b.WAVE_NONn=2.3,
+    b.WAVE_NONw=2.3,k=1.5)
+nbfit.ab2 = mle2(TOTCONES~dnbinom(mu=a*DBH^b,size=k),
+  start=start.ab, data=X,
+  parameters=list(a~WAVE_NON-1,b~WAVE_NON-1))
+f2 = calc_mle2_function(TOTCONES~dnbinom(mu=a*DBH^b,size=k),
+                   start=start.ab,data=X,
+                   parameters=list(a~WAVE_NON-1,b~WAVE_NON-1))
+@
+
+The formula interface is convenient, but
+as with likelihood profiles you often
+encounter situations where you have
+to know how to build the models by hand.
+Here's a negative log-likelihood model
+for the second model:
+<<>>=
+attach(X)
+nbNLL.ab = function(a.w,b.w,a.n,b.n,k) {
+  wcode = as.numeric(WAVE_NON)
+  a = c(a.n,a.w)[wcode]
+  b  = c(b.n,b.w)[wcode]
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+@ 
+The first three lines of \code{nbNLL.ab}
+turn the factor \verb+WAVE_NON+ into a numeric
+code (1 or 2) and use the resulting code as
+an index to decide which value of $a$
+or $b$ to use in predicting the value for each
+individual.  To make $k$ differ by group as well,
+just change \code{k} in the argument
+list to \code{k.n} and \code{k.w}
+and add the line
+<<eval=FALSE>>=
+k=c(k.n,k.w)[wcode]
+@
+To simplify the model by making $a$ or
+$b$ homogeneous, cut down the argument list
+and eliminate the line of code that
+specifies the value of the parameter by group.
+
+\label{contrasts2}
+The only difference between this negative
+log-likelihood function and the one that
+\code{mle2} constructs when you use the
+formula interface is that the \code{mle2}-constructed
+function uses the parameterization $\{a_1,a_1+\delta_{12}\}$
+while our hand-coded function uses $\{a_1,a_2\}$
+(see p.~\pageref{contrasts}).
+The former is more convenient for statistical
+tests, while the latter is more convenient if you
+want to know the parameter values for each group.
+To tell \code{mle2} to use the latter parameterization,
+specify \code{parameters=list(a\~{}WAVE\_NON-1,b\~{}WAVE\_NON-1)}.
+The \code{-1} tells \code{mle2} to fit the model without
+an intercept, which in this case means that the
+parameters for each group are specified relative to 0
+rather than relative to the parameter value for the
+first group.  When \code{mle2} fills in default
+starting values for this parameterization, it sets
+the starting parameters for all groups equal.
+
+<<echo=FALSE>>=
+nbNLL.a = function(a.n,a.w,b,k) {
+  wcode = as.numeric(WAVE_NON)
+  a = c(a.n,a.w)[wcode]
+  b  = b
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbNLL.b = function(a,b.n,b.w,k) {
+  wcode = as.numeric(WAVE_NON)
+  b  = c(b.n,b.w)[wcode]
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbNLL.abk = function(a.n,a.w,b.n,b.w,k.n,k.w) {
+  wcode = as.numeric(WAVE_NON)
+  a = c(a.n,a.w)[wcode]
+  b  = c(b.n,b.w)[wcode]
+  k = c(k.n,k.w)[wcode]
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+@ 
+
+<<echo=FALSE>>=
+poisNLL.0 <- function(a,b) {
+  predcones = a*DBH^b
+  -sum(dpois(TOTCONES,lambda=predcones,log=TRUE))
+}
+poisfit.0 = mle2(poisNLL.0,start=list(a=1,b=1))
+@ 
+
+<<echo=FALSE>>=
+nbfit.a = mle2(nbNLL.a,
+  start=list(a.n=a,a.w=a,b=b,k=k))
+nbfit.abk = mle2(nbNLL.abk,
+  start=list(a.n=a,a.w=a,b.n=b,b.w=b,
+    k.n=k,k.w=k))
+@ 
+
+<<echo=FALSE,cache=TRUE>>=
+## redo all with formula interface
+nbfit.0 = mle2(TOTCONES~dnbinom(mu=a*DBH^b,size=k),
+  start=list(a=1,b=1,k=1),data=X)
+start.ab = as.list(coef(nbfit.0))
+nbfit.a = mle2(TOTCONES~dnbinom(mu=a*DBH^b,size=k),
+  start=start.ab, data=X,
+  parameters=list(a~WAVE_NON))
+nbfit.b = mle2(TOTCONES~dnbinom(mu=a*DBH^b,size=k),
+  start=start.ab, data=X,
+  parameters=list(b~WAVE_NON))
+nbfit.abk = mle2(TOTCONES~dnbinom(mu=a*DBH^b,size=k),
+  start=start.ab, data=X,
+  parameters=list(a~WAVE_NON-1,b~WAVE_NON-1,k~WAVE_NON-1))
+nbfit.ak = mle2(TOTCONES~dnbinom(mu=a*DBH^b,size=k),
+  start=start.ab, data=X,
+  parameters=list(a~WAVE_NON,k~WAVE_NON))
+nbfit.bk = mle2(TOTCONES~dnbinom(mu=a*DBH^b,size=k),
+  start=start.ab, data=X,
+  parameters=list(a~WAVE_NON,k~WAVE_NON))
+@ 
+
+The \code{anova} function\footnote{Why \code{anova}?  The
+corresponding series of tests for a
+simple linear model with categorical
+predictors is an analysis of variance
+(Chapter~\ref{chap:std}).} performs
+likelihood ratio tests on a series of nested
+\code{mle2} fits, automatically calculating
+the difference in numbers of parameters
+(denoted by \code{Df} for
+\textbf{d}egrees of \textbf{f}reedom)
+and deviance and calculating $p$ values.
+<<>>=
+anova(nbfit.0,nbfit.a,nbfit.ab)
+@ 
+
+<<eval=FALSE,echo=FALSE>>=
+nbNLL.ak = function(a.n,a.w,b,k.n,k.w) {
+  wcode = as.numeric(WAVE_NON)
+  a = c(a.n,a.w)[wcode]
+  k = c(k.n,k.w)[wcode]
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbfit.ak = mle2(nbNLL.ak,
+  start=list(a.n=a,a.w=a,b=b,k.n=k,k.w=k))
+nbNLL.bk = function(a,b.n,b.w,k.n,k.w) {
+  wcode = as.numeric(WAVE_NON)
+  b  = c(b.n,b.w)[wcode]
+  k = c(k.n,k.w)[wcode]
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbfit.bk = mle2(nbNLL.bk,
+  start=list(a=a,b.n=b,b.w=b,k.n=k,k.w=k))
+nbNLL.k = function(a,b,k.n,k.w) {
+  wcode = as.numeric(WAVE_NON)
+  k = c(k.n,k.w)[wcode]
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbfit.k = mle2(nbNLL.k,
+  start=list(a=a,b=b,k.n=k,k.w=k))
+nbNLL.b = function(a,b.n,b.w,k) {
+  wcode = as.numeric(WAVE_NON)
+  b  = c(b.n,b.w)[wcode]
+  predcones = a*DBH^b
+  -sum(dnbinom(TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+nbfit.b = mle2(nbNLL.b,
+  start=list(a=a,b.n=b,b.w=b,k=k))
+@ 
+
+<<echo=FALSE>>=
+detach(X)
+@ 
+
+<<echo=FALSE>>=
+## model nesting plot
+## 6 parameters: a.{w,n},b.{w,n},k.{w,n}
+## 5 parameters -- 3 possibilities
+## 4 parameters -- 3 possibilities
+## 3 parameters -- 1 possibility
+##
+## points; segments; text indicating parameters; LRT p-values
+nlevel = 4
+ylocs = rev((1:nlevel)/(nlevel+1))
+xlocs = lapply(c(1,3,3,1),function(x) (1:x)/(x+1)-0.1)
+txt = list(
+  list(
+       list("all parameters","equal")),
+  list(
+       list(expression(a[w]!=a[n])),
+       list(expression(b[w]!=b[n])),
+       list(expression(k[w]!=k[n]))),
+  list(
+       list(expression(a[w]!=a[n]),
+            expression(b[w]!=b[n])),
+       list(expression(a[w]!=a[n]),
+            expression(k[w]!=k[n])),
+       list(expression(b[w]!=b[n]),
+            expression(k[w]!=k[n]))),
+       list(
+            list("all parameters","different")))
+models = list(
+  list(nbfit.0),
+  list(nbfit.a,nbfit.b,nbfit.k),
+  list(nbfit.ab,nbfit.ak,nbfit.bk),
+  list(nbfit.abk))
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+#,width=8,height=8>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5,mar=c(0,0,0,0))
+spc = 0.03 ## y-spacing: was 0.025
+ht=0.014  ## rectangle height? was 0.012
+wid=0.08
+cex1 = 0.7
+plot(0:1,0:1,axes=FALSE,type="n",ann=FALSE)
+for (i in 1:nlevel) {
+  ## draw segments
+  p = 0.05
+  if (i<nlevel) {
+    for (j in 1:length(txt[[i]])) {
+      for (k in 1:length(txt[[i+1]])) {
+        x1=xlocs[[i]][[j]]
+        x2=xlocs[[i+1]][[k]]
+        y1=ylocs[i]
+        y2=ylocs[i+1]
+        segments(x1*(1-p)+x2*p,
+                 y1*(1-p)+y2*p,
+                 x1*p+x2*(1-p),
+                 y1*p+y2*(1-p),lwd=3)
+      }
+    }
+  }   
+}
+for (i in 1:nlevel) {
+  for (j in 1:length(txt[[i]])) {
+    yoff = seq(0,by=-spc,length=length(txt[[i]][[j]])+1)
+    for (k in 1:length(txt[[i]][[j]])) {
+      rect(xlocs[[i]][j]-wid,
+           ylocs[i]+yoff[k]-ht,
+           xlocs[[i]][j]+wid,
+           ylocs[i]+yoff[k]+ht,
+           col="white",border="white")
+      text(xlocs[[i]][j],ylocs[i]+yoff[k],txt[[i]][[j]][[k]],
+           cex=cex1)
+    }
+    rect(xlocs[[i]][j]-wid,
+         ylocs[i]+yoff[length(yoff)]-ht,
+         xlocs[[i]][j]+wid,
+         ylocs[i]+yoff[length(yoff)]+ht,
+         col="white",border="white")
+    text(xlocs[[i]][j],ylocs[i]+yoff[length(yoff)],
+         paste("D=",
+               ## hack!!
+               ## can't find another way to get this consistent with the ANOVA table in text
+               if (i==3 && j==1) 2271.3 else round(-2*logLik(models[[i]][[j]]),1),
+##               signif(-2*logLik(models[[i]][[j]]),5),
+##               round(-2*logLik(models[[i]][[j]]),1),
+               sep=""),
+         cex=cex1)
+  }
+}
+text(1,ylocs,adj=1,
+     labels=paste(3:6,"parameters"),cex=0.7)
+@ 
+\caption{Nested hierarchy of models for the fir data.
+$D$, deviance.}
+\label{fig:nested}
+\end{figure}
+
+The Likelihood Ratio Test can compare any two nested models,
+testing whether the nesting parameters of the more complex model
+differ significantly from their null values.  Put another way,
+the LRT tests whether the extra goodness of fit to the data is worth
+the added complexity of the additional parameters.  To use the
+LRT to compare models, compare the difference in deviances
+(the more complex model should always have a smaller deviance --- if
+not, check for problems with the optimization)
+to the critical value of
+the $\chi^2$ distribution, with degrees of freedom equal to the
+additional number of parameters in the more complex model.
+If the difference in deviances is greater than $\chi^2_{n_2-n_1}(1-\alpha)$,
+then the more complex model is significantly better at the
+$p=\alpha$ level.
+If not, then the additional complexity is not justified.
+
+Choosing among statistical distributions can often be
+reduced to comparing among nested models
+As a reminder,
+Figure~\ref{fig:probdisttab} (p.~\pageref{fig:probdisttab})
+shows some of the relationships among common distributions.
+The most common use of the LRT in this context
+is to see whether we need to use an overdispersed distribution
+such as the negative binomial or beta-binomial
+instead of their lower-variance counterparts
+(Poisson or binomial).
+The Poisson distribution is nested in the
+negative binomial distribution when $k\to\infty$.
+If we fit a model with $a$ and $b$ varying
+but using a Poisson distribution instead of
+a negative binomial, we can then use the
+LRT to see if adding the overdispersion parameter
+is justified:
+<<>>=
+poisfit.ab = mle2(TOTCONES~dpois(a*DBH^b),
+  start=list(a=1,b=1), data=X,
+  parameters=list(a~WAVE_NON,b~WAVE_NON))
+anova(poisfit.ab,nbfit.ab)
+@ 
+We conclude that negative binomial is clearly
+justified: the difference in deviance is
+greater than 4000, compared to a critical
+value of 3.84!
+This analysis ignores the non-applicability
+of the LRT on the boundary of the allowable
+parameter space ($k \to \infty$ or $1/k=0$:
+see p.~\pageref{sec:lrtboundary}), but
+the evidence is so overwhelming in this case that
+it probably doesn't matter.
+
+Models with multiple parameters and multiple groups
+naturally lead to a web of nested models.
+Figure~\ref{fig:nested} shows all of the model
+comparisons for the fir data --- even for this
+relatively simple example there are 7 possible models
+and 9 possible series of nested comparisons.
+In this case the answer is easy, because none
+of the comparisons is significant according
+to the LRT (i.e., none of the one-step comparisons
+differ by more than 3.84).
+In more complex scenarios it can be quite
+hard to decide which set of comparisons to
+do first.
+Two simple options
+are forward selection
+(try to add parameters one at a time to
+the simplest model) and backward selection
+(try to subtract parameters from the most
+complex model).  Either of these approaches
+will work, but for comparisons that are
+close to the edge of statistical significance,
+or where the effects of the parameters
+are strongly correlated,
+you'll often find that you get different
+answers.  Similar problems arise in multiple
+regression (in fact, in any complex
+modeling exercise).
+With too large a set of possibilities,
+this kind of model selection can devolve
+into data-dredging.
+You should:
+(1) use common sense and ecological
+knowledge to isolate the most important
+comparisons.
+(2) Draw plots of the best candidate
+fits to try to understand why different
+models fit the data approximately equally
+well. (3) Try to rule out differences in
+variance parameters ($k$ in this case)
+first.  If you can simplify the model
+in this way it will be more comparable
+with classical models.
+If not, something interesting may be happening.
+
+\subsection{Information criteria}
+
+One way to avoid having to make pairwise model comparisons is to 
+select models based on \emph{information criteria},
+which compare all candidate models at once
+and do not require nested alternatives.
+These relatively recent alternatives to likelihood ratio tests
+are based on the expected distance (quantified
+in a way that comes from information theory) between a particular
+model and the ``true'' model
+\citep{BurnhamAnderson1998,BurnhamAnderson2002}.
+In practice, all information-theoretic methods
+reduce to the finding the model that
+minimizes some criterion
+that is the sum of a term based on the likelihood (usually twice the
+negative log-likelihood) and a \emph{penalty term} which is
+different for different information criteria.
+
+The \emph{Akaike Information Criterion}, or AIC, is the most widespread
+information criterion, and is defined as 
+\begin{equation}
+\mbox{AIC}=-2 \llik + 2 k
+\end{equation}
+where
+$\llik$ is the log-likelihood and $k$ is the number of parameters in
+the model%
+\footnote{
+Where does the magic penalty term $2k$ come from?
+AIC is the expected value of
+the \emph{Kullback-Leibler distance},
+$\int f(\myvec x) \log (f(\myvec x)/g(\myvec x_0)) \, d\myvec x$,
+between the true probability of the data, $f(\myvec x)$, and the
+probability of the data at the best parameter
+values for a candidate model, $g(\myvec x_0)$.
+The K-L distance measures 
+the log of the ratio of the predictions,
+($\log(f(\myvec x)/g(\myvec x_0))$), 
+averaged over the true distribution
+of the data.
+Separating terms and dropping a constant that doesn't contain
+$g(\myvec x_0)$,  we get $E[-\log g(\myvec x_0)]$.
+We don't really know the true MLE $\myvec x_0$, only 
+the \emph{observed} MLE $\hat{\myvec x}$, so we
+take another expectation: $E[E[-\log g(\hat{\myvec x})]]$.
+Taylor expanding $-\log g(\hat{\myvec x})$ around $\myvec x_0$, 
+the expectation of the second (linear) term drops out 
+(because the likelihood is flat at $\hat{\myvec x}$) 
+and we are left with the constant
+and quadratic terms: $E[E[-\log g(\hat{\myvec x}) -  %
+\frac{1}{2}(\myvec x-\hat{\myvec x})^T \mat V (\myvec x-\hat{\myvec x})]]$.
+$\mat V$ is the matrix of second derivatives of the
+log-likelihood (the information matrix):
+$-\mmat V^{-1}\approx \mmat \Sigma$, the variance-covariance
+matrix of the parameters.
+By definition, $E[(\myvec x-\hat{\myvec x})^T(\myvec x-\hat{\myvec x})]$ 
+also equals $\mmat \Sigma$.
+After more math, the expression becomes
+$-\log g(\hat{\myvec x})+ \mbox{trace}(\mmat\Sigma^{-1} \mmat\Sigma)$,
+where the \emph{trace} is the sum of the diagonal elements of
+a matrix. Since a matrix times its inverse is the identity
+matrix, this becomes $-\log g(\hat{\myvec x})+ k$,
+where $k$ is the number of rows/columns of the matrix ---
+which is the number of parameters.
+Doubling the whole expectation so that the first term is
+the minimum deviance ($-2 \log \lik$) gives the  penalty term $2k$.
+For more information, see Chapter~7 of Burnham and Anderson (2002).
+}.
+As with all information criteria, small values represent
+better overall fits; adding a parameter with a negligible improvement
+in fit penalizes the AIC by 2 log-likelihood units.
+For small sample sizes ($n$) --- such as when $n/k<40$
+\citep[p. 66]{BurnhamAnderson2004} --- you should
+use a finite-size correction and apply
+the AIC$_c$ (``corrected AIC'') instead:
+\begin{equation}
+\mbox{AIC}_c = \mbox{AIC} + \frac{2k(k+1)}{n-k-1}.
+\label{eq:aicc}
+\end{equation}
+As $n$ grows large, the correction term in (\ref{eq:aicc})
+vanishes and the AIC$_c$ matches the AIC.
+The AIC$_c$ was originally derived on the basis of linear models with normally
+distributed errors, so it may apply to a smaller range
+of models than the AIC --- but this is really an open question.
+\cite{Shono2000} found using simulation studies that the AIC$_c$ 
+gave accurate answers for typical
+fisheries data sets, although \cite{Richards2005} suggests
+that AIC$_c$ might not perform as well for other kinds of
+ecological data sets.  (I would recommend using
+AIC$_c$ for small samples, but being careful with the results
+if they disagree with the results based on large-sample AIC.)
+
+The second most
+common information criterion, the \emph{Schwarz criterion} or \emph{Bayesian}
+information criterion (SC/BIC)%
+\footnote{While the BIC is derived from a Bayesian argument,
+it is not inherently a Bayesian technique.  It is also
+not how most Bayesians would compare models (Section~\ref{sec:Bayesian}).}, 
+uses a penalty term of $(\log n) k$.
+When $n$ is greater
+than $e^2 \approx 9$ observations (so that $\log n >2$),
+the BIC is more conservative than the AIC, insisting on a greater
+improvement in fit before it will accept a more complex model.
+
+Information criteria do not allow frequentist significance tests based
+on the estimated probability of getting more extreme results in
+repeated experiments (some statisticians would say
+ this is an
+advantage).  With ICs, you cannot say that there is a
+statistically significant difference between models; a model with a
+lower IC is better, but there is no $p$-value associated with how much
+better it is
+\footnote{Burnham and Anderson recommend avoiding the
+word ``significant'' in conjunction with AIC-based model selection
+\citep[p. 84]{BurnhamAnderson2002};
+no matter how carefully you phrase your conclusions, some
+readers will impose a frequentist hypothesis-testing
+interpretation.}.
+Instead, there are commonly used rules of thumb: models
+with ICs less than 2 apart ($\Delta \mbox{IC}<2$)
+are more or less equivalent; those with ICs
+4-7 apart are clearly distinguishable; and models with ICs more than
+10 apart are definitely different.  \cite{Richards2005}
+concurs with these recommendations, but cautions that
+simply dropping models with $\Delta \mbox{AIC}>2$ (as some ecologists
+do) will probably discard useful models.
+
+One big advantage of IC-based approaches is that they do not
+require nested models.
+You can compare all models to
+each other, rather than stepping through a sometimes confusing
+sequence of pairwise tests.  In IC-based approaches, you simply
+compute the likelihood and IC for all of the candidate models
+and rank them in order of increasing IC.
+The model with the lowest IC is the best fit to the data; those
+models with ICs within 10 units of the minimum IC are worth
+considering.  As with the LRT, the absolute size of the ICs is
+unimportant --- only the differences in ICs matter.
+
+<<echo=FALSE>>=
+a1 <- AICtab(nbfit.0,nbfit.a,nbfit.b,
+             nbfit.k,
+             nbfit.ab,
+             nbfit.ak,nbfit.bk,nbfit.abk,delta=TRUE)
+a2 <- AICctab(nbfit.0,nbfit.a,nbfit.b,
+              nbfit.k,
+              nbfit.ab,nbfit.ak,nbfit.bk,nbfit.abk,delta=TRUE,
+          nobs=nrow(X))
+b1 <- BICtab(nbfit.0,nbfit.a,nbfit.b,
+             nbfit.k,
+             nbfit.ab,
+    nbfit.ak,nbfit.bk,nbfit.abk,delta=TRUE,nobs=nrow(X))
+atab <- cbind(a1$df,a1$dAIC,a2$dAICc,b1$dBIC)
+rownames(atab) <- attr(a1,"row.names")
+## need to double backslashes
+colnames(atab) <- c("params","$\\Delta \\mbox{AIC}$","$\\Delta \\mbox{AIC}_c$","$\\Delta \\mbox{BIC}$")
+@ 
+
+The \code{AICtab}, \code{AICctab}, and \code{BICtab} commands in the \code{bbmle}
+package will compute IC tables from lists of \code{mle} fits.
+Use the options \code{delta=TRUE} to get a list of the $\Delta \mbox{IC}$
+values, \code{weights=TRUE} to get AIC weights (see below),
+and \code{nobs} to specify the number of observations
+for BIC or AIC$_c$.
+Here are the results for the fir models:
+<<echo=FALSE,results=tex>>=
+latex(round(atab,2),file="",table.env=FALSE,title="model")
+@ 
+
+All three approaches
+pick the simplest model as the best model
+(minimum IC).
+AIC would keep all models under consideration
+($\Delta \mbox{AIC} <4$ for all models),
+while \aicc\ might rule out the most
+complex model
+($\Delta \mbox{AIC}_c=\Sexpr{round(atab[8,3],2)}$),
+and BIC would definitely rule out complex models where
+$a$ and $b$ both change ($\Delta \mbox{BIC} >10$).
+
+ICs can also be useful to choose among stochastic models,
+which are often not nested.
+For example, the Gamma, log-normal, and negative binomial
+models can all describe skewed data, and they all converge
+to the normal distribution in some limit (Figure~\ref{fig:probdisttab}),
+but there is no easy way to nest them.
+We can fit the same deterministic model as
+before ($\mbox{fecundity}=a_i\cdot\mbox{DBH}^b_i$)
+with different probability distributions
+and then use AIC to compare the results.
+
+For each distribution I have to modify the
+parameters slightly.  The log-normal's parameters
+are the mean and standard deviation of the
+distribution on the log scale, so
+I set $\mu_{\text{\small log}}=\log(a\cdot \mbox{DBH}^b) =
+\log a + b \log\mbox{DBH}$.
+The Gamma's are shape and scale,
+with the mean equal to shape $\cdot$ scale,
+so I set $\mbox{scale} = (a \cdot \mbox{DBH}^b)/\mbox{shape}$.
+I also added 0.001 to \code{TOTCONES} for
+the log-normal and Gamma fits because zero
+values are impossible for the log-normal distribution
+and for the Gamma distribution with shape $>1$,
+leading to infinite negative log-likelihoods.
+This problem warns us that a
+discrete distribution like the negative binomial
+might make more sense, but a better fit to a
+continuous distribution might override this concern.
+<<cache=TRUE>>=
+lnormfit.ab = mle2(TOTCONES+0.001~dlnorm(meanlog=b*log(DBH)+log(a),
+  sdlog=sdlog),
+  start=list(a=1,b=1,sdlog=0.1),
+  data=X,
+  parameters=list(a~WAVE_NON,b~WAVE_NON),method="Nelder-Mead")
+gammafit.ab = mle2(TOTCONES+0.001~dgamma(scale=a*DBH^b/shape,
+  shape=shape),
+  start=list(a=1,b=1,shape=2),
+  data=X,
+  parameters=list(a~WAVE_NON,b~WAVE_NON))
+@ 
+
+<<echo=FALSE,results=tex>>=
+s0tab = AICtab(poisfit.ab,gammafit.ab,lnormfit.ab,nbfit.ab,delta=TRUE,sort=TRUE)
+stab <- cbind(s0tab$AIC,s0tab$df,s0tab$dAIC)
+stab=round(stab,1)
+rownames(stab) <- attr(s0tab,"row.names")
+## need to double backslashes
+colnames(stab) = c("AIC","df","$\\Delta\\mbox{AIC}$")
+latex(stab,file="",table.env=FALSE,title="",rowname=c("Neg. binom.","Gamma","Log-normal","Poisson"))
+@ 
+
+I conclude that the negative binomial is best after all.
+
+\subsection{Bayesian analyses}
+\label{sec:Bayesian}
+
+Bayesians are on the whole less interested in 
+formal methods of model selection.
+Dropping a parameter from a model is often equivalent
+to testing a null hypothesis that the parameter is
+exactly zero, and Bayesians consider such \emph{point}
+null hypotheses silly.
+They would describe a parameter's distribution
+as being concentrated near zero rather than saying
+its value is exactly zero%
+\footnote{Although they might consider testing
+a hypothesis about whether a parameter is
+small (i.e., whether its absolute value is below
+some threshold: \cite{GelmanTuerlinckx2000}).}.
+
+Nevertheless, Bayesians do have a way to compute the relative
+probability of different models, one that implicitly recognizes the
+bias-variance tradeoff and penalizes more complex models
+\citep{KassRaftery1995}.
+Bayesians prefer to make inferences based on averages rather than
+on most-likely values: for example, they generally use the posterior mean
+values of parameters rather than the posterior mode.
+This preference
+extends to model selection.  The \emph{marginal likelihood} of a model
+is the probability of observing the data (likelihood), averaged over
+the \emph{prior} distribution of the parameters:
+\begin{equation}
+\hat L = \int L(x) \cdot  \mbox{Prior}(x) \, dx,
+\end{equation}
+where $x$ represents a parameter or set of
+parameters (if a set, then the integral would
+be a multiple integral).
+The marginal
+likelihood (the average probability of observing a particular
+data set \emph{exactly}) is often very small, and
+we are really interested in the relative probability
+of different models.  If we have two models
+with marginal likelihoods $\hat L_1$ and $\hat L_2$,
+the \emph{Bayes factor} is the ratio of the marginal
+likelihoods, $B_{12} = \hat L_1/\hat L_2$, or the odds in
+favor of model~1\footnote{the Bayes factor is based
+on assuming equal prior probabilities ($p_1=p_2=0.5$)
+for both models.}.  If we want to compare several different
+(not necessarily nested) models, we can look at the
+pairwise Bayes factors or compute a set of posterior
+probabilities --- assuming that all the models have
+the same prior probability --- by computing the relative values of
+the marginal likelihoods:
+\begin{equation}
+\mbox{Prob}(M_i) = \frac{\hat L_i}{\sum_{j=1}^N \hat L_j}.
+\end{equation}
+
+Marginal likelihoods and
+Bayes factors incorporate an implicit penalty for
+overparameterization.  When you add more parameters
+to a model, it can fit better --- the maximum likelihood
+and the maximum posterior probability increase --- but
+at the same time the posterior probability distribution
+spreads out to cover more less-well-fitting possibilities.
+Since marginal likelihoods express the mean and
+not the maximum posterior probability, they will actually
+decrease when the model becomes too complex.
+
+In principle, using Bayes factors to select the better
+of two models is simple.  If we compare twice the
+logarithm of the Bayes factors (thus putting them
+on the deviance scale), the generally accepted rules of
+thumb for Bayes factors are %% CHECK!!
+\citep[p. 432]{Jeffreys1961}: \\ 
+\begin{center}
+\begin{tabular}{cc}
+\textbf{$2 \log B_{12}$} & \textbf{evidence in favor of model 1} \\
+\hline
+0--2 & weak \\
+2--6 & positive \\
+6--10 & strong \\
+$>10$ & very strong
+\end{tabular}
+\end{center}
+It is no coincidence that these rules of thumb are
+similar to those quoted for the AIC.
+With fairly strong priors,
+the Bayes factor converges to the AIC
+instead of the BIC
+\citep{KassRaftery1995}.
+ 
+
+%  mu = k*(1-p)/p
+%  mu/k = (1-p)/p
+%  p*(mu/k) = (1-p)
+%  p*(mu/k+1) = 1
+%  p = 1/(mu/k+1)
+%  check: mu = 2, k=0.1
+%  p = 1/21
+%  mu = 0.1*(20/21)/(1/21) = 0.1*20=2
+<<echo=FALSE,eval=FALSE>>=
+## checking Poisson-gamma parameterization of neg binomial
+x = rnbinom(100,mu=1,size=0.1)
+n = length(x)
+inits = list(list(mu=2,k=1))
+nbinom.bugs <- bugs(data=list("x","n"),
+                    inits,parameters.to.save=c("mu","k"),
+                    model.file="negbinom.bug",
+                    n.chains=1,n.iter=2000)
+@ 
+
+<<echo=FALSE>>=
+DBH <- X$DBH
+cones <- X$TOTCONES
+n <- length(DBH)
+
+<<echo=FALSE,eval=FALSE>>=
+inits <- list(list(a=0,b=0,k=1),list(a=2,b=-2,k=1),
+              list(a=-2,b=2,k=1))
+firfec0.bugs <- bugs(data=list("DBH","cones","n"),
+                       inits,parameters.to.save=c("a","b","k"),
+                       model.file="firfec0.bug",
+                       n.chains=length(inits),n.iter=9000)
+inits <- list(list(a=c(0,0),b=c(0,0),k=1),
+              list(a=c(2,0),b=c(-2,0),k=1),
+              list(a=c(0,2),b=c(0,-2),k=1))
+grp <- as.numeric(X$WAVE_NON)
+firfec1.bugs <- bugs(data=list("DBH","cones","n","grp"),
+                       inits,parameters.to.save=c("a","b","k"),
+                       model.file="firfec1.bug",
+                       n.chains=length(inits),n.iter=6000)
+inits <- list(list(a=c(0,0),b=c(0,0),k=c(1,1)),
+              list(a=c(2,0),b=c(-2,0),k=c(1,1)),
+              list(a=c(0,2),b=c(0,-2),k=c(1,1)))
+firfec2.bugs <- bugs(data=list("DBH","cones","n","grp"),
+                       inits,parameters.to.save=c("a","b","k"),
+                       model.file="firfec2.bug",
+                       n.chains=length(inits),n.iter=6000)
+@ 
+
+<<echo=FALSE>>=
+load("firfec-batch.RData")
+## load("firfec-batch2.RData")
+## load("firfec-batch3.RData")
+rm(DBH)
+@
+
+<<echo=FALSE>>=
+flist = list(firfec0.bugs,firfec1.bugs,firfec2.bugs)
+x0 = firfec0.bugs$sims.list$deviance
+x1 = firfec1.bugs$sims.list$deviance
+x2 = firfec2.bugs$sims.list$deviance
+mx = min(x2)
+## calc (offset) likelihood
+x0A = exp(-(x0-mx)/2)
+x1A = exp(-(x1-mx)/2)
+x2A = exp(-(x2-mx)/2)
+## harmonic mean estimator
+x0B = 1/mean(1/x0A)
+x1B = 1/mean(1/x1A)
+x2B = 1/mean(1/x2A)
+## plot(density(log(x0A),to=0),xlim=c(-90,0),ylim=c(0,0.04))
+## lines(density(log(x1A),to=0),col=2)
+## lines(density(log(x2A),to=0),col=4)
+postprob = c(x0B,x1B,x2B)/(x0B+x1B+x2B)
+## bfac = c(f01=x0B/x1B,f02=x0B/x2B,f12=x1B/x2B)
+bdiff <- -2*(log(postprob)-max(log(postprob)))
+@ 
+
+<<echo=FALSE>>=
+## postprob
+## AIC(nbfit.0,nbfit.ab,nbfit.abk,delta=TRUE,
+##    weights=TRUE)
+b1 = BICtab(nbfit.0,nbfit.ab,
+  nbfit.abk,delta=TRUE,nobs=nrow(X))
+## BIC(nbfit.0,nbfit.ab,
+##    nbfit.abk,nobs=nrow(X))
+@ 
+
+<<echo=FALSE>>=
+lprior.0 <- function(a,b,k) {
+  sum(dnorm(c(a,b),sd=10,log=TRUE))+dunif(k,0.1,5,log=TRUE)
+}
+lprior.ab <- function(a.w,b.w,a.n,b.n,k) {
+  sum(dnorm(c(a.w,a.n,b.w,b.n),sd=10,log=TRUE))+
+    dunif(k,0.1,5,log=TRUE)
+}
+lprior.abk <- function(a.w,b.w,a.n,b.n,k.w,k.n) {
+  sum(dnorm(c(a.w,a.n,b.w,b.n),sd=10,log=TRUE))+
+    sum(dunif(c(k.w,k.n),0.1,5,log=TRUE))
+}
+if (FALSE) {
+  ## need to rebuild mle/check/tweak
+  b0 <- bayesfactor(nbfit.0,log=TRUE,logprior=lprior.0)
+  b1 <- bayesfactor(nbfit.ab,log=TRUE,logprior=lprior.ab)
+  b2 <- bayesfactor(nbfit.abk,log=TRUE,logprior=lprior.abk)
+  bvec <- 2*c(b0,b1,b2)
+  bvec <- bvec-min(bvec)
+}
+@ 
+
+<<echo=FALSE>>=
+attach(X)
+nblpost.0 <- function(a,b,k) {
+  nbNLL.0(a,b,k)-lprior.0(a,b,k)
+}
+nblpost.ab <- function(a.n,a.w,b.n,b.w,k) {
+  nbNLL.ab(a.w,a.n,b.w,b.n,k)-lprior.ab(a.w,a.n,b.w,b.n,k)
+}
+nblpost.abk<- function(a.n,a.w,b.n,b.w,k.n,k.w) {
+  nbNLL.abk(a.w,a.n,b.w,b.n,k.w,k.n)-lprior.abk(a.w,a.n,b.w,b.n,k.w,k.n)
+}
+## redo fit with -1
+nbfit.ab = mle2(TOTCONES~dnbinom(mu=a*DBH^b,size=k),
+ start=start.ab, data=X,
+ parameters=list(a~WAVE_NON-1,b~WAVE_NON-1))
+start2 = as.list(coef(nbfit.ab))
+names(start2) <- names(formals(nblpost.ab)) 
+start3 = as.list(coef(nbfit.abk))
+names(start3) <- names(formals(nblpost.abk)) 
+p0 <- mle2(minuslogl=nblpost.0,start=list(a=1,b=1,k=1))
+p.ab <- mle2(minuslogl=nblpost.ab,start=start2)
+p.abk <- mle2(minuslogl=nblpost.abk,start=start3)
+detach(X)
+marglik <- function(obj,method="laplace",log=FALSE) {
+  v <- vcov(obj)
+  d <- nrow(v)
+  if (method=="laplace") {
+    logdet = c(determinant(v,logarithm=TRUE)$modulus)
+    r <- d/2*log(2*pi) + 1/2*logdet+c(logLik(obj))
+  } else if (method=="adapt") {
+    require(adapt)
+    c1 <- coef(obj)
+    sd <- sqrt(diag(v))
+    lower <- c1-3*sd
+    upper <- c1+3*sd
+    minval <- 0
+    fn <- function(p,log=FALSE) {
+      par <- as.list(p)
+      names(par) <- names(c1)
+      m <- obj@minuslogl
+      x <- do.call("m",par)-minval
+      if (log) x else exp(x)
+    }
+    adapt(d,lower,upper,functn=fn)
+  }
+  if (log) r else exp(r)
+}
+mlik2 <- sapply(list(p0,p.ab,p.abk),marglik,log=TRUE)
+mdiff <- -mlik2-min(-mlik2)
+@ 
+
+In practice, computing Bayes factors
+for a particular set of models can be tricky
+\citep{Congdon2003},
+involving either complicated multidimensional integrals
+or some kind of stochastic sampling from the
+prior distribution.
+One simple approximation is to calculate the
+\emph{harmonic mean} of the likelihoods
+returned from an MCMC run
+(the harmonic mean is $1/(\sum (1/L)/n)$).
+Another, the analogue
+of the quadratic approximations to the likelihood
+profile described above, is the \emph{Laplace approximation}
+which combines the posterior mode (the maximum value of
+prior $\times$ likelihood) with information on the
+curvature of the posterior probability density near
+the mode\footnote{The expression is
+$$\hat L \approx (2 \pi)^{d/2} |\mathbf{V}|^{1/2} \mbox{Post}_{\mbox{\small max}}$$
+where $d$ is the number of parameters,
+$|\mathbf{V}|$ is the determinant of the
+variance-covariance matrix estimated from
+the Hessian at the posterior mode, 
+and $\mbox{Post}_{\mbox{\small max}}$ is
+the height of the posterior mode.}.
+
+Most of these approximations improve as
+the sample size increases: \cite{KassRaftery1995}
+suggest that the Laplace approximation
+requires at least 5 times as
+many samples as parameters, and that the other approximations
+should be reasonable with 20 times as many samples
+as parameters.  
+How do these approximations compare for the fir data set, with \Sexpr{nrow(X)}
+data points and up to 6 parameters?
+% BIC: b1[,"delta"]
+% Laplace: mdiff
+% harmonic mean: bdiff
+<<results=tex,echo=FALSE>>=
+apptab = round(cbind(bdiff,mdiff,b1$dBIC),1)
+dimnames(apptab) = list(c("null","$a$, $b$ differ","$a$, $b$, $k$ differ"),
+          c("harmonic mean","Laplace","BIC"))
+latex(apptab,file="",title="",table.env=FALSE)
+@ 
+
+The different approximations of the
+Bayes factor do differ considerably,
+but the only qualitative 
+difference among them according to the rules of thumb is
+that the evidence supporting
+the null model (all parameters the same)
+over the model with different $a$ and $b$ parameters
+is ``positive'' according to the harmonic mean
+and ``strong'' according to the Laplace approximation and BIC.
+
+A more recent criterion, conveniently built into
+WinBUGS, is the DIC or \emph{deviance information criterion}, which was
+designed particularly for models containing random effects where even
+specifying the number of parameters is confusing (see Chapter~\ref{chap:var}).  
+To compute DIC, start by calculating
+$\bar D$, the average of the deviance (-2 $\times$
+log-likelihood) over the \emph{posterior} distribution (as contrasted
+with the marginal likelihood, which is the average over the prior
+distribution), and $\hat D$, which is the deviance calculated
+at the posterior mean parameters.
+Then use these two values to estimate an effective number
+of parameters $p_D=\bar D-\hat D$; the more spread out the posterior
+distribution, the bigger the difference between the deviance of the
+mean parameters and the mean deviance, and the larger the effective
+number of parameters.  Finally, as with AIC and BIC,
+use this effective number of
+parameters as a penalty term on the goodness of fit
+(defined in this case as the deviance at the mean parameters $\hat D$):
+DIC=$\hat D+2 p_D$.  As with all information criteria,
+lower values of DIC indicate a better model.  The rules of thumb
+are similar too: differences in DIC from 5--10 indicate that one
+model is clearly better, while models with difference in DIC $>10$
+probably don't need to be considered further \citep{Spiegelhalter+2002}.
+
+<<echo=FALSE>>=
+DICvec <- sapply(flist,"[[","DIC")
+pDvec <- sapply(flist,"[[","pD")
+@ 
+
+Two important cautions about the DIC are:
+\begin{itemize}
+\item if the model contains random effects (see chapter~9),
+the DIC focuses on the random effects.  In the
+fir tree case, because of a peculiarity of BUGS,
+we had to parameterize the negative binomial model
+by assuming that each tree's fecundity is a Poisson variable
+with a different, Gamma-distributed rate.  Since DIC focuses
+on random effects, it reports the effective number of parameters
+as $>200$ (it takes a lot of information to describe the
+variation in rates), and the effective number of
+parameters for the most complex model is actually 
+slightly \emph{smaller} than for the simpler model, because
+there is slightly less variation in the rates. 
+%\todo{DIC question???}
+This drop in effective model size gives the most
+complex model the lowest DIC.  
+However, the range of DICs is very
+small --- from \Sexpr{round(min(DICvec),1)} to
+\Sexpr{round(max(DICvec),1)} --- so we should just
+say that the models can't be well distinguished.
+\item DIC is convenient, and so it is likely to
+become established as the standard ``canned'' method of model
+comparison in Bayesian statistics.
+It has already begun to appear in ecological journals
+\citep{Jonsen+2003,Morales+2004,%
+McCarthyParris2004,OkuyamaBolker2005,Parris2006,Vesk2006}, but
+statisticians continue to debate its exact meaning
+and appropriateness (both \cite{Spiegelhalter+2002}
+and \cite{Celeux+2006} are accompanied by lively
+discussions).
+
+\end{itemize}
+
+The bottom line on Bayesian model selection is that,
+despite the conceptual simplicity of the Bayes factor
+(giving the ``average'' quality of fit to the data, and
+automatically incorporating a penalty for overfitting),
+it is relatively difficult to calculate and so is likely
+to be superseded by the convenient DIC.  
+You should exercise the same care with DIC as you would 
+with any canned model selection procedure.
+
+%\url{http://www.mrc-bsu.cam.ac.uk/bugs/winbugs/dicpage.shtml}
+%\begin{quote}
+% When are AIC, DIC and BIC appropriate?
+
+% In hierarchical models, these three techniques are essentially
+% answering different prediction problems.
+% Suppose the three levels of our model concerned classes within schools within a country. Then
+% \begin{enumerate}
+% \item if we were interested in predicting results of future classes in
+%   those actual schools, then DIC is appropriate (ie the random effects
+%   themselves are of interest);
+% \item if we were interested in predicting results of future schools in
+%   that country, then marginal-likelihood methods such as AIC are
+%   appropriate (ie the population parameters are of interest);
+% \item if we were interested in predicting results for a new country,
+%   then BIC/ Bayes factors are appropriate (ie the 'true' underlying
+%   model is of interest).
+% \end{enumerate}
+% \end{quote}
+
+\subsection{Model weighting and averaging}
+
+Bayesians themselves would say that you should not
+simply select one model.
+Taking the best model
+and ignoring the rest is equivalent to assigning a probability
+of 1.0 to the best and 0.0 to the rest.
+\emph{Model averaging} methods take the average of the
+predictions of different models, weighted by the probability
+of the models or by some other index.
+
+Bayesian model averaging simply takes the probabilities
+based on the marginal likelihoods or the BIC:
+the posterior probabilities of a set of models, if they
+all have equal prior probabilities, are the marginal
+likelihoods (or BICs) divided by the sum of the marginal
+likelihoods (or BICs)\footnote{Equal prior probabilities for
+all the models usually makes sense, although one does face
+some of the questions about equal priors raised in Chapter~\ref{chap:stoch}:
+for example, should all of the models incorporating differences
+between groups in the fir example be treated as subsets of
+a single model?}.
+If a set of models have BIC values, relative to the best one,
+of $\Delta B_i$ 
+(where $\Delta B_i = \mbox{BIC}_i - \min(\mbox{BIC})$),
+then the approximate posterior probabilities
+of the models, assuming all the prior probabilities are
+equal, are
+\begin{equation}
+p_i = \frac{e^{-\Delta B_i/2}}{\sum_{j=1}^n e^{-\Delta B_j/2}}.
+\label{eq:BIC1}
+\end{equation}
+To make a weighted prediction, use the
+posterior probabilities to combine
+the predictions of the different models (say
+$C_1, C_2, \ldots C_n$):
+\begin{equation}
+\hat C = \sum_{i=1}^n p_i C_i.
+\end{equation}
+Of course, you can do the same with marginal
+likelihoods.
+
+Burnham and Anderson have also promoted model averaging,
+in their case based on \emph{AIC weights}:
+ \citep{BurnhamAnderson1998,BurnhamAnderson2002}.
+The AIC weights are analogous to the probabilities
+calculated from the relative BIC values, but with
+AIC values substituted for BIC values in (\ref{eq:BIC1}).
+AIC weights have no probability interpretation, 
+but they can be used in model averaging
+\footnote{Akaike weights are widely
+and incorrectly presented as ``the probability that model $i$ 
+is the best model for the observed data, given the
+candidate set of models''
+\citep{Mazerolle2004,JohnsonOmland2004}.
+Burnham and Anderson (\citeyear{BurnhamAnderson2004})
+are slightly more careful: they
+say that the AIC weights
+``\emph{are interpreted as} probabilities \ldots'' (emphasis added),
+but it is clearly a slippery slope.
+Taking AIC weights as actual probabilities
+is trying to have one's cake and eat it too; the only rigorous
+way to get such probabilities of models is to use
+Bayesian inference, with its associated complexities
+\citep{LinkBarker2006}.}.
+
+Even if you don't do formal model averaging, AIC or BIC weights
+are a useful way of getting a feel for the relative
+goodness-of-fit of different models.
+
+<<echo=FALSE,eval=FALSE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5,mgp=c(2.3,1,0))
+curve(qchisq(0.95,x)/2,from=1,to=10,
+      xlab="Extra parameters",
+      ylab="Critical log-likelihood\ndifference")
+curve(1*x,add=TRUE,lty=2)
+curve(x*log(10)/2,add=TRUE,lty=3)
+curve(x*log(100)/2,add=TRUE,lty=4)
+legend("bottomright",
+       lty=1:4,
+       c("LRT","AIC","BIC, nobs=10",
+         "BIC, nobs=100"))
+par(op)
+@ 
+
+\subsection{Model criticism and goodness-of-fit tests}
+
+%% \todo{move up??}
+
+If the best model is a poor fit to the data, then 
+\emph{none} of the machinery of model selection and
+averaging makes sense.
+You should always check that your model gives
+a reasonable fit to the data.
+Goodness-of-fit testing may remind you of 
+the classical Pearson chi-square statistic,
+adding up $((\mbox{expected}-\mbox{observed})^2/\mbox{expected})$
+for all of your data to test whether there
+is more variance than expected around the 
+model predictions.
+However, the chi-square test only works for simple count data
+where the answers fall in discrete groups.
+If your data are continuous, or if you are using
+an overdispersed distribution such as the negative binomial,
+then your model contains a parameter
+describing the variance and the chi-square test 
+is no longer useful\footnote{Much of the protocol
+that \cite{BurnhamAnderson2002} have developed for working with AIC
+concerns testing 
+and correcting for overdispersion --- $\hat c$ in their notation.
+These overdispersion corrections are only relevant when your
+model uses a simple count distribution such as binomial or Poisson.}.
+
+In practice, \emph{model criticism} (a more generic
+term than goodness-of-fit testing) is simply common
+sense.  Are the predictions reasonable?  Are there
+consistent deviations from the estimates or unexplained
+outliers?  
+Start with a simple graph of the predictions of the model
+(Figure~\ref{fig:firfec}), to see whether the deterministic
+component of the model works well.
+
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5)
+predfun = function(a.n,a.w,b.n,b.w,k.n,k.w) {
+  wcode = as.numeric(X$WAVE_NON)
+  a = c(a.n,a.w)[wcode]
+  sl  = c(b.n,b.w)[wcode]
+  k = c(k.n,k.w)[wcode]
+  a*X$DBH^b
+}
+pred <- do.call("predfun",as.list(coef(p.abk)))
+par(pty="s")
+plot(pred,X$TOTCONES,xlab="Predicted cones",ylab="Actual cones",
+         xlim=range(pred),
+         ylim=range(pred),
+         log="xy",
+         pch=as.numeric(X$WAVE_NON))
+par(pty="m")
+abline(a=0,b=1)
+legend("topleft",c("nonwave","wave"),
+       pch=1:2,bty="n")
+par(op)
+@ 
+\caption{Predicted vs. actual cones for the
+fir data, on a logarithmic scale.}
+\label{fig:pred-act}
+\end{figure}
+
+A plot of predicted vs. actual data can 
+sometimes be useful (Figure~\ref{fig:pred-act}).
+You have already had to figure out how to calculate the
+predicted values in order to write a likelihood function.
+Take these values and plot them against the corresponding
+data points, then use \code{abline(a=0,b=1)} to add a
+predicted=actual line to the plot.  
+However, while the predicted-vs-actual plot can identify
+outliers, it really gives a consistency check rather
+than providing any new information.  
+Ideally, the scatter around the 
+predicted=actual line will be small --- in which
+case the deterministic component of the model explains
+most of the variation in the data, so that the
+model is precise as well as accurate (and therefore
+useful for prediction).  Remember, though, that
+a reasonable amount of unexplained variability does \emph{not}
+necessarily mean that the model fits badly or is not
+useful; it just means it can't make very
+precise predictions\footnote{People who are familiar with
+classical statistical approaches would often like
+to compute an $R^2$ statistic (proportion variance explained)
+for a model.
+Unfortunately, ``[d]espite various analogs
+for categorical response models, no proposed measure
+is as widely useful as $R$ and $R^2$'' \citep[p. 226]{Agresti2002}.}.
+Model criticism is more concerned with systematic deviations
+that suggest that the form of the model itself is wrong.
+
+Examining the goodness of fit of the stochastic part
+of a model is harder.  If the model contains only
+discrete groups (factors), you can divide the data
+into those groups and overlay the observed distribution
+(described by a histogram or density plot) with the
+predicted distribution.
+If it contains continuous covariates
+you will have to break the data up into discrete subsets
+in order to compare the predicted and observed distributions
+(Figure~\ref{fig:distgof}). 
+
+\begin{figure}
+\begin{center}
+<<echo=FALSE,fig=TRUE>>=
+dbh <- equal.count(X$DBH,number=4)
+c1 <- coef(p.abk)
+trellis.par.set(canonical.theme(color=FALSE))
+print(densityplot(~TOTCONES|dbh*WAVE_NON,data=X,from=0,
+                  ylim=c(0.0,0.04),
+                  xlim=c(0,350),
+            panel=function(x,...) {
+              panel.densityplot(x,...)
+              nonwave = (current.row()==1)
+              elevel = current.column()
+              meandbh <- mean(unlist(as.matrix(levels(dbh))[elevel,]))
+              coefs <- if (nonwave) c1[c(2,4,6)] else c1[c(1,3,5)]
+              m <- coefs[1]*meandbh^coefs[2]
+              k <- coefs[3]
+              llines(0:300,dnbinom(0:300,mu=m,size=k),col="darkgray")
+            }))
+@ 
+\end{center}
+\caption{Goodness-of-fit checking for the fir model.
+Panels break data up by wave/non-wave (rows) and
+DBH (columns) and plot the density of points for each
+category along with the predicted negative binomial
+distribution (gray) for the mean DBH value in the category.}
+\label{fig:distgof}
+\end{figure}
+
+%% \todo{mention q-q plots?? analog
+%% of ``predicted vs. actual'' for distributions \ldots}
+
+
+<<echo=FALSE,eval=FALSE>>=
+## pretty but too complex for now
+print(qqmath(~TOTCONES|dbh*WAVE_NON,data=X,
+             xlim=range(X$TOTCONES),ylim=range(X$TOTCONES),
+             panel=function(x,distribution,...) {
+               nonwave = (current.row()==1)
+               elevel = current.column()
+               meandbh <- mean(levels(dbh)[[elevel]])
+               coefs <- if (nonwave) c1[c(2,4,6)] else c1[c(1,3,5)]
+               m <- exp(coefs[1]+meandbh*coefs[2])
+               k <- coefs[3]
+               dfun <- function(q) {
+                 qnbinom(q,mu=m,size=k)
+               }
+               panel.qqmath(x,distribution=dfun,...)
+               panel.qqmathline(x,distribution=dfun,...)
+             }))
+
+@ 
+
+\subsection{Model selection: comparisons and conclusions}
+
+Deciding what models to use and how to use them is
+fundamentally difficult.
+In one form or another, this 
+debate goes all the way back
+to the early Bayesian/frequentist divide.
+While statisticians have come a long way in exploring
+the possible approaches and (to some extent) in providing
+practical recipes for applying them, we still do not
+have --- and never will have --- a single best method.
+
+\begin{itemize}
+\item \emph{Hypothesis testing based on the likelihood ratio test} is
+well-established, widely used, and simple to implement.  There are
+times when we really do want a yes-or-no answer about whether some
+ecological factor is affecting the system in a way that is
+distinguishable from randomness, and the LRT is appropriate here.  The
+LRT becomes unwieldy when there are many possibly interacting factors
+--- one has to choose a path through the nested hierarchy of factors
+(Figure~\ref{fig:nested}).  Analogous problems in multiple regression analysis
+led to stepwise model-building approaches, which are widely used 
+by researchers but widely dismissed by statisticians because they encourage
+data-dredging, and because the results can depend on the exact
+thresholds used to include or exclude factors from the model
+\citep{Whittingham+2006}.  
+
+If you do find yourself with seemingly inconsistent results from a LRT
+analysis (e.g. if some parameters are only significant when other
+parameters are included in the model: \cite{Lindsey1999b} calls
+these \emph{incompatible} results), examine your data carefully to
+understand how the fit changes with different sets of parameters.
+If two parameters explain essentially the same patterns in the
+data (e.g. if you are using strongly correlated predictors like
+soil moisture and precipitation), then whichever enters the model
+first will be selected.  On the other hand, the effects of
+nitrogen availability might only be visible once the effects
+of soil moisture are accounted for --- in this case, nitrogen
+would only be significant if soil moisture were in the model
+already.  These kinds of interactions are challenging, but
+handled properly they tell you more about what's going on in
+your data.
+
+\item \emph{Information theoretic (AIC-based) approaches} are also
+well-established and practical.  They neatly avoid the problem of
+pairwise testing, the need for nested models, and the philosophical
+issues associated with null hypothesis testing --- rather than asking
+about the probability of a more extreme outcome, they simply try to
+identify the model with the best predictive ability.  They can be used
+for model averaging, taking the predictions of all reasonable models
+into account, as well as for model testing.  However, AIC-based
+approaches can also be abused \citep{Guthery+2005}.
+Precisely because
+of their popularity and ease of use, they have led some ecologists
+down the path of
+data-dredging and thoughtless model selection (against the 
+explicit warnings of Burnham and Anderson, AIC's main proponents in ecology).
+
+AIC-based analyses make decisions based on rules of thumb about
+$\Delta \mbox{AIC}$ values or AIC weights, which are in turn based on
+extensive simulation analysis.  You can't interpret your results in
+terms of outcome probabilities or ``statistical significance'' (which
+may be a good thing).  In some theoretical situations
+(i.e. when sample sizes grow to infinity but the set of candidate
+models remains fixed), AIC is known to ``overfit'' data by choosing
+an inappropriately complex model.
+Researchers hotly debate 
+the practical relevance of these criteria \citep{Spiegelhalter+2002,%
+BurnhamAnderson2004,LinkBarker2006}.
+
+\item \emph{Bayesian (marginal likelihood, BIC, DIC) approaches} are
+philosophically satisfying since they allow us to state results in
+terms of posterior probabilities of different models.  The selection
+criteria (posterior probabilities) depend on the number of the
+parameters and on the sample size, which seems sensible.  However,
+Bayesian approaches are also challenging to apply.  Marginal
+likelihood is hard to calculate in a stable way; BIC is an
+approximation to the marginal likelihood that applies when sample
+sizes are large \emph{and} the priors are vague (AIC is similarly an
+approximation to a marginal likelihood with a fairly strongly
+informative prior).  For reasonable sample sizes,
+BIC will be more conservative than AIC; whether this conservatism is
+appropriate or not is still a matter of deep contention.
+Some researchers feel that a method that gives the wrong answer
+as more and more information is available is unacceptable; others
+say that we should be more concerned with the performance of the
+method in the more realistic, data-limited case
+\footnote{\cite{Lindsey1999b} suggests an adjustable penalty
+term that depends on the sample size and may fall somewhere
+between the AIC and BIC criteria, but he gives little practical
+advice on deciding what penalty term to use.}.
+
+Bayesian approaches are
+also sensitive to the priors used: one may not be able to get away
+with the common practice of 
+setting a vague prior and forgetting about it.  DIC is promising,
+but continues to be controversial among statisticians.  According to
+%\cite[p. 613]{Spiegelhalter+2002},
+Spiegelhalter et al. (2002, p. 613), 
+it is ``a Bayesian analogue of AIC,
+with a similar justification but wider applicability''.
+It is similar
+to AIC in its large-sample behavior.  DIC is likely to become
+increasingly popular among ecologists using WinBUGS since it is
+implemented by default.
+
+\end{itemize}
+
+Should we use formal rules to do model selection (or model averaging)
+at all?
+Many Bayesians would say that all possible
+model components really exist in the world, and we ought not throw
+components away just because they fall below some arbitrary threshold
+criterion.
+\cite{Gelman+1996} prefer to formulate selection
+problems as estimating a 
+continuous parameter rather than selecting
+from discrete choices.  Bayesians do recognize the fundamental
+tradeoff between bias and variance, but in general they use less
+formal methods (such as checking whether the 
+marginal posterior distribution
+has a peak, indicating that the model component is not
+just adding noise to the model) 
+to decide what components to include.
+
+A second, more intuitive argument usually comes from biologists, who are
+unhappy when their favorite 
+bit of biology is dropped from a model even
+though they \emph{know} that mechanism operates in nature.
+If you want to evaluate the effects of age structure
+(or spatial structure, or genetic structure) on population
+dynamics, you have to include it in the model even if a formal
+model selection procedure tells you to leave it out
+\cite[p. 261]{HilbornMangel1997}.  What the
+model selection criterion is warning you, however, is that you
+may be basing your conclusions on dangerously little information.
+
+A third argument often comes from conservationists who are concerned
+that adding a biologically relevant but statistically insignificant
+term to the model changes the predicted dynamics of a species, often
+for the worse.  This is a real problem, but it is also sometimes used
+dishonestly.  Adding complexity to a model often makes its dynamics
+less stable, and if you're looking to bolster an argument that a
+species is in trouble and needs to be protected, you'll favor results
+that show the species is in trouble.  How often do we see
+conservationists arguing for more realistic biological models that
+suggest that a species is in no real danger and needs no protection?
+(On the flip side, how often do we see developers arguing that we
+should sample more thoroughly to make absolutely sure that there are
+no endangered species on a tract of land before starting construction?)
+
+There are rules of thumb and procedures for model selection, but they
+don't settle the fundamental questions of model selection.  Is
+parsimony really the most important thing?  Is it OK to add more
+complexity to the model if you're interested in a particular
+biological mechanism, even if the data don't appear to support it?  In
+the end you have to learn all the rules, but also know when to bend
+them --- and when you do bend them, give a clear justification.
+The plethora of available model selection approaches opens a
+new avenue for data dredging, by trying every model
+selection procedure on your models and choosing the one
+that gives you the answers you want.
+
+
+%\newpage
+%\section*{\R\ supplement}
+
+%Tricks: \code{with}
+
+
+\section*{Conclusion}
+
+This chapter has covered an enormous amount of 
+material, starting from
+the basic ideas of likelihood and maximum likelihood estimation,
+discussing various ways of estimating confidence intervals, and
+tackling the contentious issue of hypothesis testing and model
+selection.  The two big ideas to take away are:
+(1) The geometry of the likelihood surface or posterior probability
+distribution --- where it peaks and how 
+the distribution falls off around the peak
+--- contains essentially all the information you need to estimate
+parameters and confidence intervals.
+(2) Deciding which models
+best describe a given set of data is necessary, but essentially
+impossible to do in a completely consistent way.
+
+
+
+
+
+

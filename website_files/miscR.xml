@@ -1,0 +1,155 @@
+<?xml version="1.0"?>
+<!DOCTYPE html    PUBLIC "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN"
+           "http://www.w3.org/Math/DTD/mathml2/xhtml-math11-f.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="GENERATOR" content="TtM 3.70" />
+ <style type="text/css">
+ div.p { margin-top: 7pt; }
+ span.roman {font-family: serif; font-style: normal; font-weight: normal;} 
+</style>
+ 
+
+
+<title> Miscellaneous \R notes </title>
+</head>
+<body>
+ 
+<h1 align="center">Miscellaneous  R&nbsp;notes </h1>
+
+<h3 align="center">&#169; 2005 Ben Bolker </h3>
+
+<div class="p"><!----></div>
+ 
+<ol type="1">
+<li><b>installing packages without administrative privileges:</b>
+The following commands install  R&nbsp;packages
+(in this case the
+<tt>plotrix</tt>, <tt>gplots</tt>, <tt>gtools</tt>
+and <tt>gdata</tt> packages) into a working
+folder and then attach them.
+First go to the file menu, and <tt>Change dir</tt> to your Desktop or My Documents
+or something.  Then:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;desktop&nbsp;=&nbsp;getwd()
+&#62;&nbsp;options(repos&nbsp;=&nbsp;"http://cran.us.r-project.org")
+&#62;&nbsp;install.packages("plotrix",&nbsp;destdir&nbsp;=&nbsp;desktop,&nbsp;lib&nbsp;=&nbsp;desktop)
+&#62;&nbsp;library(plotrix,&nbsp;lib&nbsp;=&nbsp;desktop)
+&#62;&nbsp;install.packages("gplots",&nbsp;destdir&nbsp;=&nbsp;desktop,&nbsp;lib&nbsp;=&nbsp;desktop)
+&#62;&nbsp;install.packages("gtools",&nbsp;destdir&nbsp;=&nbsp;desktop,&nbsp;lib&nbsp;=&nbsp;desktop)
+&#62;&nbsp;install.packages("gdata",&nbsp;destdir&nbsp;=&nbsp;desktop,&nbsp;lib&nbsp;=&nbsp;desktop)
+&#62;&nbsp;library(gtools,&nbsp;lib&nbsp;=&nbsp;desktop)
+&#62;&nbsp;library(gdata,&nbsp;lib&nbsp;=&nbsp;desktop)
+&#62;&nbsp;library(gplots,&nbsp;lib&nbsp;=&nbsp;desktop)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+</li>
+
+<li><b>Dealing with times in  R&nbsp;(lab 2):</b>
+use the <tt>times()</tt> function in
+the <tt>chron</tt> library to convert character
+vectors or factor to times.  e.g.:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;timevec1&nbsp;=&nbsp;c("11:00:00",&nbsp;"11:25:30",&nbsp;"15:30:20")
+&#62;&nbsp;times1&nbsp;=&nbsp;times(timevec1)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+If you have times with no seconds component,
+use something like
+<tt>timevec1=paste(timevec1,":00",sep="")</tt>
+to add seconds before you try to convert.
+
+<div class="p"><!----></div>
+</li>
+
+<li>
+<b>More on reshaping data:</b>
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;set.seed(1001)
+&#62;&nbsp;mydata&nbsp;=&nbsp;data.frame(indiv&nbsp;=&nbsp;rep(1:3,&nbsp;c(3,&nbsp;4,&nbsp;5)),&nbsp;sex&nbsp;=&nbsp;factor(c(rep("F",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7),&nbsp;rep("M",&nbsp;5))),&nbsp;day&nbsp;=&nbsp;c(1:3,&nbsp;1:4,&nbsp;1:5),&nbsp;dist&nbsp;=&nbsp;runif(12))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Reshaping data (as Caro says) introduces <tt>NA</tt>
+values:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;r1&nbsp;=&nbsp;reshape(mydata,&nbsp;direction&nbsp;=&nbsp;"wide",&nbsp;idvar&nbsp;=&nbsp;"indiv",&nbsp;timevar&nbsp;=&nbsp;"day",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;v.names&nbsp;=&nbsp;"dist")
+&#62;&nbsp;r1
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;indiv&nbsp;sex&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dist.1&nbsp;&nbsp;&nbsp;&nbsp;dist.2&nbsp;&nbsp;&nbsp;&nbsp;dist.3&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dist.4&nbsp;&nbsp;&nbsp;&nbsp;dist.5
+1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;F&nbsp;0.98568878&nbsp;0.4126285&nbsp;0.4295392&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NA
+4&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;F&nbsp;0.41917224&nbsp;0.4265066&nbsp;0.8877976&nbsp;0.006096034&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NA
+8&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;M&nbsp;0.08121576&nbsp;0.2886574&nbsp;0.7653421&nbsp;0.442924182&nbsp;0.1383630
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Tabulate number of individual females in this format:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;table(r1$sex)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+
+F&nbsp;M&nbsp;
+2&nbsp;1&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+There may be a better way to do this but I haven't thought
+of it yet ...
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;splitdata&nbsp;=&nbsp;split.data.frame(mydata,&nbsp;mydata$indiv)
+&#62;&nbsp;firstlines&nbsp;=&nbsp;lapply(splitdata,&nbsp;function(x)&nbsp;x[1,&nbsp;])
+&#62;&nbsp;recombined&nbsp;=&nbsp;do.call("rbind",&nbsp;firstlines)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+</li>
+</ol>
+
+<div class="p"><!----></div>
+
+<br /><br /><hr /><small>File translated from
+T<sub><font size="-1">E</font></sub>X
+by <a href="http://hutchinson.belmont.ma.us/tth/">
+T<sub><font size="-1">T</font></sub>M</a>,
+version 3.70.<br />On 15 Sep 2005, 14:01.</small>
+</body></html>

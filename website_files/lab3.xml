@@ -1,0 +1,766 @@
+<?xml version="1.0"?>
+<!DOCTYPE html    PUBLIC "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN"
+           "http://www.w3.org/Math/DTD/mathml2/xhtml-math11-f.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="GENERATOR" content="TtM 3.70" />
+ <style type="text/css">
+ div.p { margin-top: 7pt; }
+ span.roman {font-family: serif; font-style: normal; font-weight: normal;} 
+</style>
+ 
+
+
+<title> Analyzing functions: lab 3 </title>
+</head>
+<body>
+ 
+<h1 align="center">Analyzing functions: lab 3 </h1>
+
+<h3 align="center">&#169; 2005 Ben Bolker </h3>
+
+ This lab will be somewhat shorter in terms of " R&nbsp;stuff"
+than the previous labs, because more of the new material
+is algebra and calculus than  R&nbsp;commands.
+Try to do a reasonable amount of the work with paper
+and pencil before resorting to messing around in  R.
+
+<div class="p"><!----></div>
+derivatives
+ifelse for thresholds
+
+<div class="p"><!----></div>
+ <h2><a name="tth_sEc1">
+1</a>&nbsp;&nbsp;Numerical experimentation: plotting curves</h2>
+
+<div class="p"><!----></div>
+Here are the  R&nbsp;commands used to generate Figure&nbsp;1.  They
+just use <tt>curve()</tt>, with <tt>add=FALSE</tt> (the default,
+which draws a new plot) and <tt>add=TRUE</tt> (adds the curve
+to an existing plot), particular 
+values of <tt>from</tt> and <tt>to</tt>, and various graphical parameters
+(<tt>ylim</tt>, <tt>ylab</tt>, <tt>lty</tt>).
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;curve(2&nbsp;*&nbsp;exp(-x/2),&nbsp;from&nbsp;=&nbsp;0,&nbsp;to&nbsp;=&nbsp;7,&nbsp;ylim&nbsp;=&nbsp;c(0,&nbsp;2),&nbsp;ylab&nbsp;=&nbsp;"")
+&#62;&nbsp;curve(2&nbsp;*&nbsp;exp(-x),&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;lty&nbsp;=&nbsp;4)
+&#62;&nbsp;curve(x&nbsp;*&nbsp;exp(-x/2),&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;lty&nbsp;=&nbsp;2)
+&#62;&nbsp;curve(2&nbsp;*&nbsp;x&nbsp;*&nbsp;exp(-x/2),&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;lty&nbsp;=&nbsp;3)
+&#62;&nbsp;text(0.4,&nbsp;1.9,&nbsp;expression(paste("exponential:&nbsp;",&nbsp;2&nbsp;*&nbsp;e^(-x/2))),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;adj&nbsp;=&nbsp;0)
+&#62;&nbsp;text(4,&nbsp;0.7,&nbsp;expression(paste("Ricker:&nbsp;",&nbsp;x&nbsp;*&nbsp;e^(-x/2))))
+&#62;&nbsp;text(4,&nbsp;0.25,&nbsp;expression(paste("Ricker:&nbsp;",&nbsp;2&nbsp;*&nbsp;x&nbsp;*&nbsp;e^(-x/2))),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;adj&nbsp;=&nbsp;0)
+&#62;&nbsp;text(2.8,&nbsp;0,&nbsp;expression(paste("exponential:&nbsp;",&nbsp;2&nbsp;*&nbsp;e^(-x))))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The only new thing in this figure is the
+use of <tt>expression()</tt> to add a mathematical
+formula to an  R&nbsp;graphic.  <tt>text(x,y,"x^2")</tt>
+puts <tt>x^2</tt> on the graph at position 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo stretchy="false">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="false">)</mo></mrow></math>;
+<tt>text(x,y,expression(x^2))</tt> (no quotation marks)
+puts 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow><mi>x</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow></math> on the graph.  See <tt>?plotmath</tt> or
+<tt>?demo(plotmath)</tt> for (much) more information.
+
+<div class="p"><!----></div>
+An alternate way of plotting the exponential parts of this
+curve:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;xvec&nbsp;=&nbsp;seq(0,&nbsp;7,&nbsp;length&nbsp;=&nbsp;100)
+&#62;&nbsp;exp1_vec&nbsp;=&nbsp;2&nbsp;*&nbsp;exp(-xvec/2)
+&#62;&nbsp;exp2_vec&nbsp;=&nbsp;2&nbsp;*&nbsp;exp(-xvec)
+&#62;&nbsp;plot(xvec,&nbsp;exp1_vec,&nbsp;type&nbsp;=&nbsp;"l",&nbsp;ylim&nbsp;=&nbsp;c(0,&nbsp;2),&nbsp;ylab&nbsp;=&nbsp;"")
+&#62;&nbsp;lines(xvec,&nbsp;exp2_vec,&nbsp;lty&nbsp;=&nbsp;4)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+or, since both exponential vectors are the
+same length, we could <tt>cbind()</tt> them
+together and use <tt>matplot()</tt>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;matplot(xvec,&nbsp;cbind(exp1_vec,&nbsp;exp2_vec),&nbsp;type&nbsp;=&nbsp;"l",&nbsp;ylab&nbsp;=&nbsp;"")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Finally, if you needed to use <tt>sapply()</tt>
+you could say:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;expfun&nbsp;=&nbsp;function(x,&nbsp;a&nbsp;=&nbsp;1,&nbsp;b&nbsp;=&nbsp;1)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a&nbsp;*&nbsp;exp(-b&nbsp;*&nbsp;x)
++&nbsp;}
+&#62;&nbsp;exp1_vec&nbsp;=&nbsp;sapply(xvec,&nbsp;expfun,&nbsp;a&nbsp;=&nbsp;2,&nbsp;b&nbsp;=&nbsp;1/2)
+&#62;&nbsp;exp2_vec&nbsp;=&nbsp;sapply(xvec,&nbsp;expfun,&nbsp;a&nbsp;=&nbsp;2,&nbsp;b&nbsp;=&nbsp;1)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The advantage of <tt>curve()</tt> is that you 
+don't have to define any vectors: the advantage
+of doing things the other way arises when
+you want to keep the vectors around to do
+other calculations with them.
+
+<div class="p"><!----></div>
+<b>Exercise 1*</b>: Construct a curve
+that has a maximum at (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi><mo>=</mo><mn>5</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>y</mi><mo>=</mo><mn>1</mn></mrow></math>).  Write the
+equation, draw the curve in  R, and explain
+how you got there.
+
+<div class="p"><!----></div>
+     <h3><a name="tth_sEc1.1">
+1.1</a>&nbsp;&nbsp;A quick digression: <tt>ifelse()</tt> for piecewise functions</h3>
+
+<div class="p"><!----></div>
+The <tt>ifelse()</tt> command in  R&nbsp;is useful for constructing
+piecewise functions.  Its basic syntax is
+<tt>ifelse(condition,value_if_true,value_if_false)</tt>,
+where <tt>condition</tt> is a logical vector
+(e.g. <tt>x&#62;0</tt>), <tt>value_if_true</tt> is a vector
+of alternatives to use if <tt>condition</tt> is
+<tt>TRUE</tt>, and <tt>value_if_false</tt> is a vector
+of alternatives to use if <tt>condition</tt> is
+<tt>FALSE</tt>.  If you specify just one value, it
+will be expanded (<em>recycled</em> in  R&nbsp;jargon)
+to be the right length.
+A simple example:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;x&nbsp;=&nbsp;c(-25,&nbsp;-16,&nbsp;-9,&nbsp;-4,&nbsp;-1,&nbsp;0,&nbsp;1,&nbsp;4,&nbsp;9,&nbsp;16,&nbsp;25)
+&#62;&nbsp;ifelse(x&nbsp;&lt;&nbsp;0,&nbsp;0,&nbsp;sqrt(x))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;[1]&nbsp;0&nbsp;0&nbsp;0&nbsp;0&nbsp;0&nbsp;0&nbsp;1&nbsp;2&nbsp;3&nbsp;4&nbsp;5
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+These commands produce a warning message, but it's OK
+to ignore it since you know you've taken care of the
+problem (if you said <tt>sqrt(ifelse(x&lt;0,0,x))</tt> instead
+you wouldn't get a warning: why not?)
+
+<div class="p"><!----></div>
+Here are some examples of using <tt>ifelse()</tt> to generate
+(1) a simple threshold; (2) a Holling type&nbsp;I or
+"hockey stick"; (3) a more complicated piecewise model
+that grows exponentially and then decreases linearly;
+(4) a double-threshold model.
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;op&nbsp;=&nbsp;par(mfrow&nbsp;=&nbsp;c(2,&nbsp;2),&nbsp;mgp&nbsp;=&nbsp;c(2,&nbsp;1,&nbsp;0),&nbsp;mar&nbsp;=&nbsp;c(4.2,&nbsp;3,&nbsp;1,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1))
+&#62;&nbsp;curve(ifelse(x&nbsp;&lt;&nbsp;2,&nbsp;1,&nbsp;3),&nbsp;from&nbsp;=&nbsp;0,&nbsp;to&nbsp;=&nbsp;5)
+&#62;&nbsp;curve(ifelse(x&nbsp;&lt;&nbsp;2,&nbsp;2&nbsp;*&nbsp;x,&nbsp;4),&nbsp;from&nbsp;=&nbsp;0,&nbsp;to&nbsp;=&nbsp;5)
+&#62;&nbsp;curve(ifelse(x&nbsp;&lt;&nbsp;2,&nbsp;exp(x),&nbsp;exp(2)&nbsp;-&nbsp;3&nbsp;*&nbsp;(x&nbsp;-&nbsp;2)),&nbsp;from&nbsp;=&nbsp;0,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;to&nbsp;=&nbsp;5)
+&#62;&nbsp;curve(ifelse(x&nbsp;&lt;&nbsp;2,&nbsp;1,&nbsp;ifelse(x&nbsp;&lt;&nbsp;4,&nbsp;3,&nbsp;5)),&nbsp;from&nbsp;=&nbsp;0,&nbsp;to&nbsp;=&nbsp;5)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab3-006.png" alt="lab3-006.png" />
+
+<div class="p"><!----></div>
+The double-threshold example (nested
+<tt>ifelse()</tt> commands) probably needs
+more explanation.  In words, this command would
+go "if 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi></mrow></math> is less than 2, set 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>y</mi></mrow></math> to 1; otherwise
+(
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi><mo>&ge;</mo><mn>2</mn></mrow></math>), if 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi></mrow></math> is less than 4 (i.e. 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mn>2</mn><mo>&le;</mo><mi>x</mi><mo>&lt;</mo><mn>4</mn></mrow></math>), set 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>y</mi></mrow></math> to 3;
+otherwise (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi><mo>&ge;</mo><mn>4</mn></mrow></math>), set 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>y</mi></mrow></math> to 5".
+
+<div class="p"><!----></div>
+ <h2><a name="tth_sEc2">
+2</a>&nbsp;&nbsp;Evaluating derivatives in  R</h2>
+ R&nbsp;can evaluate derivatives, but it is not
+very good at simplifying them.
+In order for  R&nbsp;to know that you really
+mean (e.g) <tt>x^2</tt> to be a mathematical
+expression and not a calculation for  R&nbsp;to
+try to do (and either fill in the current
+value of <tt>x</tt> or give an error is
+<tt>x</tt> is undefined), you have to specify
+it as <tt>expression(x^2)</tt>; you 
+also have to tell  R&nbsp;(in quotation marks)
+what variable you want to differentiate
+with respect to:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;d1&nbsp;=&nbsp;D(expression(x^2),&nbsp;"x")
+&#62;&nbsp;d1
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+2&nbsp;*&nbsp;x
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Use <tt>eval()</tt> to fill in 
+a list of particular
+values for which you want a numeric answer:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;eval(d1,&nbsp;list(x&nbsp;=&nbsp;2))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;4
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Taking the second derivative:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;D(d1,&nbsp;"x")
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;2
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(As of version 2.0.1,)  R&nbsp;knows how
+to take the derivatives of expressions including
+all the basic arithmetic operators;
+exponentials and logarithms; trigonometric
+inverse trig, and hyperbolic trig functions;
+square roots; and normal (Gaussian)
+density and cumulative density functions;
+and gamma and log-gamma functions.
+You're on your own for anything else
+(consider using a symbolic algebra package
+like Mathematica or Maple, at least to check
+your answers, if your problem is very complicated).
+<tt>deriv()</tt> is a slightly more complicated
+version of <tt>D()</tt> that is useful for incorporating
+the results of differentiation into functions:
+see the help page.
+
+<div class="p"><!----></div>
+ <h2><a name="tth_sEc3">
+3</a>&nbsp;&nbsp;Figuring out the logistic curve</h2>
+
+<div class="p"><!----></div>
+The last part of this exercise is an example of figuring out a
+function - Chapter 3 did this for the exponential,
+Ricker, and Michaelis-Menten functions
+The population-dynamics form of the logistic
+equation is 
+<a name="eq:pop-logist">
+</a><br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow><mi>n</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>=</mo>
+<mfrac><mrow><mi>K</mi></mrow>
+<mrow><mn>1</mn><mo>+</mo><mrow><mo>(</mo>
+<mfrac><mrow><mi>K</mi></mrow>
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow>
+</mfrac>
+<mo>-</mo><mn>1</mn><mo>)</mo></mrow><mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>r</mi><mi>t</mi><mo stretchy="false">)</mo></mrow>
+</mfrac>
+</mrow>
+    </mstyle></math></td><td width="1">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow><mo stretchy="false">(</mo><mn>1</mn><mo stretchy="false">)</mo></mrow>
+    </mstyle></math>
+</td></tr></table>
+
+
+where 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>K</mi></mrow></math> is carrying
+capacity, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>r</mi></mrow></math> is intrinsic population growth rate, and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow></math> is
+initial density.
+
+<div class="p"><!----></div>
+At 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>t</mi><mo>=</mo><mn>0</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow><mi>e</mi></mrow><mrow><mo>-</mo><mi>rt</mi></mrow>
+</msup>
+<mo>=</mo><mn>1</mn></mrow></math> and this reduces to 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow></math>
+(as it had better!)
+
+<div class="p"><!----></div>
+Finding the derivative with respect to time is pretty ugly,
+but it will to reduce to something you may already know.
+Writing the equation as 
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>=</mo><mi>K</mi><mo>&middot;</mo><mo stretchy="false">(</mo>
+<mtext>stuff</mtext>
+
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mo>-</mo><mn>1</mn></mrow>
+</msup>
+</mrow></math>
+and using the chain rule we get
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo>'</mo><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>=</mo><mi>K</mi><mo>&middot;</mo><mo stretchy="false">(</mo>
+<mtext>stuff</mtext>
+
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mo>-</mo><mn>2</mn></mrow>
+</msup>
+<mo>&middot;</mo><mi>d</mi><mo stretchy="false">(</mo>
+<mtext>stuff</mtext>
+<mo stretchy="false">)</mo><mo stretchy="false">/</mo><mi>dt</mi></mrow></math>
+(
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<mtext>stuff</mtext>
+<mo>=</mo><mn>1</mn><mo>+</mo><mo stretchy="false">(</mo><mi>K</mi><mo stretchy="false">/</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo><mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>rt</mi><mo stretchy="false">)</mo></mrow></math>).
+The derivative 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>d</mi><mo stretchy="false">(</mo>
+<mtext>stuff</mtext>
+<mo stretchy="false">)</mo><mo stretchy="false">/</mo><mi>dt</mi></mrow></math>
+is 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo stretchy="false">(</mo><mi>K</mi><mo stretchy="false">/</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo><mo>&middot;</mo><mo>-</mo><mi>r</mi><mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>rt</mi><mo stretchy="false">)</mo></mrow></math>.
+At 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>t</mi><mo>=</mo><mn>0</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<mtext>stuff</mtext>
+<mo>=</mo><mi>K</mi><mo stretchy="false">/</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow></math>,
+and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>d</mi><mo stretchy="false">(</mo>
+<mtext>stuff</mtext>
+<mo stretchy="false">)</mo><mo stretchy="false">/</mo><mi>dt</mi><mo>=</mo><mo>-</mo><mi>r</mi><mo stretchy="false">(</mo><mi>K</mi><mo stretchy="false">/</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo></mrow></math>.
+So this all comes out to
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow><mi>K</mi><mo>&middot;</mo><mo stretchy="false">(</mo><mi>K</mi><mo stretchy="false">/</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn>
+<msup><mrow><mo stretchy="false">))</mo></mrow><mrow><mo>-</mo><mn>2</mn></mrow>
+</msup>
+<mo>&middot;</mo><mo>-</mo><mi>r</mi><mo stretchy="false">(</mo><mi>K</mi><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mi>n</mi><mn>0</mn><mo stretchy="false">)</mo><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo><mo>=</mo><mo>-</mo><mi>r</mi><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">/</mo><mi>K</mi><mo>&middot;</mo><mo stretchy="false">(</mo><mi>K</mi><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mi>n</mi><mn>0</mn><mo stretchy="false">)</mo><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo><mo>=</mo><mi>r</mi><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mi>K</mi><mo stretchy="false">)</mo></mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+which should be reminiscent of intro. ecology:
+we have rediscovered, by working backwards
+from the time-dependent solution, that the
+logistic equation arises from a linearly
+decreasing <em>per capita</em> growth rate.
+
+<div class="p"><!----></div>
+If 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow></math> is small we can do better than
+just getting the intercept and slope.
+
+<div class="p"><!----></div>
+<b>Exercise 2*</b>: show that
+if 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow></math> is very small (and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>t</mi></mrow></math> is not too big), 
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>&ap;</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mi>exp</mi><mo stretchy="false">(</mo><mi>r</mi><mi>t</mi><mo stretchy="false">)</mo></mrow></math>. (Start by showing that 
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>K</mi><mo stretchy="false">/</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo>
+<msup><mrow><mi>e</mi></mrow><mrow><mo>-</mo><mi>rt</mi></mrow>
+</msup>
+</mrow></math> dominates all
+the other terms in the denominator.)
+
+<div class="p"><!----></div>
+If 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>t</mi></mrow></math> is small, this reduces (because
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow><mi>e</mi></mrow><mrow><mi>rt</mi></mrow>
+</msup>
+<mo>&ap;</mo><mn>1</mn><mo>+</mo><mi>rt</mi></mrow></math>) to
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>&ap;</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo>+</mo><mi>r</mi><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mi>t</mi></mrow></math>,
+a linear increase with slope 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>rn</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow></math>.
+Convince yourself that this matches
+the expression we got for the derivative
+when 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow></math> is small.
+
+<div class="p"><!----></div>
+For large 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>t</mi></mrow></math>, convince yourself tha
+the value of the
+function approaches 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>K</mi></mrow></math> and
+(by revisiting
+the expressions for the derivative above)
+that the slope approaches zero.
+
+<div class="p"><!----></div>
+The half-maximum occurs when the 
+denominator (also known as 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<mtext>stuff</mtext>
+</mrow></math> above) is
+2; we can solve 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<mtext>stuff</mtext>
+<mo>=</mo><mn>2</mn></mrow></math> for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>t</mi></mrow></math>
+(getting to 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo stretchy="false">(</mo><mi>K</mi><mo stretchy="false">/</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo><mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>rt</mi><mo stretchy="false">)</mo><mo>=</mo><mn>1</mn></mrow></math>
+and taking logarithms on both sides)
+to get 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>t</mi><mo>=</mo><mi>log</mi><mo stretchy="false">(</mo><mi>K</mi><mo stretchy="false">/</mo><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo><mo>-</mo><mn>1</mn><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mi>r</mi></mrow></math>.
+
+<div class="p"><!----></div>
+We have (roughly) three options:
+
+<div class="p"><!----></div>
+
+<ol type="1">
+<li> Use <tt>curve()</tt>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;r&nbsp;=&nbsp;1
+&#62;&nbsp;K&nbsp;=&nbsp;1
+&#62;&nbsp;n0&nbsp;=&nbsp;0.1
+&#62;&nbsp;curve(K/(1&nbsp;+&nbsp;(K/n0&nbsp;-&nbsp;1)&nbsp;*&nbsp;exp(-r&nbsp;*&nbsp;x)),&nbsp;from&nbsp;=&nbsp;0,&nbsp;to&nbsp;=&nbsp;10)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(note that we have to use <tt>x</tt> and
+not <tt>t</tt> in the expression for the logistic).
+
+<div class="p"><!----></div>
+</li>
+
+<li>Construct the time vector by hand
+and compute a vector of population values
+using vectorized operations:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;t_vec&nbsp;=&nbsp;seq(0,&nbsp;10,&nbsp;length&nbsp;=&nbsp;100)
+&#62;&nbsp;logist_vec&nbsp;=&nbsp;K/(1&nbsp;+&nbsp;(K/n0&nbsp;-&nbsp;1)&nbsp;*&nbsp;exp(-r&nbsp;*&nbsp;t_vec))
+&#62;&nbsp;plot(t_vec,&nbsp;logist_vec,&nbsp;type&nbsp;=&nbsp;"l")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+</li>
+
+<li>write our own function for the logistic
+and use <tt>sapply()</tt>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;logistfun&nbsp;=&nbsp;function(t,&nbsp;r&nbsp;=&nbsp;1,&nbsp;n0&nbsp;=&nbsp;0.1,&nbsp;K&nbsp;=&nbsp;1)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;K/(1&nbsp;+&nbsp;(K/n0&nbsp;-&nbsp;1)&nbsp;*&nbsp;exp(-r&nbsp;*&nbsp;t))
++&nbsp;}
+&#62;&nbsp;logist_vec&nbsp;=&nbsp;sapply(t_vec,&nbsp;logistfun)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<b>When we use this
+function, it will no longer matter how
+<tt>r</tt>, <tt>n0</tt> and <tt>K</tt> are
+defined in the workspace: the
+values that  R&nbsp;uses in <tt>logistfun()</tt>
+are those that we define in the 
+call to the function.</b>
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;r&nbsp;=&nbsp;17
+&#62;&nbsp;logistfun(1,&nbsp;r&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.4508531
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;r&nbsp;=&nbsp;0
+&#62;&nbsp;logistfun(1,&nbsp;r&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.4508531
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+</li>
+</ol>
+
+<div class="p"><!----></div>
+We can do more with this plot: let's see if our
+conjectures are right.  
+Using <tt>abline()</tt>
+and <tt>curve()</tt> to add horizontal lines to a plot
+to test our estimates of starting value and ending value,
+vertical and horizontal lines that intersect at the half-maximum,
+a line with the intercept and initial linear slope, and
+a curve corresponding to the initial exponential increase:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;curve(logistfun(x),&nbsp;from&nbsp;=&nbsp;0,&nbsp;to&nbsp;=&nbsp;10,&nbsp;lwd&nbsp;=&nbsp;2)
+&#62;&nbsp;abline(h&nbsp;=&nbsp;n0,&nbsp;lty&nbsp;=&nbsp;2)
+&#62;&nbsp;abline(h&nbsp;=&nbsp;K,&nbsp;lty&nbsp;=&nbsp;2)
+&#62;&nbsp;abline(h&nbsp;=&nbsp;K/2,&nbsp;lty&nbsp;=&nbsp;3)
+&#62;&nbsp;abline(v&nbsp;=&nbsp;-log(n0/(K&nbsp;-&nbsp;n0))/r,&nbsp;lty&nbsp;=&nbsp;4)
+&#62;&nbsp;r&nbsp;=&nbsp;1
+&#62;&nbsp;abline(a&nbsp;=&nbsp;n0,&nbsp;b&nbsp;=&nbsp;r&nbsp;*&nbsp;n0&nbsp;*&nbsp;(1&nbsp;-&nbsp;n0/K),&nbsp;lty&nbsp;=&nbsp;5)
+&#62;&nbsp;curve(n0&nbsp;*&nbsp;exp(r&nbsp;*&nbsp;x),&nbsp;from&nbsp;=&nbsp;0,&nbsp;lty&nbsp;=&nbsp;6,&nbsp;add&nbsp;=&nbsp;TRUE)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab3-014.png" alt="lab3-014.png" />
+
+<div class="p"><!----></div>
+<b>Exercise  3*</b>:
+Plot and analyze the function 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>G</mi><mo stretchy="false">(</mo><mi>N</mi><mo stretchy="false">)</mo><mo>=</mo>
+<mfrac><mrow><mi>RN</mi></mrow>
+<mrow><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>aN</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mi>b</mi></mrow>
+</msup>
+</mrow>
+</mfrac>
+</mrow></math>, 
+(the Shepherd function), which is
+a generalization of the Michaelis-Menten function.
+What are the effects of the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>R</mi></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi></mrow></math> parameters
+on the curve?
+For what parameter
+values does this function become equivalent to
+the Michaelis-Menten function?
+What is the behavior (value, initial slope) at 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi><mo>=</mo><mn>0</mn></mrow></math>?
+What is the behavior (asymptote [if any], slope) for large 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi></mrow></math>,
+for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mn>0</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mn>0</mn><mo>&lt;</mo><mi>b</mi><mo>&lt;</mo><mn>1</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mn>1</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>&gt;</mo><mn>1</mn></mrow></math>?
+Define an  R&nbsp;function for the Shepherd function (call it
+<tt>shep</tt>).  Draw a plot or plots
+showing the behavior for the ranges above, including lines that
+show the initial slope.
+Extra credit: when does the function have a maximum between 0 and
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&infin;</mi></mrow></math>?  What is the height of the
+maximum when it occurs?
+(Hint: when you're figuring out whether a fraction is zero
+or not, you don't have to think about the denominator at all.)
+The calculus isn't that hard, but you may also use the
+<tt>D()</tt> function in  R.
+Draw horizontal and vertical lines onto the graph to test your
+answer.
+
+<div class="p"><!----></div>
+<b>Exercise  4*</b>:
+Reparameterize the Holling type&nbsp;III functional response
+(
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>f</mi><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo>
+<msup><mrow><mi>ax</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo>
+<msup><mrow><mi>bx</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">)</mo></mrow></math>) in terms of its asymptote and half-maximum.
+
+<div class="p"><!----></div>
+<b>Exercise  5*</b>:
+Figure out the correspondence between the
+population-dynamic parameterization of the
+logistic function (eq. <a href="#eq:pop-logist">1</a>:
+parameters 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>r</mi></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>K</mi></mrow></math>) 
+and the statistical parameterization
+(
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>f</mi><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo><mi>exp</mi><mo stretchy="false">(</mo><mi>a</mi><mo>+</mo><mi>bx</mi><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mi>exp</mi><mo stretchy="false">(</mo><mi>a</mi><mo>+</mo><mi>bx</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow></math>:
+parameters 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi></mrow></math>).
+Convince yourself you got the right answer
+by plotting the logistic with 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo>=</mo><mo>-</mo><mn>5</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mn>2</mn></mrow></math>
+(with lines), figuring out the equivalent
+values of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>K</mi></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>r</mi></mrow></math>, and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow></math>, and then plotting the
+curve with both equations to make sure it overlaps.
+Plot the statistical version with lines
+(<tt>plot(...,type="l")</tt> or <tt>curve(...)</tt>
+and then add the population-dynamic version with 
+points (<tt>points()</tt> or <tt>curve(...,type="p",add=TRUE)</tt>).
+
+<div class="p"><!----></div>
+<em>Small hint:</em> the population-dynamic version
+has an extra parameter, so one of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>r</mi></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>n</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow></math>, and
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>K</mi></mrow></math> will be set to a constant when you translate
+to the statistical version.
+
+<div class="p"><!----></div>
+<em>Big hint:</em> Multiply the
+numerator and denominator of the statistical form
+by 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>exp</mi><mo stretchy="false">(</mo><mo>-</mo><mi>a</mi><mo stretchy="false">)</mo></mrow></math> and the numerator and denominator
+of the population-dynamic form by 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>exp</mi><mo stretchy="false">(</mo><mi>rt</mi><mo stretchy="false">)</mo></mrow></math>,
+then compare the forms of the equations.
+
+<div class="p"><!----></div>
+
+<br /><br /><hr /><small>File translated from
+T<sub><font size="-1">E</font></sub>X
+by <a href="http://hutchinson.belmont.ma.us/tth/">
+T<sub><font size="-1">T</font></sub>M</a>,
+version 3.70.<br />On 14 Sep 2005, 16:41.</small>
+</body></html>

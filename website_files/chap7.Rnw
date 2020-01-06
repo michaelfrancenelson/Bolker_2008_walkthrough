@@ -1,0 +1,3256 @@
+<<echo=FALSE,results=hide>>=
+library(emdbook)
+library(plotrix)
+library(bbmle)
+library(MASS)
+library(MCMCpack)
+library(coda)
+library(R2WinBUGS)
+library(Hmisc)
+source("chapskel.R")
+@ 
+
+\section*{Summary}
+
+This chapter explores the technical
+methods required to find the quantities 
+discussed in the previous chapter (maximum
+likelihood estimates, posterior means, and profile confidence
+limits).
+The first section covers methods of numerical
+optimization for finding MLEs and Bayesian posterior
+modes,
+the second section introduces Markov chain Monte Carlo,
+a general algorithm for finding posterior means
+and credible intervals, and
+the third section discusses
+methods for finding confidence intervals for quantities
+that are not parameters of a given model.
+
+\section{Introduction}
+
+Now we can think about the nitty-gritty details of fitting models to
+data.  Remember that we're trying to find the parameters
+that give the maximum likelihood for
+the comparison between the fitted model(s) and the data.
+(From now on I will discuss the problem in terms of finding
+the minimum negative log-likelihood, 
+although all the methods apply to finding maxima as
+well.)
+The first section focuses on methods for finding minima of curves
+and surfaces.
+These methods apply whether we are
+looking for maximum likelihood estimates,
+profile confidence limits, or Bayesian posterior modes
+(which are an important starting point in
+Bayesian analyses \citep{Gelman+1996}).
+Although there are many numerical minimization algorithms,
+I will only discuss the basic properties of few common ones
+(most of which are built into \R),
+and their strengths and weaknesses.
+Many of these methods are discussed in more
+detail by \cite{Press+1994}.
+The second section
+introduces \emph{Markov chain Monte Carlo} methods,
+which are the foundation of modern Bayesian analysis. 
+MCMC methods feel a little bit like magic, but they
+follow simple rules that are not too hard to understand.
+The last section tackles a more specific but very
+common problem, that of finding confidence
+limits on a quantity that is not a parameter of the
+model being fitted.  
+There are many different ways to tackle this problem, 
+varying in accuracy and difficulty.
+It's useful to have several in your toolbox,
+and learning about them also helps you gain a deeper understanding of 
+the shapes of likelihood and posterior probability surfaces.
+
+\section{Fitting methods}
+
+\subsection{Brute force/direct search}
+\newcommand{\pest}{p_{\mbox{est}}}
+
+The simplest way to find a maximum
+(minimum) is to evaluate the function for a wide range
+of parameter values and see which one gives
+the best answer.  In \R, you would make
+up a vector of parameter values to try (perhaps
+a vector for each of several parameters); use
+\code{sapply} (for a single parameter) 
+or \code{for} loops to calculate and
+save the negative log-likelihood (or posterior
+[log-]likelihood) for each value; then
+use \code{which(x==min(x))} (or \code{which.min(x)})
+to see which value of the parameters gave
+the minimum.  (You may be able to use \code{outer}
+to evaluate a matrix of all combinations of two
+parameters, but you have to be careful to use a
+vectorized likelihood function.)
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+x=c(1,1.5,2,2.5,3,4,5,6,10,15,20)
+y=c(6,3.2,2,-3,3,2,0,-1,2,4,5)
+y2 = spline(x,y,n=200)
+plot(y2$x,y2$y,type="l",xlab="",ylab="",ylim=c(-3,15),
+     axes=FALSE,xlim=c(0,20))
+box()
+axis(side=3,line=-11,at=seq(0,5,by=0.5),labels=rep("",11))
+axis(side=3,line=-8,at=seq(0,20,by=5),labels=rep("",5))
+axis(side=3,line=-5,at=seq(5,20,by=0.5),labels=rep("",31))
+axis(side=3,line=-2,at=seq(0,20,by=1),labels=rep("",21))
+mtext(side=3,line=-10,at=0,adj=0,"sampling grid 4")
+mtext(side=3,line=-7,at=0,adj=0,"sampling grid 3")
+mtext(side=3,line=-4,at=0,adj=0,"sampling grid 2")
+mtext(side=3,line=-1,at=0,adj=0,"sampling grid 1")
+mtext(side=3,line=-12,at=0,adj=0,expression(p[lower]))
+mtext(side=3,line=-12,at=20,adj=1,expression(p[upper]))
+mtext(side=3,line=-9,at=12.5,adj=0.5,expression(Delta*p))
+yht <- 8.5
+arrows(c(11.5,13.5),c(yht,yht),c(10,15),c(yht,yht),length=0.1,angle=20)
+points(y2$x[which.min(y2$y)],min(y2$y),pch=1)
+restr <- y2$x>5
+xrestr <- y2$x[restr]
+yrestr <- y2$y[restr]
+points(xrestr[which.min(yrestr)],min(yrestr),pch=16)
+#points(x,y)
+@ 
+\caption{Direct search grids for a hypothetical
+negative log-likelihood function.
+Grids~1 and~4 will eventually find the correct
+minimum (open point). Grids~2 and 3 will miss it,
+finding the false minimum (closed point) instead.
+Grid 2 misses becauses its range is too small;
+grid 3 misses because its resolution is too small.}
+\label{fig:direct}
+\end{figure}
+
+The big problem with direct search is 
+speed, or lack of it:
+the resolution of your answer is limited by the
+resolution (grid size) and range of your search, and the
+time it takes is the product of the resolution
+and the range.
+Suppose you try all values between $\plower$ and
+$\pupper$ with a resolution $\Delta p$
+(e.g. from 0 to 10 by steps of 0.1).
+Figure~\ref{fig:direct} shows a made-up example---%
+somewhat pathological, but
+not much worse than some real likelihood
+surfaces I've tried to fit.
+Obviously, the point you're looking for must
+fall in the range you're sampling: sampling grid \#2 
+in the figure misses the real minimum
+by looking at too small a range.
+
+You can also miss a sharp, narrow minimum,
+even if you sample the right range,
+by using too large a $\Delta p$ --- sampling
+grid \#3 in Figure~\ref{fig:direct}.
+There are no simple rules for determining
+the range and $\Delta p$ to use. 
+You must know
+the ecological meaning of your parameters
+well enough that you can guess at an appropriate
+order of magnitude to start with.  For small numbers
+of parameters you can draw curves or contours of
+your results to double-check that nothing looks funny,
+but for larger models it's difficult to draw the
+appropriate surfaces.  
+
+Furthermore, even if you use an appropriate
+sampling grid, you will only know the answer to within $\Delta p$.
+If you use a smaller $\Delta p$, you multiply
+the number of values you have to evaluate.  A good
+general strategy for direct search
+is to start with a fairly coarse grid (although not 
+as coarse as sampling grid \#3 in Figure~\ref{fig:direct}),
+find the sub-region that contains the minimum, and then
+``zoom in'' on that region by making both the range
+and $\Delta p$ smaller, as in sampling grid \#4.
+You can often achieve fairly
+good results this way, but almost always
+less efficiently than with one of the more sophisticated
+approaches covered in the rest of the chapter.
+
+The advantages of direct search are (1) it's simple
+and (2) it's so dumb that it's hard to fool: provided you
+use a reasonable range and $\Delta p$, it won't be led astray
+by features like multiple minima or discontinuities that
+will confuse other, more sophisticated approaches.
+The real problem with direct search is that it's slow
+because it takes no advantage of the geometry of the
+surface. If it takes more than a few seconds
+to evaluate the likelihood for a particular
+set of parameters, or if you have many parameters
+(which leads to many \emph{many} combinations of parameters to
+evaluate), direct search won't be feasible.
+
+For example, to do direct search on the parameters of the
+Gamma-distributed myxomatosis data (ignoring the temporal
+variation), we would set the range and grid size for shape
+and scale:
+<<>>=
+data(MyxoTiter_sum)
+myxdat = subset(MyxoTiter_sum,grade==1)
+@ 
+
+<<>>=
+gm = mean(myxdat$titer)
+cv = var(myxdat$titer)/mean(myxdat$titer)
+shape0=gm/cv
+scale0=cv
+@ 
+In Chapter~\ref{chap:lik}, we used the method
+of moments to determine starting values of
+shape (\Sexpr{round(shape0,1)}) and
+scale (\Sexpr{round(scale0,2)}).  We'll
+try shape parameters from 10 to 100 with
+$\Delta$ shape=1, and scale parameters
+from 0.01 to 0.3 with $\Delta$ scale=0.01.
+<<>>=
+shapevec = 10:100
+scalevec = seq(0.01,0.3,by=0.01)
+@ 
+Using the \code{gammaNLL1} negative log-likelihood
+function from p.~\pageref{gammalik}:
+<<echo=FALSE>>=
+gammaNLL1 = function(shape,scale) {
+  -sum(dgamma(myxdat$titer,shape=shape,scale=scale,log=TRUE))
+}
+@ 
+<<>>=
+surf = matrix(nrow=length(shapevec),ncol=length(scalevec)) 
+for (i in 1:length(shapevec)) {
+  for (j in 1:length(scalevec)) {
+    surf[i,j] = gammaNLL1(shapevec[i],scalevec[j])
+  }
+}
+@ 
+
+Draw the contour plot:
+<<>>=
+contour(shapevec,scalevec,log10(surf))
+@ 
+
+Or you can do this more automatically with the \code{curve3d} function
+from the \code{emdbook} package:
+<<eval=FALSE>>=
+curve3d(log10(gammaNLL1(x,y)),from=c(10,0.01),to=c(100,0.3),n=c(91,30),sys3d="image")
+@ 
+
+The \code{gridsearch2d} function (also in \code{emdbook}) will
+let you zoom in on a negative log-likelihood surface:
+<<eval=FALSE>>=
+gridsearch2d(gammaNLL1,v1min=10,v2min=0.01,v1max=100,v2max=0.3,logz=TRUE)
+@ 
+
+\subsection{Derivative-based methods}
+
+The opposite extreme from direct search is to make strong
+assumptions about the geometry of the likelihood surface:
+typically, that it is smooth (continuous with
+continuous first and second derivatives) and has only one minimum.
+Then at the minimum point the derivative is zero:
+the \emph{gradient}, the vector of the derivatives
+of the surface with respect to all the parameters,
+is a vector of all zeros.
+Most numerical optimization methods other than direct
+search use some variant of the criterion that the
+derivative must be close to zero at the minimum
+in order to decide when to stop.
+So-called \emph{derivative-based} methods also
+use information about the first and second derivatives to
+move quickly to the minimum.
+
+<<echo=FALSE>>=
+## run Newton's method on likelihood for
+##  binomial data
+data(ReedfrogPred)
+x = subset(ReedfrogPred,pred=="pred" & density==10 & size=="small")
+k = x$surv
+N = 10
+binomlik = function(p,x=k) {
+  -sum(dbinom(k,prob=p,size=N,log=TRUE))
+}
+## D(expression(k*log(p)+(N-k)*log(1-p)),"p")
+binomlik.deriv = function(p,x=k) {
+  -sum(k/p-(N-k)/(1-p))
+}
+## D(D(expression(k*log(p)+(N-k)*log(1-p)),"p"),"p")
+binomlik.deriv2 = function(p,x=k) {
+  -sum(-k/p^2-(N-k)/(1-p)^2)
+}
+newton = function(start=0.6,graphics=TRUE,
+    tol=1e-4,maxit=20,
+    dfun=binomlik.deriv,
+    dfun2=binomlik.deriv2,
+    ...) {
+  resmat = matrix(nrow=maxit,ncol=5)
+  i = 1
+  ## initial values
+  x.guess = start
+  x.dval = dfun(x.guess,...)
+  x.dval2 = dfun2(x.guess,...)
+  while (abs(x.dval)>tol && i<maxit) {  
+    resmat[i,] = c(i,x.guess,x.dval,x.dval2,x.dval-x.dval2*x.guess)
+    x.guess = x.guess - x.dval/x.dval2
+    x.dval  = dfun(x.guess,...)
+    x.dval2 = dfun2(x.guess,...)
+    i = i+1
+  }
+  resmat[i,] = c(i,x.guess,x.dval,x.dval2,x.dval-x.dval2*x.guess) 
+  colnames(resmat) = c("iteration","guess","dval","dval2","intercept")
+  as.data.frame(resmat[1:i,])
+}
+
+plot.newton = function(n,xlab="p",xlim,ylim,npts=100,dfun=binomlik.deriv,
+  dcol="darkgray",n.cex=3,pt.cex=2,
+  g.lty=2,ylab="Derivative",...) {
+  if (missing(xlim)) xlim=range(n$guess)
+  pvec = seq(xlim[1],xlim[2],length=npts)
+  dvec = sapply(pvec,dfun)
+  if (missing(ylim)) ylim=range(c(n$dval,dvec))
+  plot(n$guess,n$dval,type="n",
+       xlab=xlab,ylab=ylab,
+        xlim=xlim,ylim=ylim,...)
+  lines(pvec,dvec,lwd=3,col=dcol)
+  abline(h=0,lty=2)
+  ng <- length(n$guess)
+  apply(n[-ng,],1,function(x) {
+     abline(a=x[5],b=x[4])
+   })
+  voff=0
+  segments(n$guess,rep(0,nrow(n))-voff,n$guess,n$dval+voff,col="gray",lty=g.lty)
+  points(n$guess,rep(0,nrow(n)),
+         pch=21,cex=pt.cex,bg="white")
+  points(n$guess,n$dval,
+         cex=n.cex,pch=21,bg="white")
+  points(n$guess,n$dval,pch=as.character(1:nrow(n)))
+}
+@ 
+
+\begin{figure}
+\begin{center}
+<<echo=FALSE>>=
+x0 = c(0,0.2,0.45,0.6,0.65,0.75,0.9,1)
+y0 =c(-1,-0.5,0.039,0.29,0.41,0.53,0.6,0.7)
+z = splinefun(x=x0,y=y0)
+x1 = 0.7
+y1 =z(x1)
+y1d = z(x1,1)
+zz = x1-y1/y1d
+yint= y1-x1*y1d
+dx = 0.1
+z2 = y1-y1d*dx ## z(x=x1-dx)
+z3 = y1+y1d*dx ## z(x=x1+dx)
+##
+@ 
+<<echo=FALSE,fig=TRUE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5,mgp=c(2.5,1,0))
+plot(0:1,0:1,type="n",ann=FALSE,axes=FALSE,
+     xlim=c(0.2,0.9),ylim=c(0,0.8))
+abline(h=0)
+curve(z(x),add=TRUE)  
+abline(v=x1)
+abline(a=yint,b=y1d)
+points(x1,y1,pch=16)
+segments(x1-0.2,y1,x1+0.1,y1,lty=3)
+text(x1-0.21,y1,adj=1,expression(f(x[0])))
+segments(c(x1-dx,x1+dx),c(z2,z2),c(x1+dx,x1+dx),c(z2,z3),col="gray")
+text(x1+dx+0.01,z2+0.04,expression(f*minute(x[0])),adj=0)
+mtext(side=1,at=x1,expression(x[0]),cex=1.5)
+mtext(side=1,at=zz,expression(x[1]),cex=1.5)
+points(zz,0)
+par(xpd=NA)
+arrows(zz,-0.02,x1,-0.02,code=3,length=0.1)
+par(xpd=FALSE)
+mtext(side=1,at=(zz+x1)/2,expression(f(x[0])/f*minute(x[0])),cex=1.5)
+par(op)
+@ 
+\end{center}
+\caption{Newton's method: schematic}
+\label{fig:newton1}
+\end{figure}
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,height=8>>=
+op=par(mfrow=c(2,1),lwd=2,bty="l",las=1,cex=1.5,mgp=c(2.5,1,0))
+n0 = newton(start=0.6)
+n1 = n0[1:3,]
+par(mar=c(0,4,2,2)+0.1)
+plot.newton(n1,xlim=c(0.58,0.8),ylim=c(-28,10),
+            xlab="",axes=FALSE,n.cex=2.5,pt.cex=1,
+            g.lty=3,
+            ylab="Derivative of -L")
+axis(side=2)
+axis(side=1,at=seq(0.6,0.8,by=0.05),labels=rep("",5))
+text(0.6,0.5,"start",pos=3)
+box()
+par(mar=c(4,4,0,2)+0.1)
+pvec=seq(0.6,0.8,length=100)
+par(xpd=NA)
+plot(pvec,sapply(pvec,binomlik),xlab="p (probability of success per trial)",
+     ylab="Negative log-likelihood",type="l",lwd=3,ylim=c(7,10),
+     axes=FALSE,xlim=c(0.58,0.8))
+par(xpd=FALSE)
+axis(side=1)
+axis(side=2,at=7:10)
+box()
+points(n1$guess,sapply(n1$guess,binomlik),pch=21,cex=2.5,bg="white")
+points(n1$guess,sapply(n1$guess,binomlik),pch=as.character(1:nrow(n1)))
+par(op)
+@ 
+\caption{Newton's method:
+Top: numbered circles represent sequential guesses
+for the parameter $p$ (starting from guess \#1 at 0.6); 
+a dotted gray line joins the
+current guess with the value of the derivative
+for that value of the parameter; and solid lines ``shoot'' 
+over to the horizontal axis to find the next guess
+for $p$. Bottom: Likelihood curve.}
+\label{fig:newton2}
+\end{figure}
+
+The simplest derivative-based method is 
+\emph{Newton's method}, also called the \emph{Newton-Raphson} method,
+Newton's method is a general algorithm for discovering 
+the places where a function crosses zero, called its \emph{roots}.
+In general, if we have a function $f(x)$ and a
+starting guess $x_0$, we calculate the value $f(x_0)$ and the value of
+the derivative at $x_0$, $f'(x_0)$.  Then we 
+extrapolate linearly to try to find the root: $x_1=x_0-f(x_0)/f'(x_0)$
+(Figure~\ref{fig:newton1}).
+We iterate this process until we reach a point where the absolute
+value of the function is ``small enough'' --- typically $10^{-6}$ or
+smaller.
+
+While calculating the derivatives of the objective function
+analytically is the most efficient
+procedure, it is often convenient and
+sometimes necessary to approximate
+the derivatives numerically using
+finite differences:
+\begin{equation}
+\frac{d f(x)}{d x} = \lim_{\Delta x \to 0} \frac{\Delta f(x)}{\Delta x} 
+\approx \frac{f(x+\Delta x)-f(x)}{\Delta x}, \qquad \mbox{for small } \Delta x
+\end{equation}
+\R's \code{optim} function uses finite differences by default,
+but it sometimes runs into trouble
+with both speed (calculating finite differences for an $n$-parameter model
+requires an additional $n$ function evaluations for each step) and
+stability.  Calculating finite differences requires you to pick a $\Delta x$:
+\code{optim} uses $\Delta x=0.001$ by default, but you can change this with
+\code{control=list(ndeps=c(...))} within
+an \code{optim} or \code{mle2} call, where the dots stand for a vector
+of $\Delta x$ values, one for each parameter.  
+You can also change the effective
+value of $\Delta x$ by changing the parameter scale,
+\code{control=list(parscale=c(...))}; $\Delta x_i$ is
+defined relative to the parameter scale, as \code{parscale[i]*ndeps[i]}.
+If $\Delta x$ is too large, the
+finite difference approximation will be poor; if it is too small, you
+may run into trouble with round-off error.
+
+In minimization problems,
+we actually want to find the root of the
+\emph{derivative} of the (negative)
+log-likelihood function, which
+means we need to find the second derivative of the 
+objective function.
+That is, instead of taking $f(x)$ and calculating $f'(x)$
+by differentiation or finite differencing
+to figure out the slope and project our next guess,
+Newton's method for minima takes $f'(x)$ and
+calculates $f''(x)$ (the curvature) to approximate
+where $f'(x)=0$.
+
+Using the binomial seed predation data from the last chapter
+and starting with a guess of $p=0.6$, Figure~\ref{fig:newton2}
+and the following table show how Newton's method converges
+quickly to $p=0.75$ (for clarity, the figure shows only
+the first three steps of the process):
+<<echo=FALSE>>=
+n2 <- n0[,2:4]
+n2[,1] <- round(n2[,1],6)
+n2[,2:3] <- round(n2[,2:3],3)
+colnames(n2) <- c("Guess ($x$)","$f'(x)$","$f''(x)$")
+@ 
+
+<<echo=FALSE,results=tex>>=
+latex(n2,file="",table.env=FALSE,title="")
+@ 
+
+Newton's method is simple and converges quickly.
+The precision of the answer rapidly increases with additional iterations.
+It also generalizes easily to multiple parameters: just
+calculate the first and second partial 
+derivatives with respect to all the parameters
+and use linear extrapolation to look for the root.
+However, 
+if
+the initial guess is poor or if the likelihood surface
+has a funny shape,
+Newton's method can misbehave --- overshooting
+the right answer or oscillating around it.
+Various modifications of Newton's method mitigate
+some of these problems \citep{Press+1994}, and other methods
+called ``quasi-Newton'' methods use the general idea of calculating
+derivatives to iteratively approximate the root of the derivatives.
+The \emph{Broyden-Fletcher-Goldfarb-Shanno} (BFGS) algorithm
+built into \R's \code{optim} code is probably the most widespread
+quasi-Newton method.
+
+Use BFGS whenever you have a relatively well-behaved (i.e., smooth)
+likelihood surface, reasonable starting conditions, and efficiency
+is important.  If you can calculate an analytical
+formula for the derivatives, write an \R\ function to compute it for a
+particular parameter vector, and supply it to \code{optim} via the
+\code{gr} argument (see the examples in \code{?gr}), 
+you will avoid the finite difference calculations
+and get a faster and more stable solution.
+
+As with all optimization methods, you \emph{must} be able to estimate
+reasonable starting parameter values.  Sometimes a likelihood
+surface will become flat for really bad fits --- once the parameters
+are sufficiently far off the correct answer, changing them
+may make little difference in the goodness of fit.  
+Since the log-likelihood will be nearly constant, its derivative
+will be nearly zero.
+Derivative-based methods that start from implausible values (or any
+optimization procedure that uses a ``flatness'' criterion to decide
+when to stop, including most of those built into \code{optim})
+may find this worst-case scenario instead of the minimum you
+sought.
+
+More often, specifying ridiculous starting values
+will give infinite or \code{NA} values, which \R's
+optimization routines will choke on.
+Although most of the optimization routines can handle
+occasional \code{NA}s, the negative log-likelihood must
+be finite for the starting values.
+You should always
+test your negative log-likelihood functions at the
+proposed starting conditions to make sure they give finite
+answers; also try tweaking the parameters in the direction
+you think might be toward a better fit, and see if the
+negative log-likelihood decreases.  If you get non-finite
+values (\code{Inf}, \code{NA}, or \code{NaN}), 
+check that your parameters are really sensible.
+If you think they should be OK, check for 
+\code{NA}s in your data, or see if you have
+made any numerical mistakes 
+like dividing by zero, 
+taking logarithms of zero or negative numbers,
+or exponentiating large numbers (\R\ thinks
+\code{exp(x)} is infinite for any $\text{\code{x}}>710$).
+Exponentiating negative numbers of large
+magnitude is not necessarily a problem,
+but if they ``underflow'' and become zero
+(\R\ thinks \code{exp(x)} is 0 for
+any $\text{\code{x}}<-746$)
+you may get errors if you divide by them or
+calculate a likelihood of a data value
+that has zero probability.  
+Some log-likelihood functions
+contain terms like $x \log(x)$, which
+we can recognize should be zero but
+\R\ treats as \code{NaN}.
+You can use \code{if} or \code{ifelse}
+in your likelihood functions to work around special cases,
+for example \code{ifelse(x==0,0,x*log(x))}.
+If you have to, break down 
+the \code{sum} in your negative log-likelihood
+function and see which particular data points are
+causing the problem (e.g. if \code{L} is a vector of
+negative log-likelihoods, try \code{which(!is.finite(L))}).
+
+If your surface is \emph{not} smooth --- if it has discontinuities
+or if round-off error or noise makes it ``bumpy'' --- then
+derivative-based methods will work badly, particularly with finite
+differencing.  When derivative-based methods hit a bump in the likelihood
+surface, they often project the next guess to be very far away, sometimes
+so far away that the negative log-likelihood calculation makes no sense
+(e.g. negative parameter values).  In this case, you will
+need to try an optimization method that avoids derivatives.
+
+\subsection{Derivative-free methods}
+
+In between the brute force of direct search and the sometimes
+delicate derivative-based methods are \emph{derivative-free}
+methods, which use some information about the surface but
+do not rely on smoothness.
+
+\subsubsection{One-dimensional algorithms}
+
+One-dimensional minimization is easy because 
+once you have bracketed a minimum (i.e., you 
+can find two parameter values, one of which
+is above and one of which is below the
+parameter value that gives the minimum
+negative log-likelihood)
+you can always find the minimum by
+interpolation.
+\R's \code{optimize} function is a one-dimensional
+search algorithm that uses \emph{Brent's method}, which is 
+a combination of \emph{golden section search} and \emph{parabolic
+  interpolation} \citep{Press+1994}.  Golden-section search attempts to
+``sandwich'' the minimum, based on the heights (negative
+log-likelihoods) of a few points; parabolic interpolation fits a
+quadratic function (a parabola) to three points at a time and extrapolates
+to the minimum of the parabola.
+If you have a one-dimensional problem
+(i.e. a one-parameter model), \code{optimize}
+can usually solve it quickly and precisely.
+The only potential drawback is that \code{optimize},
+like \code{optim}, can't
+easily calculate confidence intervals.
+If you need confidence intervals, 
+use \code{mle2} instead\footnote{\code{mle}
+and \code{mle2} 
+use \code{method="BFGS"}
+by default. Nelder-Mead optimization (see below)
+is unreliable in one dimension and \R\ will warn you
+if you try to use it to optimize a single parameter.}.
+
+\subsubsection{Nelder-Mead simplex}
+\label{sec:NM}
+The simplest and probably most widely used derivative-free
+minimization algorithm that works in multiple dimensions
+(it's \code{optim}'s default) is the
+\emph{Nelder-Mead simplex}, devised by Nelder and
+Mead in 1965 
+% and called the ``amoeba'' method 
+% by \cite{Press+1994} because it works by
+% implementing rules that allow a cloud of points in
+% parameter space to ``crawl'' toward the lowest point in
+% a vaguely amoeboid fashion
+\footnote{The Nelder-Mead simplex is
+completely unrelated to
+the simplex method in linear programming, which is a method
+for solving high-dimensional \emph{linear} optimization
+problems with constraints.}.
+
+Rather than starting with a single parameter combination
+(which you can think of as a point in $n$-dimensional parameter space) 
+Nelder-Mead picks $n+1$ parameter combinations
+that form the vertices of an initial
+\emph{simplex}---the simplest shape possible in $n$-dimensions%
+\footnote{However, you only need to specify a single starting
+point; \R\ automatically creates a simplex around your starting
+value.}.  In two dimensions, a simplex is three points (each of which
+represents a pair of parameter values) forming a triangle; in three
+dimensions, a simplex is 4 points (each of which is a triplet of parameter
+values) forming a pyramid or tetrahedron; in higher dimensions, it's
+$n+1$ points which we just call an $n$-dimensional simplex.
+The Nelder-Mead algorithm
+then evaluates the likelihood at each
+vertex, which is the ``height'' of the surface at that point, and move
+the worst point in the simplex according to a simple set of rules:
+\begin{itemize}
+\item{start by going in what seems to the best direction by
+reflecting the high (worst) point in the simplex
+through the face opposite it;}
+\item{if the goodness-of-fit at the new point is better than the best
+(lowest) other point in the simplex, double the length of the jump in
+that direction;}
+\item{if this jump was bad---the height at the new point is worse than
+the second-worst point in the simplex---then try a point that's only
+half as far out as the initial try;}
+\item{if this second try, closer to the original, is also bad, then
+contract the simplex around the current best (lowest) point
+[not shown in Figure~\ref{fig:nm}].}
+\end{itemize}
+The Nelder-Mead algorithm works 
+well in a wide variety of situations, although
+it's not foolproof (nothing is) and it's not particularly efficient.  
+\begin{figure}
+\begin{center}
+\includegraphics{N-M}
+\end{center}
+\caption{Graphical illustration (after \cite{Press+1994}) of the
+Nelder-Mead simplex rules applied to a tetrahedron (a 3-dimensional
+simplex, used for a 3-parameter model).}
+\label{fig:nm}
+\end{figure}
+
+<<echo=FALSE>>=
+data(MyxoTiter_sum)
+myxdat = subset(MyxoTiter_sum,grade==1)
+gammaNLL1 = function(shape,scale) {
+  -sum(dgamma(myxdat$titer,shape=shape,scale=scale,log=TRUE))
+}
+gammaNLL2 = function(p) {
+  -sum(dgamma(myxdat$titer,shape=p[1],scale=p[2],log=TRUE))
+}
+myxsurf <- curve3d(gammaNLL2(c(x,y)),from=c(15,0.02),to=c(60,0.3),
+                   n=c(61,61),sys3d="none")
+source("amoeba.R")
+plotsimplex.2d <- function(x,cols=1:5,lty,...) {
+  v <- matrix(x[1:9],byrow=TRUE,ncol=3)[,-3]
+  code <- x[10]
+  lines(rbind(v,v[1,]),col=cols[code+1],lty=ltyvec[code+1],...)
+}
+## 0: starting value
+## 1: reflection
+## 2: reflection + expansion
+## 3: one-dimensional contraction
+## 4: contract around lowest poin
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5)
+amres <- amoeba(gammaNLL2,c(20,0.05),info=TRUE)
+ainfo = amres$info
+##ainfo[,c(1,4,7)] = log10(ainfo[,c(1,4,7)])
+contour(myxsurf$x,myxsurf$y,myxsurf$z,drawlabels=FALSE,col="gray",
+        levels=seq(0,7000,by=50),xlab="",ylab="scale")
+mtext(side=1,at=40,"shape",line=2,cex=1.5)
+colvec <- rep(1,4) ## gray(c(0,0,0.5,0.7,0.9))
+ltyvec <- c(1,1,2,3,4)
+invisible(apply(ainfo,1,plotsimplex.2d,cols=colvec,lwd=2))
+points(20,0.05,pch=21,bg="white")
+text(20,0.05,pos=1,"start")
+points(amres$estimate[1],amres$estimate[2],pch=21,bg="white")
+text(amres$estimate[1],amres$estimate[2],pos=1,"end")
+legend("bottomright",
+       legend=c("reflection","reflect+expand","contract"),
+       lty=ltyvec[2:4],col=colvec[2:4],
+       bty="n",lwd=2,cex=0.7)
+##       bg="white",
+par(op)
+@ 
+\caption{Track of Nelder-Mead simplex for the
+Gamma model of the myxomatosis titer data.
+Triangles indicating some moves are obscured by subsequent
+moves.}
+\label{fig:nm2}
+\end{figure}
+
+We give the Nelder-Mead algorithm 
+a set of starting parameter values %(shape=20,scale=0.05)
+%as starting coordinates 
+and it displaces these coordinates slightly to get its starting simplex.
+Thereafter, it takes steps alternating between
+simple reflection and expanded reflection, moving
+rapidly downhill across the contour lines and increasing
+both shape and scale parameters.
+Eventually it finds that it has gone too far, alternating
+reflections and contractions to ``turn the
+corner''.  Once it has turned, it proceeds very rapidly
+down the contour line, alternating reflections again;
+after a total of \Sexpr{amres$iterations} cycles
+the surface is flat enough for the algorithm to conclude
+that it has reached a minimum.
+
+<<echo=FALSE,eval=FALSE>>=
+contour(myxsurf$x,myxsurf$y,myxsurf$z,drawlabels=FALSE,col="gray",
+        levels=seq(0,2200,by=50),xlim=c(46,51),ylim=c(0.135,0.155))
+invisible(apply(ainfo,1,plotsimplex.2d,cols=colvec,lwd=2))
+@ 
+
+Nelder-Mead can be considerably slower than derivative-based
+methods, but it is less sensitive to discontinuities or noise in
+the likelihood surface, since it doesn't try to use fine-scale
+derivative information to navigate across the likelihood surface.
+
+% \subsubsection{Other options}
+
+% There are other derivative-free functions: for example, \emph{Powell's method}
+% works by minimizing along a single line ``transect'' at a time, using the
+% information gained from previous line searches to pick the next transect
+% to try \citep{Press+1994}; however, Powell's method isn't built into \R.
+
+\subsection{Stochastic global optimization: simulated annealing}
+\label{sec:simann}
+Stochastic global optimizers are a final class of optimization techniques,
+even more robust than the Nelder-Mead simplex and even slower.
+They are \emph{global} because 
+unlike most other optimization methods
+they may be able to find the right
+answer even when the likelihood surface has 
+more than one local minimum (Figure~\ref{fig:direct}).
+They are stochastic because they rely
+on adding random noise to the surface as a way of avoiding
+being trapped at one particular minimum.
+
+The classic stochastic optimization algorithm is the 
+\emph{Metropolis algorithm},
+or \emph{simulated annealing} \citep{Kirkpatrick+1983,Press+1994}.
+The physical analogy behind simulated annealing is that
+gradually cooling a molten metal or glass allows it
+to form a solid with few defects.  Starting with a
+crude (``hot'') solution to a problem and gradually
+refining the solution allows us to find the global 
+minimum of a surface even when it has multiple minima.
+
+The rules of simulated annealing are:
+\begin{itemize}
+\item{pick a starting point (set of parameters) and calculate the
+    negative log-likelihood for those parameters;}
+\item{until your answer is good enough or you run out of time:
+\begin{itemize}
+\item{\textbf{A}. pick a new point (set of parameters) at random (somewhere
+    near your old point);}
+\item{calculate the value of the negative log-likelihood there}
+\item{if the new value is better than the old negative log-likelihood, 
+    accept it and return to \textbf{A}}
+\item{if it's worse than the old value, calculate the difference in
+    negative log-likelihood $\Delta (-L)=-L_{\mbox{new}}-(-L_{\mbox{old}})$.
+    Pick a random number between 0 and 1
+    and accept the new value if the random number is less than
+    $e^{-\Delta (-L)/k}$, where $k$ is a constant
+    called the \emph{temperature}. 
+    Otherwise, keep the previous value.
+    The higher the temperature and the smaller
+    $\Delta (-L)$ (i.e., the less bad the new fit),
+    the more likely you are to accept the new value.
+
+    In mathematical terms, the acceptance rule is
+    \begin{equation}
+      \mbox{Prob}(\mbox{accept}) =
+      \begin{cases}
+        e^{-\frac{\Delta (-L)}{k}} & \mbox{if } \Delta (-L) > 0 \\
+          1 & \mbox{if } \Delta (-L) < 0.
+        \end{cases}
+        \label{eq:simann}
+      \end{equation}
+    }
+  \item{Return to \textbf{A} and repeat.}
+  \end{itemize}
+}
+\item{Periodically (e.g., every 100 steps) lower the value of $k$
+    to make it harder and harder to
+    accept bad moves.}
+\end{itemize}
+
+One variant of simulated annealing is available in \R\ as the \code{SANN} method for
+\code{optim} or \code{mle2}.
+
+<<echo=FALSE,cache=TRUE>>=
+set.seed(1002)
+metres  <- metropSB(gammaNLL2,c(20,0.05),retvals=TRUE,retfreq=1,
+                  nmax=2500)
+@
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op=par(bty="l",las=1,cex=1.5,mgp=c(2.5,1,0))
+myxsurf2 <- curve3d(gammaNLL2(c(x,y)),from=c(20,0.05),to=c(75,0.3),
+                   n=c(61,61),sys3d="contour",levels=seq(0,2200,by=50),
+                    drawlabels=FALSE,col="gray",
+                    xlab="shape",ylab="")
+mtext(side=2,at=0.17,"scale",line=3,cex=1.5,las=0)
+points(metres$retvals[,"p1"],metres$retvals[,"p2"],
+       col=c("gray","black")[metres$retvals[,"accept"]+1],
+       cex=0.3)
+tvec <- c(1,100,150,300,1000,1500,2000,2500)
+n <- length(tvec)
+x <- metres$retvals[tvec,"p1"]
+y <- metres$retvals[tvec,"p2"]
+symbols(x,y,rectangles=cbind(rep(2,n),rep(1,n)),
+        inches=0.3,add=TRUE,
+        bg="white")
+points(metres$estimate[1],metres$estimate[2],pch=21,
+       bg="white")
+text(x,y,tvec,cex=0.5)
+@ 
+\caption{Track of Metropolis-Szymura-Barton evaluations.
+The MSB algorithm starts at (20,0.05) (step 1), and
+moves quickly up to the central valley, but then wanders
+aimlessly back and forth along the valley.}
+\label{fig:msb1}
+\end{figure}
+
+<<eval=FALSE,echo=FALSE>>=
+## looking at contours of metrop output
+k1 = kde2d(log10(metres$retvals[,"p1"]),metres$retvals[,"p2"],n=50)
+contour(k1$x,k1$y,k1$z)
+@ 
+
+<<echo=FALSE>>=
+firstmin = which.min(metres$retvals[,"minval"])
+@ 
+
+\label{msb}
+Another variant of the Metropolis algorithm 
+\cite[Metropolis-Szymura-Barton, MSB, \code{metropSB} in \code{emdbook}:][]%
+{SzymuraBarton1986}) varies
+the size of the change in parameters (the scale of the \emph{candidate distribution}
+or \emph{jump size}) rather than the temperature, 
+and changes the jump size adaptively
+rather than according to a fixed schedule.
+Every successful jump increases the jump size, while every unsuccessful jump
+decreases the jump size.  This makes the algorithm good at exploring
+lots of local minima (every time it gets into a valley, it starts
+trying to get out) but really bad at refining estimates (it has a hard
+time actually getting all the way to the bottom of a valley).
+
+To run MSB on the myxomatosis data:
+<<eval=FALSE>>=
+MSBfit = metropSB(fn=gammaNLL2,start=c(20,0.05),nmax=2500)
+@
+
+Figure~\ref{fig:msb1} shows a snapshot of where the MSB algorithm
+goes on our now-familiar likelihood surface for the myxomatosis data,
+with unsuccessful jumps marked in gray and successful jumps
+marked in black.
+The MSB algorithm quickly moves ``downhill''
+from its starting point to the central
+valley, but then drifts aimlessly back and forth
+along the central valley.  It does find 
+a point close to the minimum.
+After \Sexpr{firstmin} steps,
+it finds a minimum of
+\Sexpr{round(metres$minimum,5)}, equal for all practical
+purposes to the Nelder-Mead simplex value of
+\Sexpr{round(amres$minimum,5)} --- %
+but Nelder-Mead took only 
+\Sexpr{amres$function.calls} function evaluations
+to get there.
+Since MSB increases its jump scale
+when it is successful, and since it is willing
+to take small uphill steps, it 
+doesn't stay near the minimum.
+While it always remembers the best point it has found
+so far, it will wander indefinitely looking for a
+better solution.
+In this case it didn't find anything better by the
+time I stopped it at 2,500 iterations.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=10,height=10>>=
+ivec = seq(1,nrow(metres$retval),by=25)
+M <- metres$retval[ivec,]
+op=par(mfrow=c(2,2),cex=1.5,mgp=c(2.5,1,0),las=1)
+par(mar=c(0,4.2,2.2,0))
+matplot(ivec,M[,c(1,3)],type="l",col=1,lty=c(1,3),
+        xlab="",ylab="",lwd=c(1,2),axes=FALSE)
+box()
+axis(side=2)
+text(corner.loc(1,1),"shape",adj=1)
+par(mar=c(0,0,2.2,4.2))
+matplot(ivec,M[,c(2,4)],type="l",col=1,lty=c(1,3),ylab="",
+        xlab="",lwd=c(1,2),axes=FALSE)
+box()
+axis(side=4)
+text(corner.loc(-1,1),"scale",adj=0)
+#par(mar=c(3.5,3.2,1,2)+0.1)
+par(mar=c(5,4.2,0,0))
+plot(ivec,M[,5]/mean(M[,5]),type="l",ylab="",
+     xlab="Iterations",ylim=c(0,1.7),axes=FALSE)
+axis(side=1,at=c(0,1000,2000))
+axis(side=2,at=c(0,0.5,1.0))
+box()
+frac.accept =  filter(metres$retval[,9], rep(1, 40), sides = 1)/40
+frac.accept =  frac.accept[ivec]
+lines(ivec,frac.accept,lty=2)
+text(corner.loc(1,1,yoff=0.12),"relative\njump size",adj=1)
+text(corner.loc(1,-1,yoff=0.12),"fraction\naccepted",adj=1)
+par(mar=c(5,0,0,4.2))
+matplot(ivec,M[,c(7,8)],type="l",col=1,lty=c(1,3),ylab="",
+        xlab="Iterations",lwd=c(1,2),axes=FALSE,ylim=c(36,50))
+axis(side=1,at=c(0,1000,2000))
+axis(side=4,at=seq(0,1500,by=500))
+text(corner.loc(1,1,yoff=0.14),"negative\nlog likelihood",adj=1)
+box()
+par(op)
+@ 
+\caption{History of MSB evaluations: parameters (shape and scale),
+relative jump size and fraction of jumps accepted, and current
+and minimum negative log-likelihood.  The minimum negative log-likelihood
+is achieved after \Sexpr{firstmin} steps; thereafter the algorithm
+remembers its best previous achievement (horizontal dotted line),
+but fails to improve on it.}
+\label{fig:msb2}
+\end{figure}
+
+Figure~\ref{fig:msb2} shows some statistics on MSB algorithm
+performance as the number of iterations increases.
+The top two panels show the values of
+the two parameters (shape and scale), and the best-fit
+parameters so far. Both of the parameters adjust quickly in
+the first 500 iterations, but from there they wander
+around without improving the fit.
+The third panel shows a scaled version of the jump-width
+parameter, which increases initially and then varies around
+1.0, and the running average of the fraction of jumps accepted,
+which rapidly converges to a value around 0.5.
+The fourth and final panel shows the achieved value of
+the negative log-likelihood: almost all of the gains 
+occur early.
+The MSB algorithm is inefficient for this problem, but it
+can be a lifesaver when your likelihood surface is
+complex and you have the patience to use brute force.
+
+There are many other stochastic global optimization algorithms.
+For example, \cite{Press+1994} suggest a hybrid of simulated annealing
+and the Nelder-Mead simplex where the vertices of the simplex
+are perturbed randomly but with decreasing amplitudes of
+noise over time.  Other researchers have suggested using
+a stochastic algorithm to find the the right peak and
+finishing with a local algorithm (Nelder-Mead or derivative-based)
+to get a more precise answer.
+Various adaptive stochastic algorithms
+\cite[e.g.][]{Ingber1996} attempt to ``tune'' either the
+temperature or the jump size and distribution for
+better results.  Methods like genetic algorithms or
+differential evolution use many points moving around
+the likelihood surface in parallel, rather than a single
+point as in simulated annealing.  If you need
+stochastic global optimization, you will
+probably need a lot of computer time (many function
+evaluations are required) and you will almost
+certainly need to tune the parameters of whatever algorithm
+you choose rather than using the default values.
+
+\section{Markov chain Monte Carlo}
+
+Bayesians are normally interested in finding the
+means of the posterior distribution
+rather than the maximum likelihood value
+(or analogously the mode of the posterior distribution).
+Previous chapters suggested that you can use
+WinBUGS to compute posterior distributions,
+but gave few details.
+\emph{Markov chain Monte Carlo} (MCMC) is
+an extremely clever, general approach that
+uses stochastic jumps in parameter space 
+to find the distribution.  MCMC is similar to simulated annealing
+in the way it picks new parameter values sequentially
+but randomly.
+The main difference is that
+MCMC's goal is not to find the best parameter combination
+(mode/MLE) but to sample from the posterior distribution.
+
+Like simulated annealing,
+MCMC has many variants that use different rules for
+picking new parameter values 
+(i.e., different kinds of candidate distributions) 
+and for deciding whether accept the new choice or not.
+However, all variants of MCMC 
+must satisfy the fundamental rule that the ratio of
+successful jump probabilities ($P_{\mbox{jump}} \times
+P_{\mbox{accept}}$) is proportional to the ratio of the posterior
+probabilities:
+\begin{equation}
+\frac{\mbox{Post}(A)}{\mbox{Post}(B)} = %
+\frac{P(\mbox{jump } B \to A) P(\mbox{accept }A|B)}%
+{P(\mbox{jump } A \to B) P(\mbox{accept }B|A)}
+\label{eq:mcmccrit}
+\end{equation}
+If we follow this rule (and if several other technical
+criteria are satisfied\footnote{The chain must be
+\emph{irreducible} (it must be possible eventually
+to move from any point in parameter space to any other) and
+\emph{aperiodic} (it should be impossible for it to get
+stuck in a loop).}), in the long run
+the chain will spend a lot of time occupying areas with
+high probability and will visit (but not spend much time in)
+in areas with low probability, so that the
+long-term distribution of the sampled points will
+match the posterior probability distribution.
+
+\subsection{Metropolis-Hastings}
+The \emph{Metropolis-Hastings} MCMC updating rule
+is very similar to the simulated annealing rules discussed 
+above, except
+that the temperature does not decrease over time
+to make the algorithm increasingly picky about accepting
+uphill moves.
+The Metropolis updating rule defined
+above for simulated annealing (p.~\pageref{sec:simann}) can use any
+\emph{symmetric} candidate distribution
+($P(\mbox{jump }B\to A) = P(\mbox{jump }A\to B$).
+For example, the MSB algorithm (p.~\pageref{msb})
+picks values in a uniform distribution
+around the current set of parameters.
+The critical part of the Metropolis algorithm is
+the acceptance rule, which is the simulated
+annealing rule (eq.~\ref{eq:simann}) with the 
+temperature parameter $k$ set to 1 and the
+posterior probability substituted for
+the likelihood\footnote{In the simulated annealing
+rule we exponentiated $-k$ times the log-likelihood
+difference, which gave us the likelihood ratio
+raised to the power $-k$; if we set $k=1$ then
+we have $\lik_{\mbox{old}}/\lik_{\mbox{new}}$,
+which corresponds to $\mbox{Post}(A)/\mbox{Post}(B)$.}.
+The Metropolis-Hastings rule generalizes the
+Metropolis by multiplying the acceptance probability
+by the ratio of the jump
+probabilities in each direction,
+$P(\mbox{jump }B\to A)/P(\mbox{jump }A\to B$):
+\begin{equation}
+P(\mbox{accept }B|A) =
+\min \left(1,\frac{\mbox{\small Post}(B)}{\mbox{\small Post}(A)}
+\cdot \frac{P(\mbox{\small jump }B\to A)}{P(\mbox{\small jump }A\to B)} \right)
+\label{eq:metrophast}
+\end{equation}
+This equation reduces to the Metropolis rule 
+for symmetric distributions
+but allows for asymmetric candidate distributions,
+which is particularly useful if you need
+to adjust candidate distributions so that
+a parameter does not become negative.
+
+As in simulated annealing,
+if a new set of parameters 
+has a higher posterior probability than the
+previous parameters (weighted by
+the asymmetry in the probability of
+moving between the parameter sets),
+then the ratio in (\ref{eq:metrophast}) is
+greater than 1 and we accept the new parameters
+with probability 1.
+If the new set has a lower posterior probability
+(weighted by jump probabilities),
+we accept them with a probability
+equal to the weighted ratio.
+If you work this out for
+$P(\mbox{accept }A|B)$ in a similar way,
+you'll see that the rule fits the
+basic MCMC criterion (\ref{eq:mcmccrit}).
+In fact, in the MSB example
+above the acceptance probability was set equal
+to the ratio of the likelihoods of the new
+and old parameter values
+(the \code{scale} parameter in \code{optimMSB}
+was left at its default value of 1),
+so that analysis
+also satisfied the Metropolis-Hasting rule (\ref{eq:metrophast}).  
+Since it used negative log-likelihoods rather than 
+incorporating an explicit prior to compute
+posterior probabilities, it assumed a
+completely flat prior (which can be dangerous,
+leading to unstable estimates or slow convergence,
+but seems to have been OK in this case).
+
+The \code{MCMCpack} package provides
+another way to run a Metropolis-Hastings chain
+in R. Given a function that computes the log posterior density
+(if the prior is completely flat, this is just
+the (\emph{positive}) log-likelihood function),
+the \code{MCMCmetrop1R} function first uses
+\code{optim} to find the posterior mode, then
+uses the approximate variance-covariance matrix
+at the mode to scale a multivariate normal
+candidate distribution, then runs a Metropolis-Hastings chain
+based on this candidate distribution.
+
+For example:
+<<cache=TRUE>>=
+gammaNLL2B = function(p) {
+  sum(dgamma(myxdat$titer,shape=p[1],scale=p[2],log=TRUE))
+}
+m3 <- MCMCmetrop1R(gammaNLL2B,theta.init=c(shape=20,scale=0.05),
+                   thin=30,mcmc=30000,
+                   optim.lower=rep(0.004,2),
+                   optim.method="L-BFGS-B",tune=3)
+colnames(m3) = c("shape","scale")
+@ 
+
+<<eval=FALSE,echo=FALSE>>=
+curve3d(gammaNLL2B(c(x,y)),from=c(20,0.05),to=c(70,0.3),
+        sys3d="contour",levels=seq(-200,0,by=10))
+## since shape*scale = x*y approx constant, try with
+##  mean = x' = x*y , var = y'=x*y^2 
+##  so x = x'^2/y', y = y'/x'
+## shape (20,0.05), scale (70,0.3)
+## means mean (1,21), var (0.05,6.3)
+curve3d(sum(dgamma(myxdat$titer,shape=x^2/y,scale=y/x,log=TRUE)),
+        ##        from=c(4,0.1),to=c(10,21),
+        from=c(1,0.05),to=c(21,6.3),
+        sys3d="contour",levels=seq(-200,0,by=10))
+@  
+
+When I initially ran this analysis with the default value
+of \code{tune=1} and used \code{plot(m3)} to view the
+results, I saw that the chain took long excursions
+to extreme values.  Inspecting the contour plot
+of the surface, and slices (\code{?calcslice} from
+the \code{emdbook} package) didn't suggest that there
+was another minimum that the chain was visiting
+during these excursions.
+The authors of the package suggested that
+\code{MCMCmetrop1R} was having trouble because
+of the banana-shape of the posterior
+density (Figure~\ref{fig:msb1}), and that increasing
+the \code{tune} parameter, which increases the
+scale of the candidate distribution, would help\footnote{They 
+specifically suggested:
+\begin{enumerate}
+\item set the tuning parameter much larger than normal so that the
+acceptance rate is actually below the usual 20-25\% rule of thumb.
+This will fatten and lengthen the proposal distribution so that one
+can jump from one tail to the other.
+\item forego the proposal distribution based on the large sample var-cov
+matrix. Set the \code{V} parameter in \code{MCMCmetrop1R} to something that
+will work reasonably well over the entire parameter space.
+\item use an MCMC algorithm other than the random walk metropolis
+algorithm. You'll need to use something other than \code{MCMCmetrop1R} to do
+this but this option will be the most computationally efficient.
+\end{enumerate}
+}.
+Setting \code{tune=3} seems to be enough
+to make the chains behave better.  (Increasing
+\code{tune} still more would make the Metropolis
+sampling less efficient.)  Another option, which
+might take more thinking, would be to transform
+the parameters to make the likelihood surface
+closer to quadratic, which would make a multivariate
+Normal candidate distribution a better fit.
+Since the likelihood contours
+approximately follow lines of
+constant mean ($\mbox{shape} \cdot \mbox{scale}$:
+Figure~\ref{fig:nm2}), changing the parameterization from
+$\{\mbox{shape},\mbox{scale}\}$ to 
+$\{\mbox{mean},\mbox{variance}\}$ makes the
+surface approximately quadratic and should
+make \code{MCMCmetrop1R} behave better.
+
+The \code{colnames} command sets the parameter names,
+which are helpful when looking at \code{summary(m3)} or
+\code{plot(m3)} since \code{MCMCmetrop1R} doesn't set the
+names itself.
+
+\subsection{Burn-in and convergence}
+Metropolis-Hastings updating, and any other
+MCMC rule that satisfies (\ref{eq:mcmccrit}),
+is guaranteed to reach the posterior distribution
+eventually, but usually we have to discard
+the iterations from a \emph{burn-in} period before the
+distribution converges to the posterior
+distribution.
+For example, during the first 300 steps
+in the MSB optimization above (Figures~\ref{fig:msb1}
+and \ref{fig:msb2}) the algorithm approaches
+the minimum from its starting
+points, and bounces around the minimum thereafter.
+Treating this analysis as an MCMC, we would
+drop the first 300 steps (or 500 to be safe) and focus
+on the rest of the data set.
+
+Assessing convergence is simple for such a simple model
+but can be difficult in general.  Bayesian analysts have developed
+many \emph{convergence diagnostics}, but you
+probably only need to know about a few.
+
+The \emph{Raftery-Lewis} (RL) diagnostic
+\cite[\code{raftery.diag} in the \code{coda} package]{RafteryLewis1996}
+takes a pilot run of an MCMC and estimates, based
+on the variability in the parameters, how long the
+burn-in period should be and how many samples you
+need to estimate the parameters to within a certain
+accuracy.  The parameters for the Raftery-Lewis
+diagnostic are the quantile that you want to estimate
+(2.5\% by default, i.e. the standard two-sided tails
+of the posterior distribution), the accuracy with which
+you want to estimate the quantile ($\pm 0.005$ by
+default), and the desired probability that the quantile
+is in the desired range (default 0.95).
+For the MSB/myxomatosis example above, 
+running the Raftery-Lewis diagnostic with the default
+accuracy of $r=0.005$ said the pilot run of 2500 was not
+even long enough to estimate how long the chain should
+be, so I relaxed the accuracy to $r=0.01$:
+<<echo=FALSE>>=
+m1 <- mcmc(metres$retvals[,1:2])
+raftery.diag(m1,r=0.01)
+@ 
+The first column gives the estimated burn-in time for
+each parameter --- take the maximum of these values
+as your burn-in time.  The next two columns give the
+required total sample size and the sample size that
+would be required if the chain were uncorrelated;
+the final column gives the dependence factor,
+which essentially says how many steps the chain takes
+until it has ``forgotten'' about its previous value.
+In this case, RL says that
+we would need to run the chain
+for about 30,000 samples to get a sufficiently
+good estimate of the quantiles for the
+scale parameter, but that (because the dependency 
+factor is close to 30) we could take every 30th
+step in the chain and not lose any
+important information.
+%\footnote{for some reason,
+%raising the quantile (e.g. seeing how many  
+%steps it would take to estimate the
+%median, $q=0.5$) \emph{increases} the estimated
+%number of steps required \todo{why???}}.
+
+\label{multchain}
+Another way of assessing convergence is to
+run multiple chains that start from widely separated
+(\emph{overdispersed}) points and see whether
+they have run long enough to overlap (which
+is a good indication that they have converged).
+The starting points should be far enough apart to
+give a good sample of the surface, but should
+be sufficiently reasonable to give finite
+posterior probabilities.
+The \emph{Gelman-Rubin} 
+\citep[G-R, \code{gelman.diag} in the
+\code{coda} package:][]{Gelman+1996} diagnostic 
+takes this approach.
+G-R provides a \emph{potential scale reduction factor}
+(PRSF),
+estimating how much the between-chain
+variance could be reduced if the chains were
+run for longer.  
+The closer to 1 the PRSFs are, the better.
+The rule of thumb is that they should be less than 1.2.
+
+Running a second chain (\code{m2}) for the myxomatosis data
+starting from (shape=70, scale=0.2) instead
+of (shape=20, scale=0.05) and running
+G-R diagnostics on both chains gives:
+<<echo=FALSE,cache=TRUE>>=
+set.seed(1002)
+metres2  <- metropSB(gammaNLL2,c(70,0.2),retvals=TRUE,retfreq=1,
+                  nmax=2500)
+m2 <- mcmc(metres2$retvals[,1:2])
+@ 
+<<>>=
+gelman.diag(mcmc.list(m1,m2))
+@ 
+
+The upper confidence limit for the PRSF for
+parameter~1 (shape), and the estimated value
+for parameter~2 (scale), are both greater than
+1.2.
+Apparently we need to run the chains longer.
+
+\subsection{Gibbs sampling}
+
+The major alternative to Metropolis-Hastings sampling
+is \emph{Gibbs sampling} (or the \emph{Gibbs sampler}),
+which works for models where
+we can figure out the posterior
+probability distribution (and pick a random sample from it),
+\emph{conditional} on the values of all the other parameters in the model.
+For example, to estimate the mean and variance of normally
+distributed data we can cycle back and forth between
+picking a random value from the posterior distribution for
+the mean, assuming a particular value of the variance,
+and picking a random value from the posterior distribution
+for the variance, assuming a particular value of the mean.
+The Gibbs sampler obeys the MCMC criterion (\ref{eq:mcmccrit})
+because the candidate distribution \emph{is} the
+posterior distribution, so the jump
+probability ($P(\mbox{jump } B \to A)$) is equal to
+the posterior distribution of $A$.
+Therefore, the
+Gibbs sampler can always accept the jump
+$P_{\mbox{accept}}=1$ and still satisfy
+\begin{equation}
+\frac{\mbox{Post}(A)}{\mbox{Post}(B)} = \frac{P(\mbox{jump } B \to A) }%
+{P(\mbox{jump } A \to B)}.
+\end{equation}
+
+Gibbs sampling works particularly well for hierarchical models 
+(Chapter~\ref{chap:var}).
+Whether we can do Gibbs sampling or not, we can do \emph{block sampling}
+by breaking the posterior probability up into a series
+of conditional probabilities.
+A complicated posterior distribution  $\mbox{Post}(p_1,p_2,\ldots,p_n|y)=
+L(y|p_1,p_2,\ldots,p_n) \mbox{Prior}(p_1,p_2,\ldots,p_n)$,
+which is hard to compute in general, can
+be broken down in terms of the marginal posterior
+distribution of a single parameter ($p_1$ in this case),
+assuming all the other parameters are known:
+\begin{equation}
+\mbox{Post}(p_1|y,p_2,\ldots,p_n)=  
+L(y|p_1,p_2,\ldots,p_n) \cdot P(p_1|p_2,\ldots,p_n) \cdot
+\mbox{Prior}(p_1,p_2,\ldots,p_n)
+\end{equation}
+%% \todo{fix this!!}
+This decomposition allows us to sample parameters one at a time,
+either by Gibbs sampling or by Metropolis-Hastings.
+The advantage is that the posterior distribution of a single parameter,
+conditional on the rest, may be simple enough so that we can
+sample directly from the posterior.
+%% \todo{Example??}
+
+BUGS (\textbf{B}ayesian inference \textbf{U}sing 
+\textbf{G}ibbs \textbf{S}ampling) is an amazing piece
+of software that takes a description of a statistical
+model and automatically generates a Gibbs
+sampling algorithm\footnote{I will focus on a text file
+description, and on the \R\ interface to WinBUGS
+implemented in the \code{R2WinBUGS} package, but many
+different variants of automatic Gibbs samplers are
+springing up.  These vary in interface, degree of polish and
+supported platforms.  (1) WinBUGS runs on Windows,
+under WINE on Linux, and maybe soon on Intel Macs;
+models can be defined either graphically or as
+text files; R2WinBUGS is the R interface. (2) OpenBUGS
+(\url{http://mathstat.helsinki.fi/openbugs/}) is
+an new, open version of WinBUGS that runs on
+Windows and Linux (LinBUGS).
+OpenBUGS has an R interface, BRugs, 
+but so far it only runs on Windows.
+(3) JAGS is an alternative version that runs on
+Linux and MacOS (but may be challenging
+to set up) and has an R interface.}. 
+WinBUGS is the Windows
+version, and R2WinBUGS is the R interface for
+WinBUGS.
+
+Some BUGS models have already appeared in Chapter~6.
+BUGS's syntax closely resembles \R's, with the following
+important differences:
+\begin{itemize}
+\item{BUGS is not vectorized.
+    Definitions of vectors of probabilities must
+    be specified using a \code{for} loop.}
+\item{\R\ uses the \code{=} symbol to
+    assign values. BUGS uses \verb+<-+
+    (a stylized left-arrow: e.g. \verb|a <- b+1|
+    instead of \code{a=b+1}).}
+\item{BUGS uses a tilde (\verb+~+) to mean
+  ``is distributed as''. For example, to say
+  that $x$ comes from a standard normal distribution
+  (with mean 0 and variance 1: $x \sim N(0,1)$,
+  tell BUGS \verb+x~dnorm(0,1)+).}
+\item{While many statistical distributions
+  have the same names as in \R (e.g. normal=\code{dnorm},
+  gamma=\code{dgamma}), watch out!  BUGS often
+  uses a different parameterization.  For example,
+  where \R\ uses \code{dnorm(x,mean,sd)},
+  BUGS uses \verb+x~dnorm(mean,prec)+ where
+  \code{prec} is the \emph{precision} --- the
+  reciprocal of the variance.
+  Also note that \code{x} is included in
+  the \code{dnorm} in \R, whereas in BUGS
+  it is on the left side of the \verb+~+ operator.
+  Read the BUGS documentation (included in WinBUGS) to make sure
+  you understand BUGS's definitions.}
+\end{itemize}
+
+The model definition for BUGS should
+include the priors as well as the likelihoods.
+Here's a very simple input file, which defines a model
+for the posterior of the myxomatosis titer data:
+\verbatiminput{myxogamma.bug}
+
+After making sure that this file is
+present in your working directory
+(use Wordpad or Notepad to edit it;
+if you use Word, be sure to save the file as text),
+you can run this model in BUGS by way of
+R2WinBUGS as follows:
+
+<<>>=
+library(R2WinBUGS)
+@ 
+
+<<cache=TRUE>>=
+titer <- myxdat$titer
+n <- length(titer)
+inits <- list(list(shape=100,rate=3),list(shape=20,rate=10))
+testmyxo.bugs <- bugs(data=list("titer","n"),
+                      inits,parameters.to.save=c("shape","rate"),
+                      model.file="myxogamma.bug",
+                      n.chains=length(inits),n.iter=5000)
+@ 
+
+Printing out the value of \code{testmyxo.bugs}
+gives  a summary including the mean, standard deviation, quantiles,
+and the Gelman-Rubin statistic (\code{Rhat}) for each
+variable. It also gives a DIC estimate for the model.
+By default this summary only uses a precision of 0.1,
+but you can use the \code{digits} argument to get more
+precision, e.g. \code{print(testmyxo.bugs,digits=2)}.
+
+<<>>=
+testmyxo.bugs
+@ 
+
+The standard diagnostic plot 
+for a WinBUGS run (\code{plot.bugs(testmyxo.bugs)})
+shows  the mean and credible intervals for each
+variable in each chain, as well as the Gelman-Rubin
+statistics for each variable.
+
+You can get slightly different information by
+turning the result into a \code{coda} object:
+<<>>=
+testmyxo.coda <- as.mcmc(testmyxo.bugs)
+@ 
+\code{summary(testmyxo.coda)} gives similar
+information as printing \code{testmyxo.bugs}.
+\code{HPDinterval} gives the 
+credible (\textbf{h}ighest \textbf{p}osterior
+\textbf{d}ensity) interval 
+for each variable computed from MCMC
+output.
+
+Plotting \code{testmyxo.coda}
+gives \emph{trace plots} (similar to Figure~\ref{fig:msb2})
+and \emph{density plots} of the posterior density
+(Figure~\ref{fig:codaplot}).  Other diagnostic
+plots are available: see especially \code{?densityplot.mcmc}.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+palette(c("black","gray"))
+plot(testmyxo.coda)
+palette("default")
+@ 
+\caption{WinBUGS output plot: default \code{coda} plot,
+showing trace plots (left) and density plots (right).}
+\label{fig:codaplot}
+\end{figure}
+
+<<echo=FALSE,eval=FALSE>>=
+x = testmyxo.coda[[1]][,"shape"]
+plot(density(x))
+h1 = HPDinterval(testmyxo.coda)[[1]]["shape",]
+h2 = qcredint(x,verbose=TRUE,tol=0.001)
+sum(x>h1[1]&x<h1[2])/length(x)
+sum(x>h2[1]&x<h2[2])/length(x)
+@ 
+
+This information should be enough to get you started
+using WinBUGS.  A growing number of papers --- some
+in ecology, but largely focused in conservation and
+management (especially in fisheries) provide example
+models for specific systems
+\footnote{In a few years this list of citations will
+probably be too long to include!}
+\citep{MillarMeyer2000,Jonsen+2003,%
+Morales+2004,McCarthyParris2004,Clarke+2006}.
+
+In summary, the basic procedure for fitting
+a model via MCMC (using MCMCpack, WinBUGS, or
+rolling your own) is:
+(1) design and code your model;
+(2) enter the data; (3) pick priors for parameters;
+(4) initialize the parameter values for
+several chains (overdispersed, or by a random draw from priors);
+(5) run the chains for ``a long time'' (R2WinBUGS's default
+is 2000 steps); (6) check convergence;
+(7) run for longer if necessary;
+(8) discard burn-in and thin the chains; (8)
+compute means, 95\% intervals, correlations
+among parameters, and other values of interest.
+
+\section{Fitting challenges}
+
+Now that we've reviewed the basic techniques
+for maximum-likelihood and Bayesian estimation,
+I'll go over some of the special characteristics of problems that make
+fitting harder.
+
+\subsection{High dimensional/many-parameter models}
+
+Finding the MLE for a 1-parameter model means finding the minimum of
+the likelihood curve; finding the MLE for a 2-parameter model means
+finding the minimum of a 2D surface; finding the MLE for models with
+more parameters means finding the minimum on a multidimensional
+``surface''.  Models with more than a few parameters suffer from the
+\emph{curse of dimensionality}:
+the number of parameter combinations,
+or derivatives, or directions you have to consider increases as a power
+law of the sampling resolution.  For example, if you 
+want find the MLE for a five-parameter model 
+(a pretty simple model) by direct search
+and you want to subdivide the range of each parameter into 10 intervals
+(which is quite coarse),
+you're already talking about $10^5$ parameter combinations.
+Combine this with function evaluations
+that take more than a fraction of a second and you're into the better
+part of a day to do a single optimization run.
+Direct search is usually just not practical for models with more than two or three parameters.
+
+If you need to visualize a high-dimensional likelihood
+surface (e.g. examining the region around a putative MLE to
+see if the algorithm has found a reasonable
+answer), you'll probably
+need to look at 2D slices (varying two parameters
+at a time over reasonable ranges,
+calculating the objective function
+for each combination of values while holding all the other 
+parameters constant) or profiles (varying two parameters
+at a time over reasonable ranges and optimizing over all the
+other parameters for each combination of values).  You are more
+likely to have to fall back on the information matrix-based approach
+described in the previous chapter for finding approximate variances
+and covariances (or correlations) of the parameter estimates; this
+approach is more approximate and gives you less information than
+fitting profiles, but extends very simply to any number of parameters.
+
+MCMC fitting adapts well to large models.
+You can easily get
+univariate (using \code{HPDinterval} from \code{coda} 
+for credible intervals or \code{summary} for quantiles)
+and bivariate confidence intervals (using \code{HPDregionplot}
+from \code{emdbook}).
+% Confidence regions in higher dimensions
+% (e.g. trivariate regions) could be strange shapes that would be
+% hard to visualize, but there's little that you or anyone else
+% can do if they are.
+
+\subsection{Slow function evaluations}
+
+Since they require many function evaluations, high-dimensional problems 
+also increase the importance of speed in the likelihood calculations.
+Many of the models you'll deal
+with take only microseconds to calculate a likelihood, so running
+tens of thousands of function evaluations can still be relatively
+quick.  However,
+fitting a high-dimensional model
+using simulated annealing or other stochastic optimization
+approaches, or finding confidence limits for
+such models, can sometimes
+require \emph{millions} of evaluations and hours
+or days to fit.  In other cases, you might have to run a
+complicated population dynamics model for each set of parameters
+and so each likelihood function evaluation could take minutes or longer
+\citep{Moorcroft+2006}.
+
+<<echo=FALSE,cache=TRUE>>=
+nr=1000
+nc=2000
+m <- matrix(nrow=nr,ncol=nc)
+v <- numeric(nc)
+t1a <- system.time({
+  for (i in 1:nr) {
+    for (j in 1:nc) {
+      m[i,j] = rnorm(1)
+    }
+  }})
+t1b <- system.time(m <- matrix(rnorm(nr*nc),nrow=nr,ncol=nc))
+t2a <- system.time({
+  for (i in 1:nr) {
+    v[i] = 0
+    for (j in 1:nc) {
+      v[i] = v[i]+m[i,j]
+    }
+  }})
+t2b <- system.time({
+  v = numeric(nr)
+  for (i in 1:nc) {
+    v[i] = sum(m[,i])
+  }})
+t2c <- system.time(v <- apply(m,2,sum))
+t2d <- system.time(v <- colSums(m))
+tmpf <- function(t,d=0) { round(t["elapsed"],d)}
+@ 
+
+Some possible solutions or partial solutions to this problem:
+\begin{itemize}
+\item{Use more efficient 
+optimization algorithms, such as derivative-based algorithms
+instead of Nelder-Mead, if you can.}
+\item{Derive an analytical expression for the derivatives 
+and write a function to compute it. \code{optim} 
+and \code{mle2} can use
+this function (via the \code{gr} argument)
+instead of computing finite differences.}
+\item{Rewrite the code that computes the objective function
+more efficiently in \R.  Vectorized operations are almost
+always faster than \code{for} loops.
+For example, filling a \Sexpr{nr} $\times$ \Sexpr{nc} matrix with
+Normally distributed values one at a time takes \Sexpr{tmpf(t1a)}
+seconds, while picking a million values and then reformatting
+them into a matrix takes only \Sexpr{tmpf(t1b,2)} seconds.
+Calculating the column sums of the matrix by looping over rows and
+columns takes \Sexpr{tmpf(t2a,1)} seconds;
+using \code{apply(m,1,sum)} takes \Sexpr{tmpf(t2c,2)} seconds;
+and using \code{colSums(m)} takes \Sexpr{tmpf(t2d,3)} seconds.
+}
+\item{If you can program in C or FORTRAN,
+or have a friend who can, write your objective
+function in one of these faster, lower-level languages
+and link it to \R\ (see the R Extensions Manual
+for details).}
+\item{For really big problems, you may need
+to use tools beyond \R. One such tool is AD Model Builder, which
+uses \emph{automatic differentiation} --- a very sophisticated
+algorithm for computing derivatives efficiently --- which
+can speed up computation a lot (\R\ has a very simple form
+of automatic differentiation built into its \code{deriv} function).}
+\item{Compromise by allowing a lower precision for your fits,
+increasing the \code{reltol} parameter in \code{optim}.
+Do you really need to know the parameters within a factor
+of $10^{-8}$, or would $10^{-3}$ do, especially if you know
+your confidence limits are likely to be much larger?
+(Be careful: increasing the tolerance in this way may also
+allow algorithms to stop prematurely at a flat spot on the
+way to the true minimum.)}
+\item{Find a faster computer, or wait longer for the answers.}
+\end{itemize}
+
+
+\subsection{Discontinuities and thresholds}
+
+Models with sudden changes in the log-likelihood
+(discontinuities) or derivatives of the log-likelihood,
+or perfectly flat regions, can cause real trouble
+for general-purpose optimization algorithms\footnote{Specialized
+algorithms, such as those included in the \code{segmented}
+package on CRAN, can handle certain classes of piecewise
+models \citep{Muggeo2003}.}.
+Discontinuities in
+the log-likelihood or its derivative can make derivative-based
+extrapolations wildly wrong. 
+Almost-flat regions
+can make most methods (including Nelder-Mead)
+falsely conclude that they've reached a minimum.
+
+<<echo=FALSE,cache=TRUE>>=
+thrfun <- function(x,a,b,thresh) {
+  ifelse(x<thresh,a,b)
+}
+## Simulate some ``data'' using this function.
+## Establish a range of $x$ values, compute the
+## deterministic $y$, and add normally distributed
+## errors:
+set.seed(1001)
+data.x <- seq(0,5,length=20)
+det.y <- thrfun(data.x,a=2,b=5,thresh=3)
+data.y <- det.y+rnorm(length(data.x),0,0.5)
+ssqfun <- function(pvec,x=data.x,y=data.y) {
+  exp.y <- thrfun(x,pvec[1],pvec[2],pvec[3])
+  sum((exp.y-data.y)^2)
+}
+ssqfunprof <- function(pvec,x=data.x,y=data.y,thresh) {
+  exp.y <- thrfun(x,pvec[1],pvec[2],thresh)
+  sum((exp.y-data.y)^2)
+}
+## Calculate the sum of squares as a function of 
+## the threshold parameter, with the lower
+## and upper values set at $p_L=2$ and $p_U=5$
+## (these happen to be their true values
+## and this is a \emph{slice} for the threshold
+## parameter)
+thrvec <- seq(0,5,length=100)
+thrprof0 <- t(sapply(thrvec,
+                  function(t) unlist(optim(fn=ssqfunprof,par=c(2,5),thresh=t))))
+thrprof = thrprof0[,"value"]
+ssqfunlogist <- function(pvec,x=data.x,y=data.y) {
+  a <- pvec[1]
+  b <- pvec[2]
+  thresh <- pvec[3]
+  slope <- pvec[4]
+  exp.y <- a+(b-a)/(1+exp(-slope*(data.x-thresh)))
+  sum((exp.y-data.y)^2)
+}
+O1 <- optim(fn=ssqfun,par=c(a=2,b=5,thresh=3))
+O2 <- optim(fn=ssqfunlogist,par=c(a=2,b=5,thresh=3,slope=10))
+ssqfunlogistprof <- function(pvec,x=data.x,y=data.y,thresh) {
+  a <- pvec[1]
+  b <- pvec[2]
+  slope <- pvec[3]
+  exp.y <- a+(b-a)/(1+exp(-slope*(x-thresh)))
+  sum((exp.y-y)^2)
+}
+logistprof0 = t(sapply(thrvec,
+  function(t) unlist(optim(fn=ssqfunlogistprof,par=c(a=2,b=5,slope=10),thresh=t,
+                            method="BFGS",control=list(maxit=1000)))))
+@
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE,height=8>>=
+op <- par(mfrow=c(2,1),cex=1.5,mgp=c(2.5,1,0),las=1,lwd=2,bty="l")
+par(mar=c(1,4,1,1)+0.1)
+plot(data.x,data.y,ylab="y",xlab="",axes=FALSE)
+axis(side=2)
+box()
+curve(ifelse(x<3,O1$par[1],O1$par[2]),add=TRUE,lty=1,type="s")
+curve(O2$par[1]+(O2$par[2]-O2$par[1])/(1+exp(-O2$par[4]*(x-O2$par[3]))),add=TRUE,lty=2)
+par(mar=c(4,4,3,1)+0.1)
+plot(thrvec,thrprof,
+  xlab="x",ylab="Negative log likelihood",type="s")
+lines(thrvec,logistprof0[,"value"],lty=2)
+text(c(0,0),c(thrprof[1],
+              logistprof0[1,"value"])+5,
+              c("threshold","logistic"),adj=0,xpd=NA)
+par(op)
+@
+\caption{Threshold and logistic models.
+Top: data, showing the data (generated from a threshold
+model) and the best threshold and logistic fits to the data.
+Bottom: likelihood profiles.}
+\label{fig:thresh1}
+\end{figure}
+
+% why does logistic do so much better when the threshold is way off?
+<<echo=FALSE,eval=FALSE>>=
+plot(data.x,data.y,xlab="x",ylab="y")
+with (as.list(logistprof0[10,]),
+      curve(par.a+(par.b-par.a)/(1+exp(-par.slope*(x-thrvec[10]))),add=TRUE))
+with (as.list(thrprof0[10,]),
+      curve(ifelse(x<thrvec[10],par1,par2),add=TRUE,col=2))
+@ 
+% answer: because the threshold function becomes flat and the logistic
+% can become linear
+
+Flat regions are often the result of threshold
+models, which in turn can be motivated on simple
+phenomenological grounds or as the result (e.g.) 
+of some optimal-foraging theories (Chapter 3).  Figure~\ref{fig:thresh1}
+shows simulated ``data'' and a likelihood curve/slice
+for a very simple threshold model.  The likelihood
+profile for the threshold model
+has discontinuities at the $x$-value of
+each data point.
+These breaks occur because
+the likelihood only changes when the threshold
+parameter is changed from just below an observed value
+of $x$ to just above it; adjusting
+the threshold parameter anywhere in the range
+between two observed $x$ values has no effect on the likelihood.
+
+The logistic profile, in addition
+to being smooth rather than choppy, is lower 
+(representing a better fit to the data) for extreme
+values because the logistic function can become essentially
+linear for intermediate values, while the threshold function
+is flat.
+For optimum values of the threshold parameter,
+the logistic and threshold models give essentially
+the same answer.
+Since the logistic is slightly more flexible
+(having an additional parameter governing steepness),
+it gives marginally better fits --- but these would
+not be significantly better according to the likelihood
+ratio test or any other model selection criterion.
+Both profiles become flat
+for extreme values (the fit doesn't get any worse for
+ridiculous values of the threshold parameter), which
+could cause trouble with an optimization
+method that is looking for flat regions of the profile.
+
+Some ways to deal with thresholds:
+\begin{itemize}
+\item{If you know \emph{a priori} where the threshold
+is, you can fit different models on either side of
+the threshold.}
+\item{If the threshold occurs for a single parameter,
+you can compute a log-likelihood profile for that parameter.
+For example, in Figure~\ref{fig:thresh1}
+only the parameter for the location of the threshold causes a problem,
+while the parameters for the values before and after the threshold
+are well-behaved.
+This procedure reduces to direct search 
+for the difficult parameter while still searching 
+automatically for all the other
+parameters \citep{BarrowmanMyers2000}.
+This kind of profiling
+is also useful when a parameter needs
+to be restricted to integer values
+or is otherwise difficult to fit by a
+continuous optimization routine.
+}
+\item{You can adjust the model, replacing the sharp threshold by some
+smoother behavior.
+Figure~\ref{fig:thresh1} shows the likelihood profile 
+of a logistic model fitted to the same
+data.  Many fitting procedures for threshold
+models replace the sharp threshold with a smooth transition
+that preserves most of the behavior of the model but alleviates
+fitting difficulties \citep{BaconWatts1974,BarrowmanMyers2000}.}
+\end{itemize}
+
+\subsection{Multiple minima}
+\label{sec:multmin}
+
+Even if a function is smooth, it may have multiple minima
+(e.g. Figure~\ref{fig:direct}): alternative sets of parameters
+that each represent better fits to the data than any nearby parameters.
+Multiple minima may occur in either smooth
+or jagged likelihood surfaces.
+
+<<echo=FALSE>>=
+data(ReedfrogSizepred)
+attach(ReedfrogSizepred,warn=FALSE)
+logist2 <- function(x,sizep1,sizep2,sizep3) {
+ exp(sizep1*(sizep3-x))/(1+exp(sizep2*sizep1*(sizep3-x)))
+}
+lik.logist2 <- function(sizep1,sizep2,sizep3) {
+  p.pred <- logist2(TBL,sizep1,sizep2,sizep3)
+  -sum(dbinom(Kill,size=10,prob=p.pred,log=TRUE))
+}
+mle.logist2 <- mle2(lik.logist2,
+                  start=list(sizep1=0,sizep2=1,sizep3=12),method="Nelder-Mead")
+mle.logist2B <- mle2(lik.logist2,start=list(sizep1=0,sizep2=1,sizep3=12),
+                    method="BFGS",control=list(parscale=c(0.3,30,10)))
+mle.logist2C <- mle2(lik.logist2,start=list(sizep1=0,sizep2=1,sizep3=12),
+                    method="BFGS",control=list(maxit=1000))
+mle.logist2D <- mle2(lik.logist2,start=as.list(coef(mle.logist2C)),
+                    control=list(maxit=1000))
+slice2 = calcslice(mle.logist2,mle.logist2C,n=1000)
+detach(ReedfrogSizepred)
+@
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+op <- par(cex=1.5,mgp=c(2.5,1,0),las=1,lwd=2,bty="l")
+plot(slice2,type="l",ylab="Negative log-likelihood",xlab="")
+## plot(slice2,type="l",ylab="Negative log-likelihood",xlab="",ylim=c(0,20))
+points(0,-logLik(mle.logist2))
+points(1,-logLik(mle.logist2C))
+##abline(h=-logLik(mle.logist2C))
+abline(h=-logLik(mle.logist2C))
+abline(h=-logLik(mle.logist2C)+qchisq(0.95,1)/2,lty=2)
+par(mar=c(2,2,0,0),bty="l",cex=0.7,lwd=1, mgp=c(1,0,0))
+par(new=TRUE,fig=c(0.22,0.50,0.55,0.85))
+sizeplot(ReedfrogSizepred$TBL,ReedfrogSizepred$Kill, xlim=c(5,30),ylim=c(-0.4,10),axes=FALSE,
+         xlab="size",ylab="killed",cex.lab=1.5)
+with(as.list(coef(mle.logist2)),curve(logist2(x,sizep1,sizep2,sizep3)*10,add=TRUE,lwd=2))
+box()
+par(new=TRUE,fig=c(0.7,0.98,0.55,0.85))
+sizeplot(ReedfrogSizepred$TBL,ReedfrogSizepred$Kill, xlim=c(5,30),ylim=c(-0.4,10),axes=FALSE,
+         xlab="size",ylab="killed",cex.lab=1.5)
+with(as.list(coef(mle.logist2C)),curve(logist2(x,sizep1,sizep2,sizep3)*10,add=TRUE,lwd=2))
+box()
+par(op)
+@ 
+\caption{Likelihood slice connecting two
+negative log-likelihood minima for the modified logistic model
+of \cite{VoneshBolker2005}.  The $x$ axis is on
+an arbitrary scale where $x=0$ and $x=1$ represent
+the locations of the two minima.
+Subplots show the fits of the curves to the frog
+predation data for the parameters at each minimum;
+the right-hand minimum is a slightly better fit
+($-L=\Sexpr{round(as.numeric(-logLik(mle.logist2C)),2)}$
+(right)
+vs. \Sexpr{round(as.numeric(-logLik(mle.logist2)),2)} (left)).
+The horizontal solid and dashed lines show the minimum
+negative log-likelihood and the 95\% confidence cutoff
+($-L+\chi^2_1(0.95)/2$).  The 95\% confidence region includes
+small regions around both $x=0$ and $x=1$.}
+\label{fig:voneshmult}
+\end{figure}
+Multiple minima are a challenging problem, and are particularly
+scary because they're not always obvious --- especially in high-dimensional
+problems.  Figure~\ref{fig:voneshmult} shows a slice through
+parameter space connecting two minima that occur in the negative
+log-likelihood surface of the modified logistic function that
+\cite{VoneshBolker2005} used to fit data on tadpole predation
+as a function of size
+(the function \code{calcslice} in the \code{emdbook} package
+will compute such a slice).
+Such a pattern strongly suggests, although it does not
+guarantee, that the two points really are local minima.
+When we wrote the paper, we were
+aware only of the left-hand minimum, which seemed to
+fit the data reasonably well.  In preparing this chapter,
+I re-analyzed the data using BFGS instead of Nelder-Mead optimization
+and discovered the right-hand fit, which is actually slightly better
+($-L=\Sexpr{round(as.numeric(-logLik(mle.logist2C)),2)}$
+compared to
+\Sexpr{round(as.numeric(-logLik(mle.logist2)),2)} for the
+original fit).  
+Since they use different rules, the Nelder-Mead
+and BFGS algorithms found their way to different minima
+despite starting at the same point.
+This is alarming.
+While the log-likelihood
+difference 
+(\Sexpr{round(as.numeric(-logLik(mle.logist2)+logLik(mle.logist2C)),2)})
+is not large enough to reject the first set of parameters,
+and while the fit corresponding to those parameters still seems
+more biologically plausible (a gradual increase in predation
+risk followed by a slightly slower decrease, rather than a
+very sharp increase and gradual decrease), we had no
+idea that the second minimum existed.
+\cite{Etienne+2006b} pointed out a similar issue affecting
+a paper by \cite{Latimer+2005} about diversification patterns
+in the South African fynbos: some estimates of extremely high
+speciation rates turned out to be spurious minima in the
+model's likelihood surface (although the basic conclusions
+of the original paper still held).
+
+No algorithm can promise
+to deal with the pathological case of a very narrow, isolated minimum 
+as in Figure~\ref{fig:direct}.
+To guard against multiple-minimum problems, try to
+fit your model with several different reasonable starting
+points, and check to make sure that your answers are reasonable.
+
+If your results suggest that you have multiple minima --- that
+is, you get different answers from different starting points --- check
+the following:
+\begin{itemize}
+\item{Did both fits really converge properly?  
+The fits returned by \code{mle2} from the \code{bbmle}
+package will warn you if the optimization did not converge;
+for \code{optim} results you need to check
+the \verb+$convergence+ term of results
+(it will be zero if there were no problems).
+Try restarting the optimizations from both of the points where
+the optimizations ended up, possibly resetting \code{parscale}
+to the absolute value of the fitted parameters.
+(If \code{O1} is your first \code{optim} fit, run the second fit
+with \verb+control=list(parscale=abs(O1$par))+.
+If \code{O1} is an \code{mle2} fit, use
+\verb+control=list(parscale=abs(coef(O1)))+.)  
+Try different optimization methods (BFGS if you used Nelder-Mead, and \emph{vice versa}).
+Calculate slices or profiles around the optima to make sure they
+really look like local minima.}
+\item{Use \code{calcslice} to
+compute a likelihood slice between the two putative fits to make sure
+that the surface is really higher between them.}
+\end{itemize}
+
+If your surface contains several minima, the simplest 
+solution may  be to use a simple, fast method (like BFGS) but to start it from
+many different places.  
+This will work if the surface is essentially smooth,
+but with two (or many) valleys of approximately the same depth%
+\footnote{The many-valley case, or rather
+its inverse the many-peaks case (if we are
+maximizing rather than minimizing), is sometimes known as a ``fakir's bed'' problem
+after the practice of sitting on a board full of nails
+\citep{Swartz2003}.}.  You will need to decide how
+to assign starting values (randomly or on a grid?  along some
+transect?), and how many starting values you can afford to try.
+You may need to tune the optimization parameters so that
+each individual optimization runs as fast and smoothly as
+possible.  Researchers have also developed hybrid
+approaches based on multiple starts \citep{Tucci2002}.
+
+When multiple minima occur it is possible, although unusual,
+for the 95\% confidence limits to be discontinuous --- that is,
+for there to be separate regions around each minimum that are supported
+by the data.  This does happen in the case shown in Figure~\ref{fig:voneshmult},
+although on the scale of that figure the confidence intervals in the
+regions around $x=0$ and $x=1$ would be
+almost too small to see.  More commonly, either one minimum will
+be a lot deeper than the other so that only the region around
+one minimum is included in the confidence region, or the minima
+will be about the same height but the two valleys will join at
+the height of the 95\% cutoff so that the 95\% confidence interval
+is continuous.
+
+If the surface is jagged instead of smooth, or if you have
+a sort of fractal surface --- valleys within valleys, of many
+different depths --- a stochastic global method
+such as simulated annealing is probably
+your best bet.  Markov chain Monte Carlo can in principle
+deal with multiple modes, but convergence can be slow --- %
+you need to start chains at different modes and allow enough
+time for each chain to wander to all of the different modes
+\citep[see][for a related example
+in phylogenetics]{MosselVigoda2006,Ronquist+2006}.
+
+\subsection{Constraints}
+The last technical detail covered here is the problem of
+constraining parameter values within a particular range.
+Constraints occur for many reasons,
+but the most common constraints in ecological models
+are that some parameters make sense only when they have
+positive values (e.g. predation or
+growth rates)
+or values between 0 and 1 (e.g. probabilities).
+The three important characteristics of constraints are:
+\begin{enumerate}
+\item{\emph{Equality} vs. \emph{inequality} constraints:
+must a parameter or set of parameters be exactly equal to some
+value, or just within boundaries?
+Constraints on individual parameters are 
+always inequality constraints (e.g. $0<p<1$).
+The most common equality constraint
+is that probabilities must sum to 1 ($\sum_{i=1}^N p_i=1$).}
+\item{Constraints on individual parameters vs.
+constraints on combinations.
+Inequality constraints on individual parameters
+($a_1<p_1<b_1$, $a_2<p_2<b_2$) are called \emph{box constraints}.
+Constraints on linear combinations of parameters
+($a_1 p_1+a_2 p_2<c$) are called \emph{linear constraints}.}
+\item{Whether the constraint equations can be solved
+analytically in terms of one
+of the parameters. For example, you can restate the
+constraint $p_1 p_2 = C$ as $p_1 = C/p_2$.}
+\end{enumerate}
+For example, in Chapter 8 of 
+the \emph{Ecological Detective},
+Hilborn and Mangel constrain
+the equilibrium of a fairly complex wildebeest
+population model to have a particular value.  This is 
+the most difficult kind of constraint; it's an equality
+constraint, a nonlinear function of the parameters,
+and there's no way to solve the constraint equation
+analytically.
+
+The simplest approach to a constrained problem
+is to ignore the constraint completely
+and hope that your optimizing routine will find
+a minimum that satisfies the constraint without running into trouble.
+You can often get away with this if your minimum is far
+away from the boundary,
+although you may get warning messages
+that look something like
+\code{Warning message: NaNs produced in: dnbinom(x, size, prob, log)}.
+If your answers make sense you can often ignore the warnings, but
+you should definitely test the results by re-starting the
+optimizer from near its ending point to verify that it
+still finds the same solution.  You may also want to try some
+of the other constrained approaches listed below to double-check.
+
+The next simplest approach to optimization constraints is to find
+a canned optimization algorithm that can incorporate constraints
+in its problem definition.  The \code{optim} function 
+(and its \code{mle2} wrapper) can
+accommodate box constraints if you use the \code{L-BFGS-B} method.
+So can \code{nlminb}, which 
+was introduced to \R\ more recently and uses a different algorithm.
+\R\ also provides a \code{constrOptim} function that can handle
+linear constraints.
+Algorithms that can fit
+models with general nonlinear equality and
+inequality constraints do exist, but they have not been implemented
+in \R: they are typically large FORTRAN programs that
+cost hundreds or thousands of dollars to license
+(see below for the cheapskate ecologist's approach to 
+nonlinear constraints).
+
+Constrained optimization is finicky, so it's often useful
+to have additional options when one method fails.
+In my experience, constrained algorithms are
+less robust than their unconstrained counterparts.
+For example L-BFGS-B, the constrained version of BFGS,
+is (1) more likely to crash than BFGS;
+(2) worse at handling \code{NA}s or infinite values
+than BFGS; and
+(3) will sometimes try parameter values that
+violate the constraints by a little bit
+when it's calculating finite differences.
+You can work around the last problem by
+setting boundaries that are a little bit tighter than the
+theoretical limits, for example a lower bound of 0.002 instead of 0.
+
+The third approach to constraint problems is to add a penalty to the
+negative log-likelihood that increases as parameter values stray
+farther outside of the allowed region.  Instead of minimizing the
+negative log-likelihood $-\llik$, try minimizing $-\llik + P \times
+(|C-C(p)|)^n$ where $P$ is a penalty multiplier, $n $ is a penalty
+exponent, $C$ is the desired value of the constraint, and $C(p)$ is
+the value of the constraint at the current parameter values
+\citep{HilbornMangel1997}.  For example, if you were using $P=1000$
+and $n=2$ (a quadratic penalty, the most common type) and the sum of
+probabilities for a set of parameters was 1.2 instead of the desired
+value of 1.0, you would add a penalty term of $1000(1-1.2)^2=40$ to
+the negative log-likelihood.  The penalty term will tend to push
+minimizers back into the allowed region.  However, you need to
+implement such penalties carefully.  For example, if your likelihood
+calculation is nonsensical outside the allowed region (e.g. if some
+parameters lead to negative probabilities) you may need to use the
+value of the negative log-likelihood at the closest boundary rather
+than trying to compute $-L$ for parameters outside the boundary.  If
+your penalties make the surface non-smooth at the boundary,
+derivative-based minimizers are likely to fail.  You will often need
+to tune the penalty multiplier and exponent, especially for equality
+constraints.
+
+The fourth, often most robust, approach is to transform your parameters
+to avoid the constraints entirely.  For example, if you have a rate or
+density parameter $\lambda$ that must be positive,
+rewrite your function and minimize with respect to $x=\log \lambda$
+instead.  Every value of $x$ between $-\infty$ and $\infty$ translates
+to a positive value of $\lambda$; negative values of $x$ correspond to
+values of $\lambda<1$.  As $x$ approaches $-\infty$, $\lambda$ approaches
+zero; as $x$ approaches $\infty$, $\lambda$ also approaches $\infty$.
+
+Similarly, if you have a parameter $p$ 
+that must be between 0 and 1 (such as a parameter
+representing a probability), the \emph{logit transformation} of $p$,
+$q=\log p/(1-p)$, will be unconstrained
+(its value can be anywhere between $-\infty$ and $\infty$).
+You can use \code{qlogis} in \R\ to calculate the logit.
+The inverse transformation is the logistic transformation,
+$\exp(q)/(1+\exp(q))$ (\code{plogis}).
+
+The log and logit transformations are by far the handiest, and most
+common, transformations. Many classical statistical methods use
+them to ensure that parameters are well defined: for example,
+logistic regression fits probabilities on a logit scale.
+Another less common but still useful
+transformation is the \emph{additive log ratio} transformation
+\citep{Aitchison1986,Billheimer+1998,OkuyamaBolker2005}.  When you're
+modeling proportions, you often have a set of parameters $p_1, \ldots,
+p_n$ representing the probabilities or proportions of a variety of
+outcomes (e.g. predation by different predator types).  Each $p_i$
+must be between 0 and 1, and $\sum p_i=1$.  The sum-to-one constraint
+means that the constraints are not box constraints (which would apply
+to each parameter separately), and even though it is linear, it is an
+equality constraint rather than a inequality constraint --- so
+\code{constrOptim} can't handle it.  The additive log ratio
+transformation takes care of the problem: the vector $y = (\log(p_1/p_n),
+\log(p_2/p_n), \ldots, \log(p_{n-1}/p_n))$ is a set of $n-1$
+unconstrained values from which the original values of $p_i$
+can be computed.  There is one fewer additive log-ratio-transformed
+parameter because if we know $n-1$ of the values, then the $n^{th}$
+is determined by the summation constraint.  The inverse
+transformation (the additive logistic) is $p_i = \exp(y_i)/(1+\sum
+\exp(y_i))$ for $i<n$, $p_n = 1 - \sum_i^{n-1} p_i$.
+
+The major problem with transforming constraints this way is that
+sometimes the best estimates of the parameters, or the null values you
+want to test against, actually lie on the boundary --- %
+in mixture or composition problems, for example, the best fit may set
+the contribution from some components equal to zero.
+For example, the best
+estimate of the contribution of some
+turtle nesting beaches (rookeries)
+to a mixed foraging-ground population may be exactly zero
+\citep{OkuyamaBolker2005}.
+If you logit-transform the proportional contributions
+from different nesting beaches
+you will move the boundary from 0
+or 1 to $\pm \infty$.
+Any optimizer that tries to 
+reach the boundary will have a hard time,
+resulting in warnings about convergence
+and/or large negative estimates that differ
+depending on starting conditions.
+One option is simply to set the relevant
+parameters to zero (i.e., construct a reduced model 
+that eliminates all nesting beaches
+that seem to have minimal contributions),
+estimate the minimum negative log-likelihood, and
+compare it to the best fit that the optimizer could achieve.
+If the negative log-likelihood is smaller with the contributions set
+to zero (e.g. the negative log-likelihood 
+for contribution=0 is 12.5, compared to a best-achieved value
+of 12.7 when the log-transformed contribution is $-20$), then you
+can conclude that zero is really the best fit. You can
+also compute a profile (negative log-)likelihood on one particular contribution
+with values ranging upward from zero and see that the minimum really
+is at zero.
+However, it may be too tedious
+to go to all this trouble every time you have a parameter
+or set of parameters that appear to have their best fit
+on the boundary.
+
+\label{sec:lrtboundary}
+One final issue with parameters on the boundary is that the standard
+model selection machinery discussed in Chapter 6 (Likelihood Ratio
+Test, AIC, etc.) always assumes that there are parameter values 
+in the range on either side of the null value.  This issue is
+well-known but still problematic in a wide range of statistical
+applications, for example in deciding whether to set a variance
+parameter to zero.
+For the specific case of linear mixed-effect models
+(i.e. models with linear responses and normally distributed
+random variables), the problem is relatively well studied.  
+\cite{PinheiroBates2000} suggest the following approaches 
+(listed in order of increasing sophistication):
+\begin{itemize}
+\item Simply ignore the problem, and treat the parameter as though it
+  were not on the boundary --- i.e.  use a likelihood ratio test with
+  1~degree of freedom.  Analyses of linear mixed-effect models
+  \citep{SelfLiang1987,StramLee1994} suggest that this procedure is
+  conservative; it will reject the null hypothesis less often 
+  (sometimes much less often) than the
+  nominal type~I error rate $\alpha$\footnote{Whether this is a good
+    idea or not, it is the standard approach---as far as I can tell
+    it is \emph{always} what is done in ecological analyses,
+    although some evolutionary analyses are more sophisticated.}.
+\item Some analyses of mixed-effect models suggest that the
+  distribution of the log-likelihood-ratio under the null hypothesis
+  when $n$ parameters are on the boundary is a
+  mixture of $\chi^2_n$ and a $\chi^2_{n-1}$ distributions
+  rather than a   $\chi^2_n$ distribution.
+  If you are testing a single parameter, as is most often the case, then $n=1$
+  and $\chi^2_{n-1}$ is $\chi^2_0$ --- defined as 
+  a spike at zero with area 1.  For most models, the distribution is a
+  50/50 mixture of $\chi^2_n$ and $\chi^2_{n-1}$, which
+  \cite{GoldmanWhelan2000} call the $\bar \chi^2_n$ distribution.  For
+  $n=1$, $\bar \chi^2_1(1-\alpha) =  \chi^2_1(1-2\alpha)$. 
+  In this case the 95\% critical value for the likelihood ratio test would thus be
+  \code{qchisq(0.9,1)/2}=\Sexpr{round(qchibarsq(0.95,1)/2,2)} instead
+  of the usual value of 1.92.  The \code{qchibarsq} function in the
+  \code{emdbook} package will compute critical values for $\bar
+  \chi^2_n$.
+\item The distribution of deviances may \emph{not} be an equal mixture
+  of $\chi^2_n$ and $\chi^2_{n-1}$ \citep{PinheiroBates2000}.
+  If you want to be very careful, the ``gold standard'' is to
+  simulate the null hypothesis and determine the distribution of the
+  log-likelihood ratio under the null hypothesis: see p.~\pageref{sec:nullhypsim}
+  for a worked example.
+\end{itemize}
+
+\section{Estimating confidence limits of  functions of parameters}
+
+Quite often, you estimate a set of parameters from data, but you
+actually want to say something about a value that is not a parameter
+(for example, about the predicted population size some time in the
+future).  It's easy to get the point estimate --- you just feed the
+parameter estimates into the population model and see what comes out.
+But how do you estimate the confidence limits on that prediction?
+
+There are many possibilities, ranging in accuracy,
+sophistication, and difficulty.  
+The data for an extended example come from 
+J. Wilson's observations of ``death'' (actually disappearance,
+which may also represent emigration) times of juvenile
+reef gobies in a variety of
+experimental treatments.
+The gobies' times of death are (assumed to be)
+distributed according to a Weibull distribution,
+\begin{equation}
+f(t) = \frac{a}{b} \left(\frac{t}{b}\right)^{a-1} e^{-(t/b)^a}.
+\label{eq:weib}
+\end{equation}
+The Weibull distribution,
+common in survival analysis,
+has essentially the same range of
+shape possibilities as the gamma distribution, from L-shaped like the
+exponential to humped like the normal, and it
+allows for a \emph{per capita}
+mortality rate that either increases or decreases with time.
+The Weibull (\code{dweibull} in \R)
+has two parameters, shape ($a$ above) and scale ($b$ above):
+when shape=1 it reduces to an exponential.
+It's easy enough to calculate the univariate or
+bivariate confidence limits of the shape and scale parameters, but
+what if we want to calculate the confidence
+interval of the mean survival time, which is likely
+to be more meaningful to the average ecologist or manager?
+
+First, pull in the data, take a useful subset,
+and define the death time as the midpoint
+between the last time the fish was observed (\code{d1}) and
+the first time it was \emph{not} observed (\code{d2})%
+\footnote{Survival analyses usually assume that
+the time of death is known exactly.  With 
+these data, as is common in ecological studies, we have a range of days
+during which the fish disappeared.  To handle this
+so-called \emph{interval censoring} properly in the likelihood
+function, we would have to find the probability of
+dying after day \code{d1} but before day \code{d2}.
+%which is (probability of dying before \code{d2}-probability
+%of dying before \code{d1}).  
+In \R\ the negative log-likelihood
+function would be:
+<<eval=FALSE>>=
+weiblikfun <- function(shape,scale) {
+  -sum(log(pweibull(dat$d2,shape,scale)-
+           pweibull(dat$d1,shape,scale)))
+}
+@ 
+For this example, I've used the cruder, simpler approach of averaging 
+\code{d1} and \code{d2}.
+}
+<<>>=
+library(emdbookx)
+data(GobySurvival)
+dat = subset(GobySurvival,exper==1 & density==9 & qual>median(qual))
+time = (dat$d1+dat$d2)/2
+@ 
+
+Set up a simple likelihood function:
+<<>>=
+weiblikfun = function(shape,scale) {
+  -sum(dweibull(time,shape=shape,scale=scale,log=TRUE))
+}
+@ 
+
+Fit the model starting from 
+an exponential distribution (if scale=$a=1$, the
+distribution is an exponential with rate $1/b$
+and mean $b$):
+<<>>=
+w1 <- mle2(weiblikfun,start=list(shape=1,scale=mean(time)))
+@
+<<echo=FALSE>>=
+meanfun = function(shape,scale) { scale*gamma(1+1/shape) }
+@ 
+
+The parameter estimates (\code{coef(w1)})
+are shape=\Sexpr{round(coef(w1)["shape"],3)} and
+scale=\Sexpr{round(coef(w1)["scale"],3)}, the estimate
+of the mean survival time (using \code{meanfun}
+and plugging in the parameter estimates)
+is \Sexpr{round(meanfun(coef(w1)["shape"],coef(w1)["scale"]),3)}.
+
+\subsection{Profile likelihood}
+
+Now we'd like confidence intervals for the mean that
+take variability in both shape and scale into account.
+The most rigorous way to estimate confidence limits on a non-parameter
+is to calculate the profile likelihood for the value and find the
+95\% confidence limits, using almost the same procedure as if you
+were finding the univariate confidence limits of one of the parameters.
+
+
+
+\begin{figure}
+<<echo=FALSE>>=
+weiblikfun2 <- function(shape,mu) {
+  scale <- mu/gamma(1+1/shape)
+  -sum(dweibull(time,shape=shape,scale=scale,log=TRUE))
+}
+w2 <- mle2(weiblikfun2,start=list(shape=1,mu=mean(time)))
+@ 
+
+<<echo=FALSE>>=
+## compute the contour surface
+smat <- curve3d(weiblikfun,
+                from=c(0.5,5),
+                to=c(1.2,25),
+                n=c(40,40),sys3d="none")
+#%Now let's superimpose on this plot contours that represent
+#%the mean survival time.
+#%Calculate the mean values for all combinations
+#%of shape and scale:
+#%The \code{outer} command is a quick way to generate matrices,
+#%but it only works for vectorizable functions.
+mmat <- outer(smat$x,smat$y,meanfun)  ## shortcut
+@ 
+
+<<echo=FALSE,fig=TRUE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5,mgp=c(2.5,1,0))
+alevels = c(0.8,0.9,0.95,0.99)
+mlevels = seq(6,38,by=4)
+contour(smat$x,smat$y,smat$z,levels=qchisq(alevels,1)/2-logLik(w1),
+        labels=alevels,
+        xlab="Shape",ylab="Scale",col="darkgray",labcex=1)
+points(coef(w1)[1],coef(w1)[2])
+contour(smat$x,smat$y,mmat,add=TRUE,col=1,levels=mlevels,labcex=1,method="edge")
+p2 = profile(w2)
+p2B = p2@profile$mu$par.vals
+shape <- p2B[,1]
+mu <- p2B[,2]
+scale <- mu/gamma(1+1/shape)
+lines(shape,scale,lty=3)
+shvals <- approx(p2@profile$mu$z,p2B[,"shape"],xout=c(-1.96,1.96))$y
+muvals <- approx(p2@profile$mu$z,p2B[,"mu"],xout=c(-1.96,1.96))$y
+contour(smat$x,smat$y,mmat,add=TRUE,col=1,levels=round(muvals,1),lty=2,drawlabels=FALSE)
+scvals <- muvals/gamma(1+1/shvals)
+points(shvals,scvals,pch=3)
+@
+\caption{Geometry of confidence intervals
+on mean survival time.
+Gray contours: univariate (80\%, 90\%, 95\%, 99\%)
+confidence intervals for shape and scale.
+Black contours: mean survival time.  Dotted line:
+likelihood profile for mean survival time.}
+\label{fig:weibsurf1}
+\end{figure}
+
+Figure~\ref{fig:weibsurf1} illustrates the basic geometry of this problem:
+the underlying contours of the height of the surface
+(contours at 80\%, 95\%, and 99\% \emph{univariate}
+confidence levels) are shown in  gray.
+The black contours show the lines on the plot that correspond
+to different constant values of the mean survival time.
+The dotted line is the likelihood profile for the mean,
+which passes through the minimum negative log-likelihood
+point on each mean contour,
+the point where the mean contour is tangent to a
+likelihood contour line.
+We want to find the intersections of the likelihood ratio
+test contour lines with the likelihood profile for the mean: looking at
+the 95\% line, we can see that the confidence intervals of
+the mean are approximately \Sexpr{round(muvals[1])} to 
+\Sexpr{round(muvals[2])}.
+
+
+\subsubsection{The value can be expressed in terms of other parameters}
+
+When the value for which you want to estimate
+confidence limits has a formula that you can
+solve in terms of one of the parameters, calculating
+its confidence limits is easy.
+
+For the Weibull distribution
+the mean $\mu$ is given by
+\begin{equation}
+\mu = \mbox{scale} \cdot \Gamma(1+1/\mbox{shape}),
+\label{eq:weibmean}
+\end{equation}
+
+Or, translating to \R:
+<<>>=
+meanfun = function(shape,scale) { scale*gamma(1+1/shape) }
+@ 
+
+How do we actually calculate the profile for the mean?
+We can solve equation \ref{eq:weibmean}
+for one of the parameters:
+\begin{equation}
+\mbox{scale} = \frac{\mu}{\Gamma(1+1/\mbox{shape})}
+\end{equation}
+Therefore we can find the likelihood profile for the mean in almost the same way we
+would for one of the parameters.  Fix the value of $\mu$: then, for
+each value of the shape that \R\ tries on its way to estimating the
+parameter, it will calculate the value of the scale that must apply if
+the mean is to be fixed at $\mu$.  The constraint means that, even
+though the model has two parameters (shape and scale),
+we are really doing a one-dimensional search: it just happens to be a
+search along a specified constant-mean contour.
+
+In order to calculate the confidence interval on 
+the mean, we have to rewrite the likelihood function
+in terms of the mean:
+<<>>=
+weiblikfun2 <- function(shape,mu) {
+  scale <- mu/gamma(1+1/shape)
+  -sum(dweibull(time,shape=shape,scale=scale,log=TRUE))
+}
+@ 
+
+Find the maximum again, and calculate the confidence
+intervals --- this time for the shape and the mean.
+<<>>=
+w2 <- mle2(weiblikfun2,start=list(shape=1,mu=mean(time)))
+confint(w2,quietly=TRUE)
+@ 
+
+<<echo=FALSE>>=
+ci.prof <- confint(w2,quietly=TRUE)["mu",]
+@
+
+% \begin{figure}
+<<echo=FALSE,eval=FALSE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5,mgp=c(2.5,1,0))
+source("sqrprofplot.R")
+ sqrprofplot(p2,which=2,sqrVal=TRUE,conf=c(0.9,0.95),
+             col.conf="gray",plot.confstr=TRUE,
+             col.prof="black",col.minval=NA,
+             xlab="Mean",
+              ylab="Deviance")
+@
+% \caption{Likelihood profile for Weibull mean}
+% \label{fig:weibprof1}
+% \end{figure}
+
+We could also draw the univariate likelihood profile,
+the minimum negative log-likelihood achievable
+for each value of the mean, and find the
+95\% confidence limits in the same way as before by
+creating a likelihood profile for $\mu$.
+We would use 1~degree of freedom to
+establish the critical value for the LRT
+because we are only varying one value, even though it
+represents a combination of two parameters.
+
+\subsubsection{Constrained/penalized likelihood}
+
+What if we can't solve for one of the parameters (e.g. scale) in terms
+of the value we are interested in (e.g. mean), but still
+want to calculate a likelihood profile and profile confidence
+limits for the mean?
+We can use a penalized likelihood function to constrain the mean
+to a particular value, as described 
+above in the section on constraints.
+
+<<echo=FALSE,cache=TRUE>>=
+weiblikfun3 <- function(shape,scale,target.mu,penalty=1000) {
+  mu <- meanfun(shape,scale)
+  NLL = -sum(dweibull(time,shape=shape,scale=scale,log=TRUE))
+  pen = penalty*(mu-target.mu)^2
+  NLL+pen
+}
+w3 <- mle2(weiblikfun3,start=list(shape=0.9,scale=13),fixed=list(target.mu=13))
+##profile(w3,which="target.mu")
+penlikfun3 <- function(p,meanval,penalty=1000) {
+  v <-  -sum(dweibull(time,shape=p[1],scale=p[2],log=TRUE))
+  pen <- penalty*(meanfun(p[1],p[2])-meanval)^2
+  val <- v+pen
+## cat(p[1],p[2],penalty,meanval,v,pen,val,"\n")
+  return(val)
+}
+penlikfun2 <- function(m,penalty=1000) {
+  o <- optim(fn=penlikfun3,
+             par=coef(w1),
+             method="BFGS",
+             meanval=m,
+             penalty=penalty)
+  r <- c(o$value,o$par)
+  names(r) <- c("NLL","shape","scale")
+  r
+}
+critval <- c(-logLik(w1)+qchisq(0.95,1)/2)
+pcritfun <- function(m,penalty=1000) {
+   penlikfun2(m,penalty=penalty)[1]-critval
+ }
+lowx <- c(5,13)
+upx <- c(14,30)
+penlower <- uniroot(pcritfun,lowx)$root
+penupper <- uniroot(pcritfun,upx)$root
+ci.pen1 = c(penlower,penupper)
+penvec <- 1:5
+##v <- seq(5,13,n=101)
+##plot(v,sapply(v,pcritfun,penalty=10^2),type="l")
+penresults <- matrix(nrow=length(penvec),ncol=3)
+for (i in 2:length(penvec)) {
+  penlower <- uniroot(pcritfun,lowx,penalty=10^penvec[i])$root
+  penupper <- uniroot(pcritfun,upx,penalty=10^penvec[i])$root
+  penresults[i,] <- c(penvec[i],penlower,penupper)
+}
+@
+%% FIXME: something a bit odd going on here?  don't understand what,
+%% exactly, but was running into numerical glitches
+While this approach is conceptually the same 
+as the one we took in the previous section --- we are calculating
+the profile by sliding along each mean contour to
+find the minimum negative log-likelihood on that contour,
+then finding the values of the mean for which the
+minimum negative log-likelihood equals the LRT cutoff --- the
+problem is much fussier numerically.
+(The complicated code is presented on p.~\pageref{constrlik}).
+To use penalties effectively we usually have to
+play around with the strength of the penalty.
+Too strong, and our optimizations will get stuck
+somewhere far away from the real minimum.
+Too weak,
+and our optimizations will wander off the line
+we are trying to constrain them to.
+I tried a variety of penalty coefficients in this case
+(penalty = $C \times$ (deviation of mean survival
+from target value)$^2$) from 0.1 to $10^6$.
+The results were essentially identical for penalties ranging from 1
+to $10^4$, but varied for weaker or stronger
+penalties.
+One might be able to tweak the optimization
+settings some more to make the answers better, but
+there's no really simple recipe --- you just have
+to keep returning to the pictures to see if your answers
+make sense.
+
+\subsection{The delta method}
+
+The delta method provides an easy approximation for
+the confidence limits on values that are not parameters of the model.
+To use it you must have a formula
+for $\mu=f(a,b)$ that you can differentiate with
+respect to $a$ and $b$. Unlike the first likelihood
+profile method, you don't have to be able to solve the
+equation for one of the parameters.
+
+The formula for the delta method comes
+from a Taylor expansion of the formula for $\mu$, combined
+with the definitions of the variance ($V(a) = E[(a-\bar a)^2]$)
+and covariance ($C(a,b)= E[(a-\bar a) (b - \bar b)]$):
+\begin{equation}
+V(f(a,b)) \approx V(a) \left( \frac{\partial f}{\partial a} \right)^2
++ V(b) \left( \frac{\partial f}{\partial b} \right)^2
++ 2 C(a,b) \frac{\partial f}{\partial a} \frac{\partial f}{\partial b}.
+\end{equation}
+See the Appendix, or \cite{Lyons1991} for a derivation and details.
+
+We can obtain approximate variances and covariances of the
+parameters by taking the inverse of the
+information matrix: \code{vcov} does this automatically
+for \code{mle2} fits.
+
+We also need the derivatives of 
+the function with respect to the parameters.
+In this example these are the derivatives of 
+$\mu = b \Gamma(1+1/a)$ with respect to shape=$a$ and scale=$b$.
+The derivative
+with respect to $b$ is easy --- %
+$\partial \mu/\partial b =\Gamma(1+1/a)$) --- but $\partial \mu/\partial a$ is
+harder.
+By the chain rule
+\begin{equation}
+\frac{\partial (\Gamma(1+1/a))}{\partial a} = 
+\frac{\partial (\Gamma(1+1/a))}{\partial (1+1/a)} \cdot \frac{\partial (1+1/a)}{\partial a} = 
+\frac{\partial (\Gamma(1+1/a))}{\partial (1+1/a)} \cdot -\frac{1}{a^2},
+\end{equation}
+but in order to finish this calculation you need to know that 
+$d \Gamma(x)/dx = \Gamma(x) \cdot \mbox{digamma}(x)$,
+where digamma is a special function
+(defined as the derivative of the log-gamma function).
+The good news is that \R\ knows how to compute this
+function, so a command like
+<<eval=FALSE>>=
+shape.deriv <- -shape^2*gamma(1+1/shape)*digamma(1+1/shape)
+@ 
+will give you the right numeric answer.
+The \code{emdbook} package
+has a built-in \code{deltavar}
+function that 
+uses the delta method to compute
+the variance of a function:
+<<>>=
+dvar <- deltavar(fun=scale*gamma(1+1/shape),meanval=coef(w1),Sigma=vcov(w1))
+@ 
+Once you find the variance of the mean survival time, you can
+take the square root to get the standard deviation 
+$\sigma$ and calculate the approximate confidence limits $\mu \pm 1.96 \sigma$.
+<<>>=
+sdapprox <- sqrt(dvar)
+mlmean <- meanfun(coef(w1)["shape"],coef(w1)["scale"])
+ci.delta <- mlmean+c(-1.96,1.96)*sdapprox
+@ 
+If you can't compute the derivatives manually,
+\R's \code{numericDeriv} function
+will compute them numerically (p.~\pageref{sec:numderiv}).
+
+<<echo=FALSE>>=
+pvars <- diag(vcov(w1))
+pcov <- vcov(w1)["shape","scale"]
+mlshape <- coef(w1)["shape"]
+mlscale <- coef(w1)["scale"]
+scderiv <- gamma(1+1/mlshape)
+shderiv <-mlscale*-1/mlshape^2*gamma(1+1/mlshape)*digamma(1+1/mlshape)
+vapprox1 <- pvars["scale"]*scderiv^2
+vapprox2 <- pvars["shape"]*shderiv^2
+vapprox3 <- 2*pcov*shderiv*scderiv
+vapprox <- vapprox1+vapprox2+vapprox3
+@ 
+
+\subsection{Population prediction intervals (PPI)}
+\label{sec:ppi}
+Another simple procedure for calculating confidence
+limits is to draw random samples from the
+estimated sampling distribution (approximated by
+the information matrix) of the parameters.
+In the approximate limit where the information
+matrix approach is valid, it turns out that
+the distribution of the parameters will
+be multivariate normal with a variance-covariance
+matrix given by the inverse of the
+information matrix.
+The \code{MASS} package in \R\ has a function,
+\code{mvrnorm}\footnote{\code{mvrnorm} should really 
+be called \code{rmvnorm} for consistency
+with \R's other distribution functions, but \code{S-PLUS}
+already has a built-in function called \code{rmvnorm},
+so the MASS package had to use a different name.},
+for selecting multivariate normal random
+deviates.  With the \code{mle2} fit \code{w1} from above,
+then
+<<>>=
+vmat=mvrnorm(1000,mu=coef(w1),Sigma=vcov(w1))
+@ 
+will select 1000 sets of parameters drawn from the
+appropriate distribution (if there are 
+$n$ parameters, the answer is 
+a $1000\times n$ matrix).
+(If you have used \code{optim} instead of \code{mle2} --- %
+suppose \code{opt1} is your result ---
+then use \verb+opt1$par+ for the mean
+and \verb+solve(opt1$hessian)+ for the variance.)
+You can then use this matrix to
+calculate the estimated value of the mean
+for each of the sets of parameters, treat
+this distribution as a distribution of 
+means, and find its lower and upper
+95\% quantiles (Figure~\ref{fig:ppibayes}).
+In the context of population viability
+analysis,
+\cite{Lande+2003} refer to
+confidence intervals computed this way
+as ``population prediction
+intervals''.
+
+This procedure is easy to implement in \R, as follows:
+<<>>=
+dist = numeric(1000)
+for (i in 1:1000) {
+  dist[i] = meanfun(vmat[i,1],vmat[i,2])
+}
+quantile(dist,c(0.025,0.975))
+@ 
+<<echo=FALSE>>=
+ci.ppi <- quantile(dist,c(0.025,0.975))
+@ 
+
+Calculating population prediction intervals
+in this way has two disadvantages:
+\begin{itemize}
+\item{It blurs the line between frequentist
+and Bayesian approaches.  Several papers
+(including some of mine, e.g. \cite{VoneshBolker2005})
+have used this approach,
+but I have yet to see a solidly grounded justification
+for propagating the
+sampling distributions of the parameters in this way.}
+\item{Since it uses the asymptotic estimate of the
+parameter variance-covariance matrix, it 
+inherits whatever inaccuracies that approximation
+introduces.  It makes one fewer assumption than
+the delta method (it doesn't assume the variance
+is so small that the functions are close to linear),
+but it may not be all that much more accurate.}
+\end{itemize}
+
+<<cache=TRUE,echo=FALSE>>=
+lval <- coef(w1)["scale"]^(-coef(w1)["shape"])
+n <- length(time)
+inits <- list(list(shape=0.8,lambda=lval),list(shape=0.4,lambda=lval*2),
+              list(shape=1.2,lambda=lval/2))
+reefgoby.bugs <- bugs(data=list("time","n"),
+                      inits,parameters.to.save=c("shape",
+                              "scale","lambda","mean"),
+                      model.file="reefgobysurv.bug",
+                      n.chains=length(inits),n.iter=5000)
+reefgoby.coda <- as.mcmc(reefgoby.bugs)
+reefgoby.coda <- lump.mcmc.list(reefgoby.coda)
+ci.bayes <- HPDinterval(reefgoby.coda)["mean",]
+m <- as.matrix(reefgoby.coda)[,"mean"]
+m <- reefgoby.coda[,"mean",drop=FALSE]
+m <- as.matrix(reefgoby.coda)[,"mean"]
+ci.bayesq <- quantile(m,c(0.025,0.975))
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5,mgp=c(3,1,0))
+##par(mar=c(1,4,2,2))
+vals = mvrnorm(1000,mu=coef(w1),Sigma=vcov(w1))
+dist = apply(vals,1,function(x)meanfun(x[1],x[2]))
+textsize = 0.5
+ang = 15
+par(yaxs="i")
+## hist(dist,breaks=30,col="gray",xlab="Mean survival time",main="",freq=FALSE,
+##      axes=FALSE,xlim=c(5,35))
+## axis(side=2,at=c(0,0.05,0.1),yaxs="i")
+## axis(side=1)
+##box()
+##lines(density(dist))
+conf.ppi <- quantile(dist,c(0.025,0.975))
+##abline(v=conf.ppi,lty=2,lwd=2)
+##par(mar=c(5,4,1,2))
+par(mar=c(4,4,2,2))
+d1 = density(dist)
+d2 = density(lump.mcmc.list(as.mcmc(reefgoby.bugs)[,"mean"]))
+plot(d1,ylim=c(0,0.12),main="",
+     xlab="",axes=FALSE,xlim=c(0,30))
+axis(side=2,at=c(0,0.05,0.1,0.15))
+lines(d2,col="gray")
+axis(side=1)
+box()
+mtext(side=1,line=2.5,at=15,"Mean survival time",cex=1.5)
+segments(rep(conf.ppi,2),
+         rep(0,4),
+         rep(conf.ppi,2),
+         approx(d1$x,d1$y,xout=conf.ppi)$y)
+mpos = 13
+labsize = 3
+ht1 <- 0.006
+arrows(c(mpos-labsize,mpos+labsize),
+       rep(ht1,2),
+       conf.ppi,
+       rep(ht1,2),ang=ang)
+text(mpos,ht1,"PP interval",cex=textsize)
+segments(rep(ci.bayes,2),
+         rep(0,4),
+         rep(ci.bayes,2),
+         approx(d2$x,d2$y,xout=ci.bayes)$y,
+         col="gray")
+ht2 <- 0.012
+mpos2 <- 15
+labsize2 <- 3.5
+arrows(c(mpos2-labsize2,mpos2+labsize2),
+       rep(ht2,2),
+       ci.bayes,
+       rep(ht2,2),col="gray",ang=ang)
+text(mpos2,ht2,"Bayes credible",col="darkgray",cex=textsize)
+## segments(rep(ci.bayesq,2),
+##          rep(0,4),
+##          rep(ci.bayesq,2),
+##          approx(d2$x,d2$y,xout=ci.bayesq)$y,
+##          col="gray",lty=3)
+## ht3 <- 0.012
+## mpos3 <- 16
+## labsize3 <- 3.5
+## arrows(c(mpos3-labsize3,mpos3+labsize3),
+##        rep(ht3,2),
+##        ci.bayesq,
+##        rep(ht3,2),col="gray",ang=ang)
+## text(mpos3,ht3,"Bayes quantile",col="darkgray",cex=textsize)
+par(op)
+@ 
+\caption{Population prediction distribution and 
+Bayesian posterior distribution of mean survival time,
+with confidence and credible intervals.}
+\label{fig:ppibayes}
+\end{figure}
+
+\subsection{Bayesian analysis}
+
+Finally, you can
+use a real Bayesian method: construct either an exact
+Bayesian model, or, more likely, a Markov chain Monte Carlo
+analysis for the parameters.
+Then you can 
+calculate the posterior distribution
+of any function of the parameters 
+(such as the mean survival time) from the posterior samples
+of the parameters, and get the 95\% % quantiles or 
+credible interval.
+
+% R: shape a, scale b: (a/b) (x/b)^(a-1) exp(- (x/b)^a)
+%                 = a b^(-a) x^(a-1) exp(-(b^(-a)) x^a)
+% BUGS: shape nu, lambda: nu lambda  x^(nu-1) exp(-lambda x^nu)
+% lambda= b^(-a)
+% b = lambda^-1/a
+% mean = b*gamma(1+1/a)
+%      = lambda^-1/nu*gamma(1+1/nu)
+
+The hardest part of this analysis turns out to be
+converting between \R\ and WinBUGS versions of
+the Weibull distribution: where \R\ uses
+$f(t)=(a/b)(t/b)^{a-1} \exp(-(t/b)^a)$,
+WinBUGS uses $f(t)=\nu \lambda t^{\nu-1} \exp(-\lambda t^\nu)$.
+Matching up terms and doing some algebra shows
+that $\nu=a$ and $\lambda=b^{-a}$ or $b=\lambda^{-1/a}$.
+
+The BUGS model is:
+\verbatiminput{reefgobysurv.bug}
+Other differences between \R\ and WinBUGS
+are that BUGS uses \code{pow(x,y)} instead
+of \verb+x^y+ and has only a log-gamma
+function \code{loggam} instead of \R's
+\code{gamma} and \code{lgamma} functions.
+The model includes code to convert from
+WinBUGS to R parameters (i.e., calculating
+\code{scale} as a function of \code{lambda})
+and to calculate the mean survival time, but
+you could also calculate these values in
+\R.
+
+Set up three chains that start from different,
+overdispersed values of shape and $\lambda$:
+<<eval=FALSE>>=
+lval <- coef(w1)["scale"]^(-coef(w1)["shape"])
+n <- length(time)
+inits <- list(list(shape=0.8,lambda=lval),list(shape=0.4,lambda=lval*2),
+              list(shape=1.2,lambda=lval/2))
+@ 
+
+\label{winbugsrun}
+Run the chains:
+<<eval=FALSE>>=
+reefgoby.bugs <- bugs(data=list("time","n"),
+                      inits,parameters.to.save=c("shape","scale","lambda","mean"),
+                      model.file="reefgobysurv.bug",
+                      n.chains=length(inits),n.iter=5000)
+@ 
+
+Finally, use \code{HPDinterval} or \code{summary} to extract
+credible intervals or quantiles from the MCMC output.
+Figure~\ref{fig:ppibayes} compares the marginal posterior
+density of the mean and the credible intervals computed from
+it with the distribution of the mean derived from the
+sampling distribution of the parameters and the
+population prediction intervals (Section~\ref{sec:ppi}).
+%lower and upper quantiles (\code{quantile}), which are
+%more analogous to the population prediction intervals.
+%The \R\ supplement gives more detail on the calculations.
+
+\subsection{Confidence interval comparison}
+
+Here's a head-to-head comparison of all the methods
+we've applied so far:
+<<echo=FALSE>>=
+citab = rbind(ci.prof,ci.pen1,ci.delta,ci.ppi,ci.bayes)#,ci.bayesq)
+cinames = c("exact profile","profile:penalty",
+  "delta method","PPI",
+  "Bayes credible")
+#,"Bayes quantile")
+dimnames(citab)=list(cinames,c("lower","upper"))
+@ 
+<<echo=FALSE,results=tex>>=
+latex(round(citab,3),file="",table.env=FALSE,title="method")
+@ 
+
+<<echo=FALSE,eval=FALSE>>=
+tabpaste <- function(x,sep=" & ",eol="\\") {
+  x2 <- rbind(c("",colnames(x)),cbind(rownames(x),
+                                     matrix(as.character(x),nrow=nrow(x))))
+  x3 <- apply(x2,1,paste,collapse=sep)
+  x4 <- paste(x3,collapse=eol)
+  return(x4)
+}
+@ 
+
+All methods give approximately the same answers.
+Despite answering a different question, the Bayes credible
+interval is in the same range as the other confidence intervals.
+The point to take away from
+this comparison is that \emph{all} methods for
+estimating confidence limits use approximations,
+some cruder than others. Use the most accurate
+feasible approach, but don't expect
+estimates of confidence limits to be very precise.
+To paraphrase a comment of \cite{Press+1994},
+if the difference between confidence-interval
+approximations ever matters to you, ``then you
+are probably up to no good anyway --- e.g., trying
+to substantiate a questionable hypothesis with marginal
+data''\footnote{Their original statement
+referred to whether
+to divide by $n$ or $n-1$  when estimating
+a variance}.
+
+%\todo{drop Bayes quantile??}
+
+\section*{Appendix: trouble-shooting optimization}
+
+\begin{itemize}
+\item{\textbf{make sure you understand the model you're fitting}}
+\item{check starting conditions}
+\item{check convergence conditions}
+\item{adjust \code{parscale}/restart from previous best fit}
+\item{switch from constraints to transformed parameters}
+\item{adjust finite-difference tolerances (\code{ndeps})}
+\item{switch to more robust methods (Nelder-Mead, SANN),
+   or even just alternate methods}
+\item{stop with NAs: debug objective function,
+   constrain parameters, put if clauses in objective
+   function}
+\item{results depend on starting conditions:
+  check slice between answers/around answers:
+  multiple minima or just convergence problems?}
+\item{convergence problems: try restarting from
+  previous stopping point, resetting parscale}
+\item{examine profile likelihoods}
+\end{itemize}
+
+
+\section*{\R\ supplement}
+
+\subsection{Testing hypotheses on boundaries by simulating
+the null hypothesis}
+\label{sec:nullhypsim}
+
+Suppose you want to test the hypothesis that
+the data set
+<<>>=
+x=c(0,0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,3,4,5)
+@ 
+comes from a negative binomial distribution
+against the null hypothesis that it is Poisson distributed
+with $\lambda=\bar x=\Sexpr{mean(x)}$.
+
+
+<<echo=FALSE>>=
+fit.nb=fitdistr(x,"negative binomial")
+lnb = c(-logLik(fit.nb))
+fit.pois=fitdistr(x,"Poisson")
+lpois = c(-logLik(fit.pois))
+dev = c(-2*(lnb-lpois))
+pval = pchibarsq(dev,1,lower.tail=FALSE)
+@ 
+A negative binomial
+fit (\code{fit.nb=fitdistr(x,"negative binomial")}) gives a negative log-likelihood
+(\code{-logLik(fit.nb)}) of 
+\Sexpr{round(lnb,2)}, while
+a Poisson fit (\code{fit.pois=fitdistr(x,"Poisson")}) gives
+a negative log-likelihood of
+\Sexpr{round(lpois,2)}.
+The Likelihood Ratio Test
+<<results=hide>>=
+devdiff = 2*(logLik(fit.nb)-logLik(fit.pois))
+pchisq(devdiff,df=1,lower.tail=FALSE)
+@ 
+<<echo=FALSE>>=
+pval=pchisq(2*(logLik(fit.nb)-logLik(fit.pois)),df=1,lower.tail=FALSE)
+@ 
+says that the $p$-value is \Sexpr{round(pval,2)},
+but the corrected ($\bar \chi^2_1$) test
+(\code{pchibarsq(devdiff,df=1,lower.tail=FALSE)})
+says that $p$ is only \Sexpr{round(pval,2)} --- still
+not significant but stronger evidence.
+
+To evaluate the hypothesis more thoroughly by simulation,
+we will set up a function that (1) simulates Poisson-distributed
+values with the appropriate mean; (2) fits a negative
+binomial and Poisson distributions (returning
+\code{NA} if the negative binomial fit should
+happen to crash) and (3) returns the deviance
+(twice the log-likelihood ratio):
+<<cache=TRUE>>=
+simulated.dev = function() {
+  simx = rpois(length(x),lambda=mean(x))
+  simfitnb = try(fitdistr(simx,"negative binomial"))
+  if (inherits(simfitnb,"try-error")) return(NA)
+  simfitpois = fitdistr(simx,"Poisson")
+  dev=c(2*(logLik(simfitnb)-logLik(simfitpois)))
+}
+@ 
+
+Now simulate 3000 such values, throw out the
+\code{NA}s, and count the number of
+replicates remaining:
+<<cache=TRUE>>=
+set.seed(1001)
+devdist = replicate(3000,simulated.dev())
+devdist = na.omit(devdist)
+nreps = length(devdist)
+@ 
+
+Calculate the proportion of simulated values
+that exceed the observed deviance:
+this is the best estimate of the ``true''
+$p$ value we can get.
+<<>>=
+obs.dev=2*(logLik(fit.nb)-logLik(fit.pois))
+sum(devdist>=obs.dev)/nreps
+@ 
+So, in this case where we have two reasons --- small
+sample size and a boundary condition --- to doubt
+the assumptions of Likelihood Ratio Test, the
+classical LRT turns out to be nearly four times
+too conservative, while the boundary-corrected
+version ($\bar \chi^2$) 
+is only twice as conservative as it should be.
+
+\subsection{Nonlinear constraints by penalization}
+\label{constrlik}
+Using penalties to implement an
+equality constraint or a nonlinear constraint
+(neither of which can be done with built-in functions in \R)
+is reasonably straightforward: just add a penalty
+term to the negative log-likelihood.  For best results,
+the penalty should start small and increase with increasing
+violation of the constraint (to avoid a discontinuity
+in the negative log-likelihood surface).
+
+For example, to find the best shape and scale parameters
+for the fish survival data while constraining the mean
+to equal a particular value \code{target.mu}
+(use the \code{fixed=} argument in \code{mle2}
+to specify the target value):
+
+<<cache=TRUE>>=
+weiblikfun3 <- function(shape,scale,target.mu,penalty=1000) {
+  mu <- meanfun(shape,scale)
+  NLL = -sum(dweibull(time,shape=shape,scale=scale,log=TRUE))
+  pen = penalty*(mu-target.mu)^2
+  NLL+pen
+}
+w3 <- mle2(weiblikfun3,start=list(shape=0.9,scale=13),fixed=list(target.mu=13))
+@ 
+
+If you have a problem where the function behaves badly
+(generates infinite or \code{NaN} values)
+when the constraint is violated, then you don't
+want to calculate the likelihood for values outside
+the constraints.  For example, if we had to restrict
+shape to be greater than zero we could use the following
+code snippet:
+<<eval=FALSE>>=
+  if (shape>0) {
+    NLL = -sum(dweibull(time,shape=shape,scale=scale,log=TRUE))
+    pen = 0
+  } else {
+    NLL = -sum(dweibull(time,shape=0.0001,scale=scale,log=TRUE))
+    pen = penalty*shape^2
+  }
+  NLL+pen
+@ 
+In other words, if the shape parameter is beyond the constraints,
+then use the likelihood value at the boundary of the feasible
+region and then add the penalty.
+
+To use this constrained likelihood function to
+calculate confidence limits on the mean,
+first, calculate the critical value of the negative
+log-likelihood:
+<<>>=
+critval <- -logLik(w1)+qchisq(0.95,1)/2
+@ 
+
+Second, define a function that finds the
+best fit for a specified value of the
+mean and returns the distance above the
+critical value (use the \code{data=} argument
+in \code{mle2} so that you can try out different
+values of the penalty):
+<<>>=
+pcritfun <- function(target.mu,penalty=1000) {
+  mfit <- mle2(weiblikfun3,
+              start=list(shape=0.85,scale=12.4),
+              fixed=list(target.mu=target.mu),
+              data=list(penalty=penalty))
+  lval <- -logLik(mfit)
+  lval - critval
+}
+@   
+
+Third, define the range of mean values in which
+you think the lower confidence limit lies and use
+\code{uniroot} to search within this range
+for the point where the negative log-likelihood
+is exactly equal to the critical value:
+<<cache=TRUE>>=
+lowx <- c(5,13)
+penlower <- uniroot(pcritfun,lowx)$root
+@
+
+Do the same for the upper confidence limit:
+<<cache=TRUE>>=
+upx <- c(14,30)
+penupper <- uniroot(pcritfun,upx)$root
+@
+
+Try with a different value of the penalty:
+<<cache=TRUE>>=
+uniroot(pcritfun,lowx,penalty=1e6)$root
+@ 
+
+\subsection{Numeric derivatives}
+\label{sec:numderiv}
+Analytical derivatives are always faster and
+numerically stabler, but \R\ can compute
+numeric derivatives for you.  For example,
+to compute the derivatives of the mean
+survival time at the maximum likelihood estimate:
+<<>>=
+shape <- coef(w1)["shape"]
+scale <- coef(w1)["scale"]
+numericDeriv(quote(scale*gamma(1+1/shape)),c("scale","shape"))
+@ 
+(the \code{quote} inside the \code{numericDeriv}
+command prevents \R\ from evaluating
+the expression prematurely).
+Of course, you can always do the same thing yourself
+by hand:
+<<>>=
+dshape = 0.0001
+x2 = scale*gamma(1+1/(shape+dshape))
+x1 = scale*gamma(1+1/shape)
+(x2-x1)/dshape
+@ 
+which agrees to two decimal places with the \code{numericDeriv}
+calculation.
+
+\subsection{Extracting information from BUGS and CODA output}
+
+R2WinBUGS returns its results as a \code{bugs} object,
+which can be plotted or printed.  
+The \code{as.mcmc} function in the \code{emdbook}
+package will turn this object
+into an \code{mcmc.list} object for a multi-chain run,
+or an \code {mcmc} object for a single-chain run.
+\code{read.bugs} in the \code{R2WinBUGS} package
+also works, but requires an extra step.
+The \code{mcmc} and \code{mcmc.list} objects are
+more flexible --- they can be plotted and summarized
+in a variety of ways 
+(\code{summary}, \code{HPDinterval},
+\code{densityplot}, \ldots see the help for the \code{coda}
+package).
+Once you ensure that the chains in
+a multi-chain R2WinBUGS run
+have converged, you can
+use \code{lump.mcmc.list} in the
+\code{emdbook} package to collapse
+the \code{mcmc.list} object so you
+can inferences from the combined chains.
+
+Using the \code{reefgoby.bugs} object derived from
+the WinBUGS run on p.~\pageref{winbugsrun},
+calculate the Bayesian credible interval:
+<<>>=
+reefgoby.coda <- as.mcmc(reefgoby.bugs)
+reefgoby.coda <- lump.mcmc.list(reefgoby.coda)
+ci.bayes <- HPDinterval(reefgoby.coda)["mean",]
+##ci.bayesq <- quantile(reefgoby.coda,c(0.025,0.975))
+@ 
+

@@ -1,0 +1,1592 @@
+<?xml version="1.0"?>
+<!DOCTYPE html    PUBLIC "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN"
+           "http://www.w3.org/Math/DTD/mathml2/xhtml-math11-f.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="GENERATOR" content="TtM 3.70" />
+ <style type="text/css">
+ div.p { margin-top: 7pt; }
+ span.roman {font-family: serif; font-style: normal; font-weight: normal;} 
+</style>
+ 
+
+
+<title> Lab 6: estimation </title>
+</head>
+<body>
+ 
+<h1 align="center">Lab 6: estimation </h1>
+
+<h3 align="center">Ben Bolker </h3>
+
+ &#169; 2005 Ben Bolker
+
+<div class="p"><!----></div>
+ <h2><a name="tth_sEc1">
+1</a>&nbsp;&nbsp;Made-up data: negative binomial</h2>
+
+<div class="p"><!----></div>
+The simplest thing to do to convince yourself that
+your attempts to estimate parameters are working
+is to simulate the "data" yourself and see if
+you get close to the right answers back.
+
+<div class="p"><!----></div>
+Start by making up some negative binomial "data":
+first, set the random-number seed so we get
+consistent results across different  R&nbsp;sessions:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;set.seed(1001)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Generate 50 values with 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi><mo>=</mo><mn>1</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi><mo>=</mo><mn>0</mn><mo>.</mo><mn>4</mn></mrow></math>
+(save the values in variables in case we
+want to use them again later, or change
+the parameters and run the code again):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;mu.true&nbsp;=&nbsp;1
+&#62;&nbsp;k.true&nbsp;=&nbsp;0.4
+&#62;&nbsp;x&nbsp;=&nbsp;rnbinom(50,&nbsp;mu&nbsp;=&nbsp;mu.true,&nbsp;size&nbsp;=&nbsp;k.true)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Take a quick look at what we got:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(table(factor(x,&nbsp;levels&nbsp;=&nbsp;0:max(x))),&nbsp;ylab&nbsp;=&nbsp;"Frequency",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xlab&nbsp;=&nbsp;"x")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab6-003.png" alt="lab6-003.png" />
+(reminder: I won't always draw the pictures, but it's
+good to make a habitat of examining your variables
+(with <tt>summary()</tt> etc. and graphically) as you
+go along to make sure you know what's going on!)
+
+<div class="p"><!----></div>
+Negative log-likelihood function for a simple
+draw from a negative binomial distribution:
+the first parameter, <tt>p</tt>, will be the
+vector of parameters, and the second parameter,
+<tt>dat</tt>, will be the data vector (in case we
+want to try this again later with a different
+set of data; by default we'll set it to the
+<tt>x</tt> vector we just drew randomly).
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;NLLfun1&nbsp;=&nbsp;function(p,&nbsp;dat&nbsp;=&nbsp;x)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mu&nbsp;=&nbsp;p[1]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k&nbsp;=&nbsp;p[2]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-sum(dnbinom(x,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k,&nbsp;log&nbsp;=&nbsp;TRUE))
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Calculate the negative log-likelihood for the true values.
+I have to combine these values into a vector with
+<tt>c()</tt> to pass them to the negative
+log-likelihood function.
+Naming the elements in the vector is optional
+but will help keep things clear as we go along:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nll.true&nbsp;=&nbsp;NLLfun1(c(mu&nbsp;=&nbsp;mu.true,&nbsp;k&nbsp;=&nbsp;k.true))
+&#62;&nbsp;nll.true
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;72.64764
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The NLL for other parameter values that I know are
+way off (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi><mo>=</mo><mn>10</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi><mo>=</mo><mn>10</mn></mrow></math>):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;NLLfun1(c(mu&nbsp;=&nbsp;10,&nbsp;k&nbsp;=&nbsp;10))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;291.4351
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Much higher negative log-likelihood, as it should be.
+
+<div class="p"><!----></div>
+Find the method-of-moments estimates for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;m&nbsp;=&nbsp;mean(x)
+&#62;&nbsp;v&nbsp;=&nbsp;var(x)
+&#62;&nbsp;mu.mom&nbsp;=&nbsp;m
+&#62;&nbsp;k.mom&nbsp;=&nbsp;m/(v/m&nbsp;-&nbsp;1)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Negative log-likelihood estimate for method of moments
+parameters:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nll.mom&nbsp;=&nbsp;NLLfun1(c(mu&nbsp;=&nbsp;mu.mom,&nbsp;k&nbsp;=&nbsp;k.mom))
+&#62;&nbsp;nll.mom
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;72.08996
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Despite the known bias, this estimate is better (lower 
+negative log-likelihood) than the "true" parameter
+values.  The Likelihood Ratio Test would say, however,
+that the difference in likelihoods would have to 
+be greater than 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msubsup><mrow><mi>&chi;</mi></mrow><mrow><mn>2</mn> </mrow>
+<mrow><mn>2</mn></mrow></msubsup>
+<mo stretchy="false">(</mo><mn>0</mn><mo>.</mo><mn>95</mn><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mn>2</mn></mrow></math> (two degrees of
+freedom because we are allowing both 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math>
+to change):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;ldiff&nbsp;=&nbsp;nll.true&nbsp;-&nbsp;nll.mom
+&#62;&nbsp;ldiff
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.5576733
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;qchisq(0.95,&nbsp;df&nbsp;=&nbsp;2)/2
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;2.995732
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+So - better, but not significantly better at 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>p</mi><mo>=</mo><mn>0</mn><mo>.</mo><mn>05</mn></mrow></math>.
+(<tt>pchisq(2*ldiff,df=2,lower.tail=FALSE)</tt> would tell us the 
+exact 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>p</mi></mrow></math>-value if we wanted to know.)
+
+<div class="p"><!----></div>
+But what is the MLE?  Use <tt>optim</tt> with 
+the default options (Nelder-Mead simplex method)
+and the method-of-moments estimates as the starting
+estimates (<tt>par</tt>):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;O1&nbsp;=&nbsp;optim(fn&nbsp;=&nbsp;NLLfun1,&nbsp;par&nbsp;=&nbsp;c(mu&nbsp;=&nbsp;mu.mom,&nbsp;k&nbsp;=&nbsp;k.mom),&nbsp;hessian&nbsp;=&nbsp;TRUE)
+&#62;&nbsp;O1
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+$par
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mu&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k&nbsp;
+1.2602356&nbsp;0.2884793&nbsp;
+
+$value
+[1]&nbsp;71.79646
+
+$counts
+function&nbsp;gradient&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;45&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NA&nbsp;
+
+$convergence
+[1]&nbsp;0
+
+$message
+NULL
+
+$hessian
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mu&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k
+mu&nbsp;7.387808331&nbsp;&nbsp;0.004901569
+k&nbsp;&nbsp;0.004901569&nbsp;97.372581408
+
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The optimization result is a list with 
+elements:
+
+<ul>
+<li>the best-fit
+parameters (<tt>O1$par</tt>, with parameter names because we named the
+elements of the starting vector-see how useful this is?);
+<div class="p"><!----></div>
+</li>
+
+<li>the minimum negative log-likelihood (<tt>O1$value</tt>);
+<div class="p"><!----></div>
+</li>
+
+<li>information on the number of function evaluations
+(<tt>O1$counts</tt>; the <tt>gradient</tt> part is <tt>NA</tt>
+because we didn't specify a function to calculate
+the derivatives (and the Nelder-Mead algorithm wouldn't
+have used them anyway);
+<div class="p"><!----></div>
+</li>
+
+<li>information on whether the
+algorithm thinks it found a good answer
+(<tt>O1$convergence</tt>, which is zero if  R&nbsp;thinks
+everything worked and uses various numeric codes
+(see <tt>?optim</tt> for details) if something goes
+wrong;
+<div class="p"><!----></div>
+</li>
+
+<li><tt>O1$message</tt> which may give further
+information about the when the fit converged or
+how it failed to converge;
+<div class="p"><!----></div>
+</li>
+
+<li>because we set <tt>hessian=TRUE</tt>, we also
+get <tt>O1$hessian</tt>, which gives the (finite difference
+approximation of) the second derivatives evaluated
+at the MLE
+<div class="p"><!----></div>
+</li>
+</ul>
+
+<div class="p"><!----></div>
+The minimum negative log-likelihood
+(71.8) is better than
+either the negative log-likelihood 
+corresponding to the method-of-moments
+parameters (72.09) or
+the true parameters (72.65),
+but all of these are within the LRT cutoff.
+
+<div class="p"><!----></div>
+Now let's find the likelihood surface, the profiles,
+and the confidence intervals.
+
+<div class="p"><!----></div>
+The likelihood surface is straightforward: set up
+vectors of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math> values and run <tt>for</tt>
+loops, set up a matrix to hold the results, and run
+<tt>for</tt> loops to calculate and store the values.
+Let's try 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> from 0.4 to 3 in steps of 0.05 and
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math> from 0.01 to 0.7 in steps of 0.01.
+(I initially had the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> vector from 0.1 to 2.0
+but revised it after seeing the contour plot below.)
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;muvec&nbsp;=&nbsp;seq(0.4,&nbsp;3,&nbsp;by&nbsp;=&nbsp;0.05)
+&#62;&nbsp;kvec&nbsp;=&nbsp;seq(0.01,&nbsp;0.7,&nbsp;by&nbsp;=&nbsp;0.01)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The matrix for the results will have
+rows corresponding to 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> and
+columns corresponding to 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;resmat&nbsp;=&nbsp;matrix(nrow&nbsp;=&nbsp;length(muvec),&nbsp;ncol&nbsp;=&nbsp;length(kvec))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Run the <tt>for</tt> loops:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;for&nbsp;(i&nbsp;in&nbsp;1:length(muvec))&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(j&nbsp;in&nbsp;1:length(kvec))&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;resmat[i,&nbsp;j]&nbsp;=&nbsp;NLLfun1(c(muvec[i],&nbsp;kvec[j]))
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Drawing a contour: the initial default choice of contours
+doesn't give us fine enough resolution (it picks contours
+spaced 5 apart to cover the range of the values in the
+matrix), so I added levels spaced 1 log-likelihood unit
+apart from 70 to 80 by doing a second <tt>contour</tt>
+plot with <tt>add=TRUE</tt>.
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;contour(muvec,&nbsp;kvec,&nbsp;resmat,&nbsp;xlab&nbsp;=&nbsp;expression(mu),&nbsp;ylab&nbsp;=&nbsp;"k")
+&#62;&nbsp;contour(muvec,&nbsp;kvec,&nbsp;resmat,&nbsp;levels&nbsp;=&nbsp;70:80,&nbsp;lty&nbsp;=&nbsp;2,&nbsp;add&nbsp;=&nbsp;TRUE)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab6-014.png" alt="lab6-014.png" />
+
+<div class="p"><!----></div>
+Alternately, we could set the levels of the contour
+plot corresponding to different 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mn>1</mn><mo>-</mo><mi>&alpha;</mi></mrow></math> levels
+for the likelihood ratio test: if the minimum
+negative log-likelihood is 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>m</mi></mrow></math>, then these levels
+are 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>m</mi><mo>+</mo>
+<msubsup><mrow><mi>&chi;</mi></mrow><mrow><mn>2</mn> </mrow>
+<mrow><mn>2</mn></mrow></msubsup>
+<mo stretchy="false">(</mo><mi>&alpha;</mi><mo stretchy="false">)</mo><mo stretchy="false">/</mo><mn>2</mn></mrow></math>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;alevels&nbsp;=&nbsp;c(0.5,&nbsp;0.9,&nbsp;0.95,&nbsp;0.99,&nbsp;0.999)
+&#62;&nbsp;minval&nbsp;=&nbsp;O1$value
+&#62;&nbsp;nll.levels&nbsp;=&nbsp;qchisq(alevels,&nbsp;df&nbsp;=&nbsp;2)/2&nbsp;+&nbsp;minval
+&#62;&nbsp;contour(muvec,&nbsp;kvec,&nbsp;resmat,&nbsp;levels&nbsp;=&nbsp;nll.levels,&nbsp;labels&nbsp;=&nbsp;alevels,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xlab&nbsp;=&nbsp;expression(mu),&nbsp;ylab&nbsp;=&nbsp;"k")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab6-015.png" alt="lab6-015.png" />
+
+<div class="p"><!----></div>
+So far, so good.  Finding the profiles and confidence limits
+is a bit harder.
+
+<div class="p"><!----></div>
+To calculate the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> profile, define a new function that
+takes 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> as a <em>separate</em> parameter (which <tt>optim</tt>
+will not try to adjust as it goes along) and optimizes with respect to 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;NLLfun.mu&nbsp;=&nbsp;function(p,&nbsp;mu)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k&nbsp;=&nbsp;p[1]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-sum(dnbinom(x,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k,&nbsp;log&nbsp;=&nbsp;TRUE))
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Set up a matrix with two columns (one for the best-fit 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math> value,
+one for the minimum negative log-likelihood achieved):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;mu.profile&nbsp;=&nbsp;matrix(ncol&nbsp;=&nbsp;2,&nbsp;nrow&nbsp;=&nbsp;length(muvec))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Run a <tt>for</tt> loop, starting the optimization
+from the maximum-likelihood value of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math> every time.
+Also include the value for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> (<tt>mu=muvec[i]</tt>),
+which  R&nbsp;will pass on to the function that computes
+the negative log-likelihood.
+
+<div class="p"><!----></div>
+The default Nelder-Mead method doesn't work well on
+1-dimensional problems, and will give a warning.
+I tried <tt>method="BFGS"</tt> instead 
+but got warnings about 
+<tt>NaNs produced in ... </tt>,
+because <tt>optim</tt>
+tries some negative values for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math>
+on its way to the correct (positive) answer.
+I then switched to <tt>L-BFGS-B</tt> and set
+<tt>lower=0.002</tt>, far enough above zero that
+<tt>optim</tt> wouldn't run into any negative
+numbers when it calculated the derivatives
+by finite differences.
+Another option would have been to change the
+function around so that it minimized with
+respect to 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>log</mi><mo stretchy="false">(</mo><mi>k</mi><mo stretchy="false">)</mo></mrow></math> instead of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math>. This function
+would look something like:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;NLLfun.mu2&nbsp;=&nbsp;function(p,&nbsp;mu)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;logk&nbsp;=&nbsp;p[1]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k&nbsp;=&nbsp;exp(logk)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-sum(dnbinom(x,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k,&nbsp;log&nbsp;=&nbsp;TRUE))
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+and of course we would have to translate the
+answers back from the log scale to compare them
+to the results so far.
+(The other option
+would be to use <tt>optimize</tt>, a function specially
+designed for 1D optimization, but this way we have
+to do less rearranging of the code.)
+
+<div class="p"><!----></div>
+A general comment about warnings: it's OK to
+ignore warnings <b>if you understand exactly
+where they come from and have satisfied yourself
+that whatever problem is causing the warnings
+does not affect your answer in any significant
+way</b>.  Ignoring warnings at any other time is
+a good way to overlook bugs in your code or
+serious problems with numerical methods that
+will make your answers nonsensical.
+
+<div class="p"><!----></div>
+So, anyway - run that optimization for each
+value of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> in the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> vector.
+At each step, save the parameter estimate and
+the minimum negative log-likelihood:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;for&nbsp;(i&nbsp;in&nbsp;1:length(muvec))&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Oval&nbsp;=&nbsp;optim(fn&nbsp;=&nbsp;NLLfun.mu,&nbsp;par&nbsp;=&nbsp;O1$par["k"],&nbsp;method&nbsp;=&nbsp;"L-BFGS-B",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lower&nbsp;=&nbsp;0.002,&nbsp;mu&nbsp;=&nbsp;muvec[i])
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mu.profile[i,&nbsp;]&nbsp;=&nbsp;c(Oval$par,&nbsp;Oval$value)
++&nbsp;}
+&#62;&nbsp;colnames(mu.profile)&nbsp;=&nbsp;c("k",&nbsp;"NLL")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Do the same process for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;NLLfun.k&nbsp;=&nbsp;function(p,&nbsp;k)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mu&nbsp;=&nbsp;p[1]
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-sum(dnbinom(x,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k,&nbsp;log&nbsp;=&nbsp;TRUE))
++&nbsp;}
+&#62;&nbsp;k.profile&nbsp;=&nbsp;matrix(ncol&nbsp;=&nbsp;2,&nbsp;nrow&nbsp;=&nbsp;length(kvec))
+&#62;&nbsp;for&nbsp;(i&nbsp;in&nbsp;1:length(kvec))&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Oval&nbsp;=&nbsp;optim(fn&nbsp;=&nbsp;NLLfun.k,&nbsp;par&nbsp;=&nbsp;O1$par["mu"],&nbsp;method&nbsp;=&nbsp;"L-BFGS-B",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lower&nbsp;=&nbsp;0.002,&nbsp;k&nbsp;=&nbsp;kvec[i])
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k.profile[i,&nbsp;]&nbsp;=&nbsp;c(Oval$par,&nbsp;Oval$value)
++&nbsp;}
+&#62;&nbsp;colnames(k.profile)&nbsp;=&nbsp;c("mu",&nbsp;"NLL")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Redraw the contour plot with profiles added:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;contour(muvec,&nbsp;kvec,&nbsp;resmat,&nbsp;xlab&nbsp;=&nbsp;expression(mu),&nbsp;ylab&nbsp;=&nbsp;"k")
+&#62;&nbsp;contour(muvec,&nbsp;kvec,&nbsp;resmat,&nbsp;levels&nbsp;=&nbsp;70:80,&nbsp;lty&nbsp;=&nbsp;2,&nbsp;add&nbsp;=&nbsp;TRUE)
+&#62;&nbsp;lines(muvec,&nbsp;mu.profile[,&nbsp;"k"],&nbsp;lwd&nbsp;=&nbsp;2)
+&#62;&nbsp;lines(k.profile[,&nbsp;"mu"],&nbsp;kvec,&nbsp;lwd&nbsp;=&nbsp;2,&nbsp;lty&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab6-021.png" alt="lab6-021.png" />
+
+<div class="p"><!----></div>
+The contour for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> is completely independent of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math>:
+no matter what value you choose for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math>, the best estimate
+of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> is still the same (and equal to the mean of the
+observed data).  In contrast, values of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> either
+above or below the best value lead to estimates of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math>
+that are lower than the MLE.
+
+<div class="p"><!----></div>
+<b>Exercise  1</b>:
+Redraw the contour plot of the likelihood surface
+for this data set with the contours corresponding
+to 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&alpha;</mi></mrow></math> levels, as above.  Add points corresponding to the
+location of the MLE, the method-of-moments estimate, and the true values.
+State your conclusions about the differences among these
+3 sets of parameters and their statistical significance.
+
+<div class="p"><!----></div>
+ <h2><a name="tth_sEc2">
+2</a>&nbsp;&nbsp;Univariate profiles</h2>
+Now we'd like to find the univariate confidence limits on 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math>.
+It's easy enough to get an approximate idea of this graphically.
+For example, for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math>, plotting the profile and
+superimposing horizontal lines for the minimum NLL and the 95% and 99%
+LRT cutoffs:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(muvec,&nbsp;mu.profile[,&nbsp;"NLL"],&nbsp;type&nbsp;=&nbsp;"l",&nbsp;xlab&nbsp;=&nbsp;expression(mu),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ylab&nbsp;=&nbsp;"Negative&nbsp;log-likelihood")
+&#62;&nbsp;cutoffs&nbsp;=&nbsp;c(0,&nbsp;qchisq(c(0.95,&nbsp;0.99),&nbsp;1)/2)
+&#62;&nbsp;nll.levels&nbsp;=&nbsp;O1$value&nbsp;+&nbsp;cutoffs
+&#62;&nbsp;abline(h&nbsp;=&nbsp;nll.levels,&nbsp;lty&nbsp;=&nbsp;1:3)
+&#62;&nbsp;text(rep(0.5,&nbsp;3),&nbsp;nll.levels&nbsp;+&nbsp;0.2,&nbsp;c("min",&nbsp;"95%",&nbsp;"99%"))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab6-022.png" alt="lab6-022.png" />
+
+<div class="p"><!----></div>
+But how do we find the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi></mrow></math>-intercepts (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> values) associated
+with the points where the likelihood profile crosses the cutoff lines?
+
+<div class="p"><!----></div>
+Three possibilities:
+
+<ol type="1">
+<li>If we have sampled the profile at a fairly fine scale,
+we can just look for the point(s) that are closest to
+the cutoff value:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;cutoff&nbsp;=&nbsp;O1$value&nbsp;+&nbsp;qchisq(0.95,&nbsp;1)/2
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The <tt>which.min</tt> function gives the
+index of the smallest element in the vector:
+if we find the index corresponding to
+the smallest value of the absolute
+value of the profile negative log-likelihood
+minus the cutoff, that should give us
+the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> value closest to the confidence
+limit.
+We actually need to to do this for each half of the curve separately.
+First the lower half, selecting values from
+<tt>muvec</tt> and <tt>mu.profile</tt> corresponding
+to values less than 1.2 (based on looking at
+the plot.
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;lowerhalf&nbsp;=&nbsp;mu.profile[muvec&nbsp;&lt;&nbsp;1.2,&nbsp;"NLL"]
+&#62;&nbsp;lowerhalf.mu&nbsp;=&nbsp;muvec[muvec&nbsp;&lt;&nbsp;1.2]
+&#62;&nbsp;w.lower&nbsp;=&nbsp;which.min(abs(lowerhalf&nbsp;-&nbsp;cutoff))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The same thing for the upper half of the curve:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;upperhalf&nbsp;=&nbsp;mu.profile[muvec&nbsp;&#62;&nbsp;1.2,&nbsp;"NLL"]
+&#62;&nbsp;upperhalf.mu&nbsp;=&nbsp;muvec[muvec&nbsp;&#62;&nbsp;1.2]
+&#62;&nbsp;w.upper&nbsp;=&nbsp;which.min(abs(upperhalf&nbsp;-&nbsp;cutoff))
+&#62;&nbsp;ci.crude&nbsp;=&nbsp;c(lowerhalf.mu[w.lower],&nbsp;upperhalf.mu[w.upper])
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Plot it:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(muvec,&nbsp;mu.profile[,&nbsp;"NLL"],&nbsp;type&nbsp;=&nbsp;"l",&nbsp;xlab&nbsp;=&nbsp;expression(mu),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ylab&nbsp;=&nbsp;"Negative&nbsp;log-likelihood")
+&#62;&nbsp;cutoffs&nbsp;=&nbsp;c(0,&nbsp;qchisq(c(0.95),&nbsp;1)/2)
+&#62;&nbsp;nll.levels&nbsp;=&nbsp;O1$value&nbsp;+&nbsp;cutoffs
+&#62;&nbsp;abline(h&nbsp;=&nbsp;nll.levels,&nbsp;lty&nbsp;=&nbsp;1:2)
+&#62;&nbsp;abline(v&nbsp;=&nbsp;ci.crude,&nbsp;lty&nbsp;=&nbsp;3)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab6-026.png" alt="lab6-026.png" />
+
+<div class="p"><!----></div>
+You can see that it's not <em>exactly</em> on target,
+but very close.  If you wanted to proceed in this
+way and needed a more precise answer you could
+"zoom in" and evaluate the profile on a finer
+grid around the lower and upper confidence limits.
+
+<div class="p"><!----></div>
+</li>
+
+<li>
+You can set up an automatic search routine in  R&nbsp;to
+try to find the confidence limits.  
+
+<div class="p"><!----></div>
+First, define a function that takes a particular
+value of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math>, optimizes with respect to 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math>,
+and returns the value of the negative log-likelihood
+<em>minus the cutoff value</em>, which tells us how
+far above or below the cutoff we are.
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;cutoff&nbsp;=&nbsp;O1$value&nbsp;+&nbsp;qchisq(c(0.95),&nbsp;1)/2
+&#62;&nbsp;relheight&nbsp;=&nbsp;function(mu)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;O2&nbsp;=&nbsp;optim(fn&nbsp;=&nbsp;NLLfun.mu,&nbsp;par&nbsp;=&nbsp;O1$par["k"],&nbsp;method&nbsp;=&nbsp;"L-BFGS-B",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lower&nbsp;=&nbsp;0.002,&nbsp;mu&nbsp;=&nbsp;mu)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;O2$value&nbsp;-&nbsp;cutoff
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+We know the lower limit is somewhere around 0.7, so going
+on either side should give us values that are
+negative/positive.
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;relheight(mu&nbsp;=&nbsp;0.6)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;1.420474
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;relheight(mu&nbsp;=&nbsp;0.8)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;-0.6530479
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Using  R's <tt>uniroot</tt> function, which takes
+a single-parameter function and searches for a value
+that gives zero:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;lower&nbsp;=&nbsp;uniroot(relheight,&nbsp;interval&nbsp;=&nbsp;c(0.5,&nbsp;1))$root
+&#62;&nbsp;upper&nbsp;=&nbsp;uniroot(relheight,&nbsp;interval&nbsp;=&nbsp;c(1.2,&nbsp;5))$root
+&#62;&nbsp;ci.uniroot&nbsp;=&nbsp;c(lower,&nbsp;upper)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(muvec,&nbsp;mu.profile[,&nbsp;"NLL"],&nbsp;type&nbsp;=&nbsp;"l",&nbsp;xlab&nbsp;=&nbsp;expression(mu),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ylab&nbsp;=&nbsp;"Negative&nbsp;log-likelihood")
+&#62;&nbsp;cutoffs&nbsp;=&nbsp;c(0,&nbsp;qchisq(c(0.95),&nbsp;1)/2)
+&#62;&nbsp;nll.levels&nbsp;=&nbsp;O1$value&nbsp;+&nbsp;cutoffs
+&#62;&nbsp;abline(h&nbsp;=&nbsp;nll.levels,&nbsp;lty&nbsp;=&nbsp;1:2)
+&#62;&nbsp;abline(v&nbsp;=&nbsp;ci.crude,&nbsp;lty&nbsp;=&nbsp;3)
+&#62;&nbsp;abline(v&nbsp;=&nbsp;ci.uniroot,&nbsp;lty&nbsp;=&nbsp;4)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab6-030.png" alt="lab6-030.png" />
+
+<div class="p"><!----></div>
+Slightly more precise than the previous solution.
+
+<div class="p"><!----></div>
+</li>
+
+<li>
+Using the information-based approach.
+Here is
+the information matrix:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;O1$hessian
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mu&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k
+mu&nbsp;7.387808331&nbsp;&nbsp;0.004901569
+k&nbsp;&nbsp;0.004901569&nbsp;97.372581408
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Inverting the information matrix:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;s1&nbsp;=&nbsp;solve(O1$hessian)
+&#62;&nbsp;s1
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mu&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k
+mu&nbsp;&nbsp;1.353581e-01&nbsp;-6.813697e-06
+k&nbsp;&nbsp;-6.813697e-06&nbsp;&nbsp;1.026983e-02
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+You can see that the off diagonal elements
+are very small (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo>-</mo><mn>6</mn><mo>&times;</mo>
+<msup><mrow><mn>10</mn></mrow><mrow><mo>-</mo><mn>6</mn></mrow>
+</msup>
+</mrow></math> as opposed
+to 0.0102 and 0.135 on the diagonal), correctly
+suggesting that the parameter estimates are
+uncorrelated.
+
+<div class="p"><!----></div>
+Suppose we want to approximate
+the likelihood profile by the quadratic 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>L</mi><mo>=</mo><mi>a</mi><mo>+</mo><mi>c</mi><mo stretchy="false">(</mo><mi>&mu;</mi><mo>-</mo><mi>b</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow></math>.
+The parameter 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi></mrow></math> governs the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> value at
+which the minimum occurs (so 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi></mrow></math> corresponds
+to the MLE of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math>) and parameter 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi></mrow></math> 
+governs the height of the minimum
+(so 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi></mrow></math> is the minimum negative log-likelihood).
+The second derivative of the quadratic
+is 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mn>2</mn><mi>c</mi></mrow></math>; the second derivative of
+the likelihood surface is
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow><mo>&part;</mo></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mi>L</mi><mo stretchy="false">/</mo><mo>&part;</mo>
+<msup><mrow><mi>&mu;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow></math>,
+so 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>c</mi><mo>=</mo><mo stretchy="false">(</mo>
+<msup><mrow><mo>&part;</mo></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mi>L</mi><mo stretchy="false">/</mo><mo>&part;</mo>
+<msup><mrow><mi>&mu;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">)</mo><mo stretchy="false">/</mo><mn>2</mn></mrow></math>.
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;a&nbsp;=&nbsp;O1$value
+&#62;&nbsp;b&nbsp;=&nbsp;O1$par["mu"]
+&#62;&nbsp;c&nbsp;=&nbsp;O1$hessian["mu",&nbsp;"mu"]/2
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+We get the variances of the
+parameters
+(
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msubsup><mrow><mi>&sigma;</mi></mrow><mrow><mi>&mu;</mi> </mrow>
+<mrow><mn>2</mn></mrow></msubsup>
+</mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msubsup><mrow><mi>&sigma;</mi></mrow><mrow><mi>k</mi> </mrow>
+<mrow><mn>2</mn></mrow></msubsup>
+</mrow></math>)
+by inverting
+the information matrix.
+The size of the confidence limit
+is 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo>&PlusMinus;</mo><mn>1</mn><mo>.</mo><mn>96</mn>
+<msub><mrow><mi>&sigma;</mi></mrow><mrow><mi>&mu;</mi></mrow>
+</msub>
+</mrow></math> for 95% 
+confidence limits, or more generally
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo>&PlusMinus;</mo></mrow></math> <tt>qnorm(1-alpha/2)</tt> 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msub><mrow><mi>&sigma;</mi></mrow><mrow><mi>&mu;</mi></mrow>
+</msub>
+</mrow></math> (<tt>qnorm</tt>
+gives the quantile of the standard normal,
+with mean 0 and standard deviation 1, by
+default).
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;se.mu&nbsp;=&nbsp;sqrt(s1["mu",&nbsp;"mu"])
+&#62;&nbsp;ci.info&nbsp;=&nbsp;O1$par["mu"]&nbsp;+&nbsp;c(-1,&nbsp;1)&nbsp;*&nbsp;qnorm(0.975)&nbsp;*&nbsp;se.mu
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Double plot, showing a close-up of the negative
+log-likelihood minimum (to convince you that
+the quadratic approximation really is a good
+fit if you go close enough to the minimum - this
+is essentially a Taylor expansion, provided
+that the likelihood surface is reasonably well-behaved)
+and a wider view comparing the quadratic
+approximation and the confidence limits based on
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;op&nbsp;=&nbsp;par(mfrow&nbsp;=&nbsp;c(1,&nbsp;2))
+&#62;&nbsp;plot(muvec,&nbsp;mu.profile[,&nbsp;"NLL"],&nbsp;type&nbsp;=&nbsp;"l",&nbsp;xlab&nbsp;=&nbsp;expression(mu),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ylab&nbsp;=&nbsp;"Negative&nbsp;log-likelihood",&nbsp;ylim&nbsp;=&nbsp;c(71.8,&nbsp;72.2),&nbsp;xlim&nbsp;=&nbsp;c(0.7,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.7))
+&#62;&nbsp;curve(a&nbsp;+&nbsp;c&nbsp;*&nbsp;(x&nbsp;-&nbsp;b)^2,&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;lty&nbsp;=&nbsp;2)
+&#62;&nbsp;plot(muvec,&nbsp;mu.profile[,&nbsp;"NLL"],&nbsp;type&nbsp;=&nbsp;"l",&nbsp;xlab&nbsp;=&nbsp;expression(mu),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ylab&nbsp;=&nbsp;"Negative&nbsp;log-likelihood")
+&#62;&nbsp;cutoffs&nbsp;=&nbsp;c(0,&nbsp;qchisq(c(0.95),&nbsp;1)/2)&nbsp;+&nbsp;O1$value
+&#62;&nbsp;curve(a&nbsp;+&nbsp;c&nbsp;*&nbsp;(x&nbsp;-&nbsp;b)^2,&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;lty&nbsp;=&nbsp;2)
+&#62;&nbsp;abline(h&nbsp;=&nbsp;cutoffs)
+&#62;&nbsp;abline(v&nbsp;=&nbsp;ci.info,&nbsp;lty&nbsp;=&nbsp;3)
+&#62;&nbsp;abline(v&nbsp;=&nbsp;ci.uniroot,&nbsp;lty&nbsp;=&nbsp;1)
+&#62;&nbsp;par(op)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab6-035.png" alt="lab6-035.png" />
+
+<div class="p"><!----></div>
+</li>
+
+<li>
+One way to cheat: use the <tt>fitdistr</tt> function
+from the <tt>MASS</tt> package instead (this only
+works for simple draws from distributions).
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;library(MASS)
+&#62;&nbsp;f&nbsp;=&nbsp;fitdistr(x,&nbsp;"negative&nbsp;binomial")
+&#62;&nbsp;f
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;size&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mu&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;0.2885187&nbsp;&nbsp;&nbsp;1.2597788&nbsp;
+&nbsp;(0.1013610)&nbsp;(0.3676483)
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<tt>fitdistr</tt> gives the parameters
+in the other order - <tt>size</tt> and <tt>mu</tt>
+rather than <tt>mu</tt> and <tt>k</tt> as I have been
+naming them.
+It gives standard errors <em>based on
+the quadratic approximation</em>, so the same as by
+the previous method.  (I had to use <tt>str(f)</tt>
+to look inside <tt>f</tt> and figure out how
+to extract the numbers I wanted.)
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;ci.fitdistr&nbsp;=&nbsp;f$estimate["mu"]&nbsp;+&nbsp;c(-1,&nbsp;1)&nbsp;*&nbsp;f$sd["mu"]&nbsp;*&nbsp;qnorm(0.975)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+</li>
+
+<li>The last option is to use the <tt>mle</tt> function
+from the <tt>stats4</tt> package to find the confidence intervals.
+To do this, we have to rewrite the NLL function slightly
+differently: (1) specify the parameters separately, rather
+than packing them into a parameter vector (and then unpacking
+them inside the function - so this is actually slightly
+more convenient), and (2) you can't pass the data as additional
+argument: if you want to run the function for another set of
+data you have to replace <tt>x</tt> with your new data, or write
+another function (there are other kinds of black magic
+you can do to achieve the same goal, but they are too complicated
+to lay out here (P2C2E [<a href="#Rushdie1999" name="CITERushdie1999">1</a>])).
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;NLLfun2&nbsp;=&nbsp;function(mu,&nbsp;k)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-sum(dnbinom(x,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k,&nbsp;log&nbsp;=&nbsp;TRUE))
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<tt>mle</tt> has slightly different argument names from <tt>optim</tt>,
+but you still have to specify the function and the starting values,
+and you can include other options (which get passed straight
+to <tt>optim</tt>):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;library(stats4)
+&#62;&nbsp;m1&nbsp;=&nbsp;mle(minuslogl&nbsp;=&nbsp;NLLfun2,&nbsp;start&nbsp;=&nbsp;list(mu&nbsp;=&nbsp;mu.mom,&nbsp;k&nbsp;=&nbsp;k.mom),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;method&nbsp;=&nbsp;"L-BFGS-B",&nbsp;lower&nbsp;=&nbsp;0.002)
+&#62;&nbsp;m1
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+
+Call:
+mle(minuslogl&nbsp;=&nbsp;NLLfun2,&nbsp;start&nbsp;=&nbsp;list(mu&nbsp;=&nbsp;mu.mom,&nbsp;k&nbsp;=&nbsp;k.mom),&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;method&nbsp;=&nbsp;"L-BFGS-B",&nbsp;lower&nbsp;=&nbsp;0.002)
+
+Coefficients:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mu&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k&nbsp;
+1.2600009&nbsp;0.2885231&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<tt>summary(m1)</tt> gives the estimates and the standard errors
+based on the quadratic approximation:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;summary(m1)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+Maximum&nbsp;likelihood&nbsp;estimation
+
+Call:
+mle(minuslogl&nbsp;=&nbsp;NLLfun2,&nbsp;start&nbsp;=&nbsp;list(mu&nbsp;=&nbsp;mu.mom,&nbsp;k&nbsp;=&nbsp;k.mom),&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;method&nbsp;=&nbsp;"L-BFGS-B",&nbsp;lower&nbsp;=&nbsp;0.002)
+
+Coefficients:
+&nbsp;&nbsp;&nbsp;&nbsp;Estimate&nbsp;Std.&nbsp;Error
+mu&nbsp;1.2600009&nbsp;&nbsp;0.3677636
+k&nbsp;&nbsp;0.2885231&nbsp;&nbsp;0.1013633
+
+-2&nbsp;log&nbsp;L:&nbsp;143.5929&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<tt>confint(m1)</tt> gives the profile confidence limits,
+for all parameters (the second line below takes just the
+row corresponding to <tt>mu</tt>).
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;ci.mle.all&nbsp;=&nbsp;confint(m1)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+Profiling...
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;ci.mle.all
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5&nbsp;%&nbsp;&nbsp;&nbsp;97.5&nbsp;%
+mu&nbsp;0.7204352&nbsp;2.390998
+k&nbsp;&nbsp;0.1437419&nbsp;0.579509
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;ci.mle&nbsp;=&nbsp;ci.mle.all["mu",&nbsp;]
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The <tt>confint</tt> code is based on first calculating the
+profile (as we did above, but at a smaller number
+of points), then using spline-based interpolation
+to find the intersections with the cutoff height.
+
+<div class="p"><!----></div>
+</li>
+</ol>
+
+<div class="p"><!----></div>
+Comparing all of these methods:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;citab&nbsp;=&nbsp;rbind(ci.crude,&nbsp;ci.uniroot,&nbsp;ci.mle,&nbsp;ci.info,&nbsp;ci.fitdistr)
+&#62;&nbsp;citab
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5&nbsp;%&nbsp;&nbsp;&nbsp;97.5&nbsp;%
+ci.crude&nbsp;&nbsp;&nbsp;&nbsp;0.7000000&nbsp;2.400000
+ci.uniroot&nbsp;&nbsp;0.7200252&nbsp;2.390702
+ci.mle&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.7204352&nbsp;2.390998
+ci.info&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.5391442&nbsp;1.981327
+ci.fitdistr&nbsp;0.5392013&nbsp;1.980356
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+ <h2><a name="tth_sEc3">
+3</a>&nbsp;&nbsp;Reef fish: settler distribution</h2>
+Let's simulate the reef fish data again:
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;a&nbsp;=&nbsp;0.696
+&#62;&nbsp;b&nbsp;=&nbsp;9.79
+&#62;&nbsp;recrprob&nbsp;=&nbsp;function(x,&nbsp;a&nbsp;=&nbsp;0.696,&nbsp;b&nbsp;=&nbsp;9.79)&nbsp;a/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;x)
+&#62;&nbsp;scoefs&nbsp;=&nbsp;c(mu&nbsp;=&nbsp;25.32,&nbsp;k&nbsp;=&nbsp;0.932,&nbsp;zprob&nbsp;=&nbsp;0.123)
+&#62;&nbsp;settlers&nbsp;=&nbsp;rzinbinom(603,&nbsp;mu&nbsp;=&nbsp;scoefs["mu"],&nbsp;size&nbsp;=&nbsp;scoefs["k"],&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;zprob&nbsp;=&nbsp;scoefs["zprob"])
+&#62;&nbsp;recr&nbsp;=&nbsp;rbinom(603,&nbsp;prob&nbsp;=&nbsp;recrprob(settlers),&nbsp;size&nbsp;=&nbsp;settlers)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Set up likelihood functions - let's say we know the numbers of
+settlers and are trying to estimate the recruitment probability function.
+I'll use <tt>mle</tt>.
+
+<div class="p"><!----></div>
+First, a Shepherd function:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;NLLfun3&nbsp;=&nbsp;function(a,&nbsp;b,&nbsp;d)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;recrprob&nbsp;=&nbsp;a/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;settlers^d)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-sum(dbinom(recr,&nbsp;prob&nbsp;=&nbsp;recrprob,&nbsp;size&nbsp;=&nbsp;settlers,&nbsp;log&nbsp;=&nbsp;TRUE),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;na.rm&nbsp;=&nbsp;TRUE)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;NLLfun4&nbsp;=&nbsp;function(a,&nbsp;b)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;recrprob&nbsp;=&nbsp;a/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;settlers)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-sum(dbinom(recr,&nbsp;prob&nbsp;=&nbsp;recrprob,&nbsp;size&nbsp;=&nbsp;settlers,&nbsp;log&nbsp;=&nbsp;TRUE),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;na.rm&nbsp;=&nbsp;TRUE)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;NLLfun5&nbsp;=&nbsp;function(a)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;recrprob&nbsp;=&nbsp;a
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-sum(dbinom(recr,&nbsp;prob&nbsp;=&nbsp;recrprob,&nbsp;size&nbsp;=&nbsp;settlers,&nbsp;log&nbsp;=&nbsp;TRUE),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;na.rm&nbsp;=&nbsp;TRUE)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+I ran into a problem with this log-likelihood function:
+when settlers=0, the recruitment probability is 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi></mrow></math>,
+which may be greater than 0.  This doesn't matter in 
+reality because when there are zero settlers there
+aren't any recruits.  From a statistical point of
+view, the probability of zero recruits is 1 when
+there are zero settlers, but <tt>dbinom(x,prob=a,size=0)</tt>
+still comes out with <tt>NaN</tt>.  However, <b>since I
+know what the problem is</b> and I know that the 
+log-likelihood in this case is 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>log</mi><mo stretchy="false">(</mo><mn>1</mn><mo stretchy="false">)</mo><mo>=</mo><mn>0</mn></mrow></math> and
+so contributes nothing to the log-likelihood,
+I am safe using the <tt>na.rm=TRUE</tt> option
+for <tt>sum</tt>.
+However, this does still gives me warnings about
+<tt>NaNs produced in: dbinom ... </tt>.  A better
+solution might be to drop the zero-settler cases
+from the data entirely:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;recr&nbsp;=&nbsp;recr[settlers&nbsp;&#62;&nbsp;0]
+&#62;&nbsp;settlers&nbsp;=&nbsp;settlers[settlers&nbsp;&#62;&nbsp;0]
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(settlers,&nbsp;recr)
+&#62;&nbsp;abline(h&nbsp;=&nbsp;10)
+&#62;&nbsp;abline(a&nbsp;=&nbsp;0,&nbsp;b&nbsp;=&nbsp;0.5)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab6-048.png" alt="lab6-048.png" />
+
+<div class="p"><!----></div>
+Looking at a plot of the data, I can eyeball the asymptote (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi></mrow></math>) at about 10 recruits, the initial
+slope (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi></mrow></math>) at about 0.5, and I'll start with 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>d</mi><mo>=</mo><mn>1</mn></mrow></math>.
+
+<div class="p"><!----></div>
+Had to mess around a bit - fitted the simpler (Beverton-Holt) model
+first, and found I had to use <tt>L-BFGS-B</tt> to get <tt>mle</tt>
+not to choke while computing the information matrix.
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;m4&nbsp;=&nbsp;mle(minuslogl&nbsp;=&nbsp;NLLfun4,&nbsp;start&nbsp;=&nbsp;list(a&nbsp;=&nbsp;0.5,&nbsp;b&nbsp;=&nbsp;10),&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;method&nbsp;=&nbsp;"L-BFGS-B",&nbsp;lower&nbsp;=&nbsp;0.003)
+&#62;&nbsp;s3&nbsp;=&nbsp;list(a&nbsp;=&nbsp;0.684,&nbsp;b&nbsp;=&nbsp;10.161,&nbsp;d&nbsp;=&nbsp;1)
+&#62;&nbsp;m3&nbsp;=&nbsp;mle(minuslogl&nbsp;=&nbsp;NLLfun3,&nbsp;start&nbsp;=&nbsp;s3,&nbsp;method&nbsp;=&nbsp;"L-BFGS-B",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lower&nbsp;=&nbsp;0.003)
+&#62;&nbsp;m5&nbsp;=&nbsp;mle(minuslogl&nbsp;=&nbsp;NLLfun5,&nbsp;start&nbsp;=&nbsp;list(a&nbsp;=&nbsp;0.5),&nbsp;method&nbsp;=&nbsp;"L-BFGS-B",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lower&nbsp;=&nbsp;0.003)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Plot all fits against the data:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(settlers,&nbsp;recr)
+&#62;&nbsp;a&nbsp;=&nbsp;coef(m5)["a"]
+&#62;&nbsp;curve(a&nbsp;*&nbsp;x,&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;lty&nbsp;=&nbsp;3)
+&#62;&nbsp;a&nbsp;=&nbsp;coef(m4)["a"]
+&#62;&nbsp;b&nbsp;=&nbsp;coef(m4)["b"]
+&#62;&nbsp;curve(a&nbsp;*&nbsp;x/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;x),&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;lty&nbsp;=&nbsp;2)
+&#62;&nbsp;a&nbsp;=&nbsp;coef(m5)["a"]
+&#62;&nbsp;b&nbsp;=&nbsp;coef(m5)["b"]
+&#62;&nbsp;d&nbsp;=&nbsp;coef(m5)["d"]
+&#62;&nbsp;curve(a&nbsp;*&nbsp;x/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;x^d),&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;lty&nbsp;=&nbsp;3)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab6-050.png" alt="lab6-050.png" />
+
+<div class="p"><!----></div>
+Compare the negative log-likelihoods:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;nll&nbsp;=&nbsp;c(shep&nbsp;=&nbsp;-logLik(m3),&nbsp;BH&nbsp;=&nbsp;-logLik(m4),&nbsp;densind&nbsp;=&nbsp;-logLik(m5))
+&#62;&nbsp;nll
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;shep&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;BH&nbsp;&nbsp;densind&nbsp;
+1020.427&nbsp;1020.843&nbsp;1444.717&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+As required, the Shepherd has a better likelihood than
+the Beverton-Holt, but only by a tiny amount - certainly
+not greater than the LRT cutoff.  On the other hand,
+there is <em>extremely</em> strong support for density-dependence,
+from the 424 log-likelihood-unit
+differences between the density-independent and Beverton-Holt
+model likelihoods.  It's silly, but you can calculate
+the logarithm of the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>p</mi></mrow></math>-value as:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;logp&nbsp;=&nbsp;pchisq(2&nbsp;*&nbsp;nll[3]&nbsp;-&nbsp;nll[2],&nbsp;1,&nbsp;lower.tail&nbsp;=&nbsp;FALSE,&nbsp;log.p&nbsp;=&nbsp;TRUE)
+&#62;&nbsp;logp
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;densind&nbsp;
+-938.288&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+That's equivalent to 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>p</mi><mo>&ap;</mo>
+<msup><mrow><mn>10</mn></mrow><mrow>-<mn>407</mn><mo>.</mo><mn>36822402525</mn></mrow>
+</msup>
+</mrow></math>
+(there's a <em>much</em> higher probability that the CIA broke into
+your computer and tampered with your data).
+
+<div class="p"><!----></div>
+We would get the same answer by calculating AIC values:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;npar&nbsp;=&nbsp;c(5,&nbsp;4,&nbsp;3)
+&#62;&nbsp;aic&nbsp;=&nbsp;nll&nbsp;+&nbsp;2&nbsp;*&nbsp;npar
+&#62;&nbsp;aic
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;shep&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;BH&nbsp;&nbsp;densind&nbsp;
+1030.427&nbsp;1028.843&nbsp;1450.717&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Or BIC values:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;ndata&nbsp;=&nbsp;length(recr)
+&#62;&nbsp;bic&nbsp;=&nbsp;nll&nbsp;+&nbsp;log(ndata)&nbsp;*&nbsp;npar
+&#62;&nbsp;bic
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;shep&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;BH&nbsp;&nbsp;densind&nbsp;
+1051.609&nbsp;1045.788&nbsp;1463.426&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(except that BIC says more strongly that
+the Shepherd is not worth considering in this case).
+
+<div class="p"><!----></div>
+The confidence intervals tell the same story:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;confint(m3)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+Profiling...
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5&nbsp;%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;97.5&nbsp;%
+a&nbsp;0.5804655&nbsp;&nbsp;0.8629449
+b&nbsp;4.5161010&nbsp;13.2424549
+d&nbsp;0.8183632&nbsp;&nbsp;1.0738295
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+the 95% confidence intervals of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>d</mi></mrow></math> include 1 (just).
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;confint(m4)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+Profiling...
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5&nbsp;%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;97.5&nbsp;%
+a&nbsp;0.5833164&nbsp;&nbsp;0.7180549
+b&nbsp;8.9412876&nbsp;10.4844295
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+We get tighter bounds on 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi></mrow></math> with the Beverton-Holt
+model (since we are not wasting data trying to
+estimate 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>d</mi></mrow></math>), and we get reasonable bounds on
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi></mrow></math>.  (When I used <tt>BFGS</tt> instead of 
+<tt>L-BFGS-B</tt>, even though I got reasonable
+answers for the MLE, I ran into trouble
+when I tried to get profile confidence limits.)
+In particular, the upper confidence interval
+of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi></mrow></math> is 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo>&lt;</mo><mi>&infin;</mi></mrow></math> (which it would not be
+if the density-independent model were a better
+fit).
+
+<div class="p"><!----></div>
+<b>Exercise 2:</b>
+redo the fitting exercise, but instead of
+using <tt>L-BFGS-B</tt>, fit log 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi></mrow></math>,
+log 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi></mrow></math>, and log 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>d</mi></mrow></math> to avoid having
+to use constrained optimization.
+Back-transform your answers 
+for the point estimates and the
+confidence limits by exponentiating;
+make sure they check closely with
+the answers above.
+
+<div class="p"><!----></div>
+<b>Exercise 3:</b>
+fit zero-inflated negative binomial,
+negative binomial, and Poisson distributions
+to the settler data.  State how the
+three models are nested; perform
+model selection by AIC and LRT, and
+compare the confidence intervals
+of the parameters.
+What happens if you simulate half
+as much "data"?
+
+<div class="p"><!----></div>
+
+<h2>References</h2>
+
+<dl compact="compact">
+ <dt><a href="#CITERushdie1999" name="Rushdie1999">[1]</a></dt><dd>
+Salman Rushdie.
+ <em>Haroun and the Sea of Stories</em>.
+ Faber &amp; Faber, 1999.</dd>
+</dl>
+
+
+<br /><br /><hr /><small>File translated from
+T<sub><font size="-1">E</font></sub>X
+by <a href="http://hutchinson.belmont.ma.us/tth/">
+T<sub><font size="-1">T</font></sub>M</a>,
+version 3.70.<br />On 20 Oct 2005, 02:12.</small>
+</body></html>

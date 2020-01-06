@@ -1,0 +1,1635 @@
+<<echo=FALSE,results=hide>>=
+library(emdbook)
+library(Hmisc)
+library(bbmle)
+library(MASS)
+source("chapskel.R")
+@ 
+
+\section*{Summary}
+
+This chapter addresses models that incorporate more than one kind of
+variability, variously called \emph{mixed}, \emph{multilevel},
+\emph{multistratum}, or \emph{hierarchical} models.  It starts by
+considering data with (1) changing amounts of variability or (2)
+correlation among data points.  These kinds of data can be modeled
+adequately with the tools introduced in previous chapters.  The last
+part of the chapter considers data with two or more qualitatively
+different sources of variability.  These kinds of data are much more
+challenging to model, but they can be fitted with analytical or
+numerical integration techniques or via MCMC.
+This chapter is more conceptual and less technical than previous
+chapters.
+
+\section{Introduction}
+
+Throughout this book we have partitioned ecological models into
+deterministic (Chapter~\ref{chap:determ}) 
+and stochastic (Chapter~\ref{chap:stoch})
+submodels.
+For example, we might use a deterministic
+logistic function to describe changes in mean population density with
+increasing rainfall and a Gamma stochastic distribution
+to describe the natural variation in population density
+at a particular level of rainfall.
+We have focused most of our attention on constructing the
+deterministic model and testing for differences in parameters
+among groups or as a function of covariates.
+For the stochastic model, we have stuck to
+% The most common stochastic model
+% in classical statistics assumes independent, normally distributed error
+% with a constant variance. 
+% When variation is normally distributed, it is easy
+% to separate the deterministic and stochastic parts of the model,
+% because the mean model (e.g. $\mu=a+bR$) and the variance model (e.g.
+% $\sigma^2=c$) act independently on the mean and the
+% variance.  In other cases such as Poisson or binomial models, a single
+% parameter of the distribution governs both the mean and the variance.
+% So far, we have focused most of our attention on how the
+% deterministic model
+% captures interesting biological information, 
+fitting single parameters such as the variance (for normally distributed
+data) or the overdispersion parameter (for negative binomially distributed
+data) to describe the variability around the deterministic expectation.
+We have assumed that the variance parameter is constant, and that
+we can use a single distribution
+to describe the variability.
+
+This chapter will explore more sophisticated stochastic models
+for ecological data.
+Section~\ref{sec:variable} is a warm-up, presenting models where the variance
+may differ among groups or change as a function of a covariate.
+These models are easy to fit with our existing tools.
+Section~\ref{sec:corr} briefly reviews models for \emph{correlation} among observations, 
+useful for incorporating spatial and temporal structure.
+
+Sections~\ref{sec:multi-special} and~\ref{sec:multi-general} tackle
+models that incorporate more than one type of variability, variously
+referred to as \emph{mixed}, \emph{multilevel}, \emph{multistratum},
+or \emph{hierarchical} models.  Section~\ref{sec:multi-special}
+discusses how to use canned procedures in \R\ to fit multi-level
+models --- or to cheat and avoid fitting multi-level models at all ---
+while section~\ref{sec:multi-general} briefly describes strategies
+for tackling more general multi-level models.
+
+The most widely used multilevel models are \emph{block} models, which
+divide individuals (or observations) into discrete groups according to
+their spatial or temporal locations, genetic identity, or other
+characteristics.  The model assigns each block a different random
+mean, typically drawn from a normal or log-normal distribution.
+Individual responses within blocks vary around the block mean, most
+commonly according to a normal distribution but sometimes according to
+a Poisson or binomial sampling distribution.  In survival analysis,
+block models are called \emph{shared frailty} models
+\citep{Therneau+2003}.
+
+\emph{Individual-level} models allow for variation at the individual
+rather than the group level.  When individuals are measured more than
+once, the resulting \emph{repeated measures} models can be analyzed in
+the same way as block models. They may also allow for temporal
+correlation among measurements, and more sophisticated versions can
+quantify random variation among individuals in the parameters of
+nonlinear models \citep{Vigliola+2007}.
+
+When individuals are measured only once, we lose a lot of power to
+discriminate among-individual and within-individual variation.  We can
+still make progress, however, if we assume that the observed variation
+in individual responses is a combination of among-individual variation
+in a mean response and a random sampling process (either in the
+ecological process itself, or in our measurement of it) that leads to
+variation around the mean.  The combination of among-individual and
+sampling variation results in a \emph{marginal} distribution (the
+distribution of observations, including both levels of variability)
+that is \emph{overdispersed}, or more variable than expected
+from the sampling process alone.
+
+Finally, when individuals or populations are measured over time we
+have to distinguish between \emph{measurement} and \emph{process
+  error}, because these two sorts of variability act differently on
+ecological dynamics.  Process error feeds back to affect the
+ecological system in the next time step, while measurement error
+doesn't.  We defer analysis of such dynamical models to
+Chapter~\ref{chap:dyn}.
+
+Building models that combine several \emph{deterministic} processes is
+straightforward.  For example, if we know the functions for mean plant
+biomass as a function of light availability (say $B(L)=aL/(b+L)$) and
+for mean fecundity as a function of biomass (say $F(B)=cB^d$), we can
+easily combine them mathematically in order to use the combined
+function in a maximum likelihood estimate
+($F(L)=c(aL/(b+L))^d$)\footnote{Although we may not be able to
+  estimate all the parameters separately.  In this case, we can
+  estimate $ca^d$ but cannot estimate $c$ and $a^d$ separately:
+see p.~\pageref{identifiability}.}.  Incorporating
+multiple levels of variability in a model is harder because we usually
+have to compute an integral in order to average over all the different
+ways that different sources might combine to produce a particular
+observation.  For example, suppose that the probability that a plant
+establishes in an environment with light availability $L$ is $P_L(L) \, dL$
+(where $P_L$ is the probability density)
+and the probability that it will grow to biomass $B$ at light level
+$L$ is $P_{BL}(B,L) \, dB$.  Then the marginal probability density $P_B(B)$ that a
+randomly chosen plant will have biomass $B$ is the combination of the
+all the different probabilities of achieving biomass $B$ at different
+light levels: $\int P_B(B,L) P_L(L) \, dL$.
+
+Computing these integrals analytically is often impossible,
+but for some models the answer is known (Section~\ref{sec:analytical}).
+Otherwise, we can either use numerical brute force to 
+compute them (Section~\ref{sec:numeric}), or use
+Markov chain Monte Carlo to compute a stochastic
+approximation to the integral (Section~\ref{sec:mixed-mcmc}).  
+These methods are challenging enough
+that, in contrast to the models of previous chapters, you will often
+be better off finding an existing procedure that matches the
+characteristics of your data rather than coding the model from
+scratch.
+
+\section{Variable variance}
+\label{sec:variable}
+
+Once we've thought of it, it's simple to incorporate
+changes in variance into an ecological model.  All we have to
+do is define a sensible
+model that describes how a variance parameter changes
+as a function of predictor variables.  For example,
+Figure~\ref{fig:triangle} shows data
+on glacier lilies (\emph{Erythronium glandiflorum})
+that display 
+the typical triangular or ``factor-ceiling''
+profile of many ecological data sets 
+\citep{Thomson+1996}.
+The triangular distribution is often caused by an environmental
+variable that sets an upper limit on an ecological response,
+but does not determine its precise value.
+In this case, the density of adult flowers (or something
+associated with adult density) appears to set
+an upper limit on the density of seedlings,
+but the number of seedlings varies widely below the upper limit.
+I fitted the model
+\begin{equation}
+S \sim \mbox{NegBinom}\left(\mu=a,k=c e^{d \cdot f}\right);
+\end{equation}
+where $S$ is the observed number of seedlings and $f$ is the
+number of flowers.  The mean $\mu$ is constant, but the overdispersion
+parameter $k$ increases (and thus the variance decreases) as the
+number of flowers increases.
+The \R\ negative log-likelihood function for this model is
+<<>>=
+nlikfun = function(a,c,d) {
+  k = c*exp(d*flowers)
+  -sum(dnbinom(seedlings,mu=a,size=k,log=TRUE))
+}
+@
+Alternatively, the \code{mle2} formula would be
+<<eval=FALSE>>=
+mle2(seedling~dbinom(mu=a,size=c*exp(d*flowers)),...)
+@ 
+This function resembles our previous
+examples, except that the variance parameter
+rather than the mean parameter changes with
+the predictor variable ($f$ or \code{flowers}).
+Figure~\ref{fig:triangle} shows the estimated mean (which is constant) and the 
+estimated upper 90\%, 95\%, and 97.5\% quantiles,
+which look like stair-steps because the negative
+binomial distribution is discrete.
+It also shows a nonparametric
+density estimate for the mean and quantiles as
+a function of the number of flowers, as
+a cross-check of the appropriateness of
+the parametric negative binomial model.
+The patterns agree qualitatively --- both models
+predict a roughly constant mean and decreasing
+upper quantiles.
+Testing combinations of models
+that allow mean, variance, both, or neither to
+vary with the numbers of flowers suggests
+that the best model is the constant model, but
+the model fitted here (constant mean, varying $k$)
+is the second best, better than allowing the
+mean to decrease while holding $k$ constant.
+\cite{Thomson+1996} suggested
+a pattern where the ceiling actually increases
+initially at small numbers of flowers, but
+this pattern is hard to establish definitively.
+
+<<echo=FALSE,results=hide>>=
+## interesting but perhaps a waste of time here:
+## actually not very much difference between the
+## x-dependent k and constant k models.  Also,
+## the tail of the seedling distribution seems too
+## thin (too few points outside upper tail?? not
+## really: 2 vs 4.1 expected above 97.5,
+##         7 vs 8.2 expected about 90)
+## some kind of Q-Q plot would be possible, but some work ...
+data(Lily_sum)
+Lily_sum <- subset(Lily_sum,seedlings < 50)
+attach(Lily_sum)
+likfun <- function(a,b,c,d) {
+  mu <- a*exp(b*flowers)
+  k <- c*exp(d*flowers)
+  -sum(dnbinom(seedlings,mu=mu,size=k,log=TRUE))
+}
+library(bbmle)
+lily.mk <- mle2(minuslogl=likfun,start=list(a=1,b=-0.1,c=1,d=-0.1))
+lily.m <- mle2(minuslogl=likfun,start=list(a=1,b=-0.1,c=1,d=-0.1),
+           fixed=list(d=0))
+lily.k <- mle2(minuslogl=likfun,start=list(a=1,b=-0.1,c=1,d=-0.1),
+           fixed=list(b=0))
+lily.0 <- mle2(minuslogl=likfun,start=list(a=1,b=-0.1,c=1,d=-0.1),
+           fixed=list(b=0,d=0))
+## AIC table:
+AICtab(lily.0,lily.k,lily.m,lily.mk,sort=TRUE)
+anova(lily.mk,lily.k,lily.0) 
+pchisq(2*(-logLik(lily.m)+logLik(lily.mk)),1,lower.tail=FALSE)
+if (FALSE) {
+  library(lattice)
+  densityplot(~seedlings|equal.count(flowers),from=0,data=X)
+  plot(flowers,seedlings)
+  with(as.list(coef(lily.mk)),curve(a*exp(b*x),add=TRUE))
+  with(as.list(coef(lily.mk)),curve(qnbinom(0.975,mu=a*exp(b*x),size=c*exp(d*x)),add=TRUE,lty=2,type="s"))
+  with(as.list(coef(lily.mk)),curve(qnbinom(0.025,mu=a*exp(b*x),size=c*exp(d*x)),add=TRUE,lty=2,type="s"))
+  with(as.list(coef(lily.mk)),curve(qnbinom(0.95,mu=a*exp(b*x),size=c*exp(d*x)),add=TRUE,lty=3,type="s"))
+  with(as.list(coef(lily.mk)),curve(qnbinom(0.05,mu=a*exp(b*x),size=c*exp(d*x)),add=TRUE,lty=3,type="s"))
+  with(as.list(coef(lily.m)),curve(a*exp(b*x),add=TRUE,col=2))
+  with(as.list(coef(lily.m)),curve(qnbinom(0.975,mu=a*exp(b*x),size=c*exp(d*x)),add=TRUE,lty=2,type="s",col=2))
+  with(as.list(coef(lily.m)),curve(qnbinom(0.025,mu=a*exp(b*x),size=c*exp(d*x)),add=TRUE,lty=2,type="s",col=2))
+} ## eventually have to weed out this junk, leave it in for now
+## "logistic slicing"
+
+@ 
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5,mgp=c(2.5,1,0),mar=c(5,4,2,3.5)+0.1)
+plot(flowers,jitter(seedlings),xlab="Flowers",ylab="Seedlings",axes=FALSE,lwd=1)
+axis(side=1,at=seq(0,120,by=40))
+axis(side=2)
+box()
+bw.exp <- 2  ## how much extra smoothing?
+k1 = kde2d(flowers,seedlings,n=100,h=bw.exp*c(bandwidth.nrd(flowers),bandwidth.nrd(seedlings)))
+## renormalize k1 by y
+k2z <- sweep(k1$z,1,rowSums(k1$z),"/")
+means <- rowSums(sweep(k2z,2,k1$y,"*"))
+## convert from 
+k1$z <- t(apply(k1$z,1,cumsum)) ## need to t()
+k1$z <- sweep(k1$z,1,(k1$z[,ncol(k1$z)]),"/")
+contour(k1,add=TRUE,col="darkgray",levels=c(0.9,0.95,0.975),labcex=1)
+lines(k1$x,means,col="darkgray")
+text(107,6.5,"mean",col="darkgray",cex=0.9)
+with(as.list(coef(lily.k)),curve(a*exp(b*x),add=TRUE))
+with(as.list(coef(lily.k)),curve(qnbinom(0.975,mu=a*exp(b*x),size=c*exp(d*x)),add=TRUE,type="s"))
+with(as.list(coef(lily.k)),curve(qnbinom(0.95,mu=a*exp(b*x),size=c*exp(d*x)),add=TRUE,type="s"))
+with(as.list(coef(lily.k)),curve(qnbinom(0.9,mu=a*exp(b*x),size=c*exp(d*x)),add=TRUE,type="s"))
+## xloc <- 105
+par(xpd=NA)
+xloc <- par("usr")[2]
+qlocs <- c(0.9,0.95,0.975)
+tweak=c(-1,0,0.5)
+ylocs <- with(as.list(coef(lily.k)),qnbinom(qlocs,mu=a,size=c*exp(d*xloc)))+tweak## +1
+text(xloc,coef(lily.k)["a"],"mean",pos=4,cex=0.9) ##+0.5,"mean")
+text(xloc,ylocs,paste("q(",as.character(qlocs),")",sep=""),cex=0.9,pos=4)
+par(xpd=FALSE)
+###
+## nonparametric density estimation check -- far more elaborate than necessary
+if (FALSE) {  ## add marginal density to plot: how sparse is density at low end?
+  par(new=TRUE)
+  plot(density(flowers,from=0,adjust=0.3),col=2,ylim=c(0,0.2),xlab="",ylab="",ann=FALSE,
+       main="",axes=FALSE)
+}
+par(op)
+@ 
+\caption{Lily data from \cite{Thomson+1996}; (jittered) numbers of seedlings
+as a function of number of flowers.  Black lines show fit of negative
+binomial model with constant mean and increasing $k$/decreasing variance;
+gray lines are from a nonparametric density estimate.}
+\label{fig:triangle}
+\end{figure}
+
+The same general strategy applies for the variance parameter of other
+distributions such as the variance of a normal distribution or
+log-normal distribution, the shape parameter of the gamma
+distribution, or the overdispersion parameter of the beta-binomial distribution.  
+Just as with deterministic models for the mean value,
+the variance might differ among different groups
+or treatment levels (represented as factors in \R), might
+change as a function of a continuous covariate as in the example above,
+or might depend on the interactions of factors and
+covariates (i.e., different dependence of variance on
+the covariate in different groups).
+Just the variance, or both the mean
+and the variance, could differ among groups.
+Use your imagination and your biological intuition to
+decide on a set of candidate models, and then use
+the LRT or AIC values to choose among them.
+
+It's best to fit variance parameters on the log scale ($\log \sigma^2$,
+$\log k$ etc.) to make sure the variances are always
+positive.  For fitting to continuous covariates, 
+use non-negative functions such as the exponential ($\sigma^2 = ae^{bx}$)
+or power ($\sigma^2=ax^b$), for the same reason.
+
+When it is reasonable to use 
+a normal distribution to model the variability,
+you can use the built-in functions \code{gls} and \code{gnls}
+from the \code{nlme}: \code{gls} fits linear and
+\code{gnls} fits nonlinear models.
+These models are called
+\emph{generalized (non)linear least squares} models%
+\footnote{Not to be confused with general linear models
+or generalized linear models!}.
+The \code{weights} argument allows a variety
+of relationships (exponential, power, etc.) between
+covariates and the variance.
+For example, using the fir data,
+suppose we wanted to fit a power-law model for the mean number
+of cones as a function of DBH and include
+a power-law model for the variance as a function
+of DBH:
+\begin{equation}
+\mbox{cones} \sim \mbox{Normal}(\mu=a \mbox{DBH}^b, \sigma^2=\mbox{DBH}^c)
+\end{equation}
+
+Fitting the model with \code{gnls}:
+<<echo=FALSE>>=
+## HACK/FIXME: temporarily set width narrower
+oldwid = options(width=55)
+@ 
+<<results=hide>>=
+data(FirDBHFec)
+firdata=na.omit(FirDBHFec)
+gnls(TOTCONES~a*DBH^b,data=firdata,weights=varPower(form=~DBH),
+     start=list(a=1,b=1))
+@ 
+
+<<echo=FALSE>>=
+## restore
+options(oldwid)
+@ 
+
+The syntax of \code{weights} argument is a bit tricky:
+\cite{PinheiroBates2000} is essential background reading.
+
+\section{Correlations: time-series and spatial data}
+\label{sec:corr}
+
+Up to now we have assumed that the observations in a data set are all
+independent.  
+When this is true, the likelihood of the
+entire data set is the product of the likelihoods of each observation,
+and the negative log-likelihood is the sum of the negative
+log-likelihoods of each observation.
+Every negative log-likelihood function 
+we have written has contained code like
+\code{-sum(ddistrib(...,log=TRUE))},
+either explicitly or implicitly, to capitalize
+on this fact.  With a bit more effort, however,
+we can write down and numerically optimize likelihood functions that
+allow for correlations among observations.
+
+It's best to avoid correlation entirely
+by designing your observations or experiments appropriately.
+Correlation among data points is a headache to model,
+and it always reduces the total amount of
+information in the data:
+correlation means that data points are more
+similar to each other than expected by chance,
+so the total amount of information in the data
+is smaller than if the data were independent.
+However, if you are stuck with
+correlated data --- for example, because your samples come from a spatial
+array or a time series --- all is not lost.  Moreover, sometimes
+the correlation in the data is biologically interesting:
+for example the range of spatial correlation 
+might indicate the spatial scale over which populations
+interact.
+
+The standard approach to correlated data is to specify
+a likelihood of correlated data, usually using a multivariate
+normal distribution.  The probability distribution of
+the multivariate normal distribution (\code{dmvnorm} in
+the \code{emdbook} package) is
+\begin{equation}
+\mbox{MVN}(\myvec x,\mvec \mu, \mat V) = \frac{1}{\sqrt{(2 \pi)^n |\mat V|}} 
+\exp\left(\frac{1}{2}(\myvec x-\mvec \mu)^T \mat V^{-1} (\myvec x-\mvec \mu)\right),
+\label{eq:mvn}
+\end{equation}
+where $\myvec x$ is a vector of data values,
+$\mvec \mu$ is a vector of means, and $\mat V$ is the variance-covariance matrix
+($|\mat V|$ is the determinant of $\mat V$ --- see below --- and ${}^T$ stands for transposition).
+The formula looks scary, but like most matrix equations you can understand
+it pretty well by making analogies to the scalar (i.e. non-matrix) equivalent,
+in this case the univariate normal distribution 
+\begin{equation}
+N(x)=1/\sqrt{2 \pi \sigma^2} \exp((x-\mu)^2/(2 \sigma^2)).
+\label{eq:uninorm}
+\end{equation}
+The term $\exp((\myvec v-\mvec \mu)^T \mat V^{-1} (\myvec v-\mvec \mu))$ is the most
+important part of the formula, equivalent to the $\exp(-(x-\mu)^2/(2\sigma^2))$ 
+term in the univariate normal distribution. $(\myvec v-\mvec \mu)$ is the deviation of
+the observations from their theoretical mean values.
+Multiplying by $\mat V^{-1}$ is equivalent
+to dividing by the variance, and multiplying by $(\myvec v-\mvec \mu)^T$ is equivalent
+to squaring the deviations from the mean.  The stuff in front of this term
+is the normalization constant. 
+The $|\mat V|$ matches the $\sigma^2$ in the normalization constant of the univariate normal,
+and the $\sqrt{2 \pi}$ term is raised to the $n^{\text{\small th}}$ power to normalize
+the $n$-dimensional probability distribution.
+
+If all the points are actually independent and have identical variances, then
+the variance-covariance matrix is a diagonal matrix with $\sigma^2$ on the
+diagonal:
+\begin{equation}
+\mat V = \left( \begin{array}{cccc}
+\sigma^2 &  0        & \ldots & 0  \\
+0        & \sigma^2  & \ldots & 0  \\
+\vdots   &  \vdots   & \ddots & \vdots  \\
+0        &   0       &   \ldots    & \sigma^2
+\end{array}
+\right).
+\end{equation}
+Comparing equations~\ref{eq:mvn} and~\ref{eq:uninorm} one term at a time
+shows that the multivariate normal reduces to a product of 
+identical univariate normal probabilities in this case.
+For a diagonal matrix with $\sigma^2$ on
+the diagonal, the inverse is a diagonal matrix
+with $1/\sigma^2$ on the diagonal,
+so the matrix multiplication
+$\exp((\myvec x-\mvec \mu)^T \mat V^{-1} (\myvec x-\mvec \mu))$
+works out to $\sum_i (x_i-\mu_i)^2/\sigma^2$ --- the
+sum of squared deviations.
+For a diagonal matrix, the determinant $|\mat V|$ is the product
+of the diagonal elements, so for identical-variance case
+$|\mat V| = (\sigma^2)^n$, which equals
+the product of the normalizing constants for
+$n$ independent normal distributions.
+
+If the points are independent but each point 
+has a different variance --- like assigning different
+variances to different groups with one individual
+each in each group --- then
+\begin{equation}
+\mat V = \left( \begin{array}{cccc}
+\sigma_1^2 &  0        & \ldots & 0  \\
+0        & \sigma_2^2  & \ldots & 0  \\
+\vdots   &  \vdots   & \ddots &  \vdots  \\
+0        &   0       &   \ldots    & \sigma_n^2
+\end{array}
+\right).
+\end{equation}
+Carrying through the exercise of the previous
+paragraph will show that the multivariate normal reduces to a product
+of univariate normals, each with its own variance.
+The exponent term is now
+half the \emph{weighted} sum of squares $\sum (v_i-\mu_i)^2/(\sigma_i^2)$, with 
+the deviation for each point weighted by its own variance; data points
+with larger variances have less influence on the total.
+
+Most generally,
+\begin{equation}
+\mat V = \left( \begin{array}{cccc}
+\sigma_1^2   &  \sigma_{12}        & \ldots & \sigma_{1n}  \\
+\sigma_{21}  & \sigma_2^2  & \ldots & \sigma_{2n}  \\
+\vdots   &  \vdots   & \ddots & \vdots  \\
+\sigma_{n1}        &   \sigma_{n2}       &   \ldots    & \sigma_n^2
+\end{array}
+\right).
+\end{equation}
+The off-diagonal elements $\sigma_{ij}$ quantify the covariance
+between points $i$ and $j$.
+We could also specify this
+information in terms of the \emph{correlation matrix}
+$\mathbf C = \{\rho_{ij}\}= \left\{\sigma_{ij}/\sqrt{\sigma^2_i \sigma^2_j}\right\}$.
+The diagonal elements of the correlation matrix $\rho_{ii}$
+all equal 1, and the off-diagonal elements range between -1 (perfect
+anticorrelation) and 1 (perfect correlation)
+The variance-covariance matrix $\mat V$ must be symmetric (i.e., $\sigma_{ij}=\sigma_{ji}$).
+In this case there is no way to express the exponent as a sum of independent
+normals, but its meaning is the same as in the previous cases: it
+weights combinations of deviations by the appropriate variances
+and covariances.
+
+To fit a correlated multivariate normal model, you would need to 
+specify parameters for the variance-covariance matrix $\mat V$. In principle you
+could specify $n(n-1)/2$ different parameters for each of
+the distinct entries in the matrix (since the matrix is symmetric
+there are $n(n-1)/2$ rather than $n^2$ distinct entries), but
+there are two reasons not to.
+First, such a general parameterization takes lots
+of parameters. Unless we have lots of data,
+we probably can't afford to use up so many parameters specifying
+the variance-covariance matrix.
+Second, in addition to being symmetric, variance-covariance
+matrices must also be \emph{positive definite}, which means 
+essentially that the relationships among points must be consistent%
+\footnote{Technically, positive definiteness
+means that the matrix must have all positive eigenvalues.}.
+For example,
+\begin{equation}
+\mat V = \left( \begin{array}{ccc}
+1    & 0.9 & -0.9 \\
+ 0.9 &  1  &  0.9 \\
+-0.9 &  0.9 &  1 \\
+\end{array}
+\right)
+\end{equation}
+<<echo=FALSE>>=
+M = matrix(c(1,0.9,-0.9,0.9,1,0.9,-0.9,0.9,1),nrow=3)
+e1 = eigen(M)$values
+@ 
+is not a valid correlation matrix, even though it is symmetric%
+\footnote{Its eigenvalues are \Sexpr{e1[1]} (repeated twice) and
+\Sexpr{round(e1[3],1)}.}.
+It states that site 1 is strongly positively correlated
+with site 2 ($\rho_{12}=0.9)$, and site 2 is strongly correlated with
+site 3 ($\sigma_{23}=0.9$), but site 1 is strongly \emph{negatively}
+correlated with site 3 ($\sigma_{13}=-0.9$), which is
+not possible.
+
+For these two reasons, modelers usually select from established
+correlation models that (1) use a small number of parameters
+to construct a full variance-covariance (correlation) matrix
+and (2) ensure positive definiteness.  For
+example,
+\begin{equation}
+\mat V = \sigma^2 \mat C =
+\sigma^2 \left( \begin{array}{ccccc}
+1   &  \rho & \rho^2       & \ldots & \rho^n  \\
+\rho  & 1  & \rho & \ldots & \rho^{n-1}  \\
+\vdots   &  \vdots   & \vdots & \ddots  & \vdots \\
+\rho^n        &   \rho^{n-1} & \rho^{n-2}       & \ldots &   1
+\end{array}
+\right),
+\label{eq:distcorr}
+\end{equation}
+with $|\rho|<1$,
+specifies a correlation matrix $\mat C$ 
+corresponding to sites arranged in a line --- or
+data taken in a temporal sequence --- %
+where correlation falls off with the 
+number of steps between sites (sampling times): nearest neighbors (sites 1 and 2,
+2 and 3, etc.) have correlation $\rho$, next-nearest
+neighbors have correlation $\rho^2$, and so forth%
+\footnote{This correlation matrix is sometimes referred to as AR(1), meaning
+``autoregressive order 1'', meaning that each point is correlated directly
+with its first neighbor.
+The higher powers of $\rho$ with distance
+arise because of a chain of correlation: next-nearest-neighbors are
+correlated through their mutual neighbor and so on.}.
+Other correlation models allow correlation $\rho_{ij}$
+to drop to zero at some threshold distance, or
+to be a more general function of the spatial distance between sites.
+
+Three different areas of classical statistics
+use multivariate normal distributions to describe correlation
+among observations.
+\emph{Repeated-measures ANOVA} is a form of analysis of variance that
+allows the errors to be non-independent in some way,
+particularly by building in individual-level variation
+(see Section~\ref{sec:mixed}) but also by allowing for correlation between
+successive points in time.  \emph{Time-series}
+models \citep{Chatfield1975,Diggle1990,MASS} 
+and \emph{spatial models} \citep{Ripley1981,Cressie1991,Kitanidis1997,Haining2003,MASS}
+specify correlation structures that make sense in
+temporal and spatial contexts, respectively.
+
+Generalized least-squares (\code{g[n]ls}) allows for correlation among
+observations, using the \code{correlation} argument.
+These functions include a variety of standard models for temporal and spatial
+autocorrelation: see \code{?corClasses} (in the \code{nlme} package), 
+and \cite{PinheiroBates2000}, for more details.
+The \code{lme} and \code{nlme} functions, which fit repeated-measures
+models, also have a \code{correlation} argument.
+%% unnecessary details
+% Repeated-measures models also include random variation among
+% individuals: you need mixed-effect models (\code{lme} or \code{nlme})
+% s, but these functions
+% do include the same \code{correlation} argument.  
+The \code{ts} package implements time-series models, which incorporate
+correlation, although the description and methods
+used are fairly different from the more general models described
+here.  The \code{spatial} package also allows you to fit
+trend lines and surfaces with spatial autocorrelation between
+points as a function of distance.
+
+To construct variance-covariance functions to use in your
+own custom-made likelihood functions, start
+with the \code{matrix} function (for general matrices) or \code{diag}
+(for diagonal matrices) and extend them.
+For example, \code{diag(4)} produces a 4 $\times$ 4 identity matrix
+(with 1 on the diagonal); \code{diag(c(2,3,4))} produces a 3 $\times$ 3
+diagonal matrix with variances of 2, 3, and 4 on the diagonal.
+The \code{row} and \code{col} functions, which return matrices
+encoding row and column numbers, are also useful.
+For example, \code{d=abs(row(M)-col(M))} produces a
+absolute-value distance matrix $\{|i-j|\}$ with the
+same dimensions as \code{M}, and \code{rho\^{}d}
+produces correlation matrix (\ref{eq:distcorr}).
+The slightly tricky code \code{ifelse(d==0,1,ifelse(d==1,rho,0))}
+produces a matrix with 1 on the diagonal, \code{rho} on 
+the first off-diagonal, and 0 elsewhere, corresponding to
+correlation only among nearest-neighbor sites.
+
+If your data are irregularly spaced or two-dimensional,
+you can start by computing a matrix of the distances
+between points, using \code{d=as.matrix(dist(cbind(x,y)))}%
+\footnote{\code{dist(x,y)} computes the distances between
+\code{x} and \code{y}, but returns the answer as
+a \code{dist} object.  It is more useful in this case
+to use \code{as.matrix} to convert it to a matrix.}.
+%\code{dist()} computes Euclidean distances
+%by default (the regular geometric
+%distance between points in a plane), but there are other
+%options (see \code{?dist}).
+Then you can easily use the distance matrix to
+compute exponential (proportional to $e^{-d}$),
+Gaussian (proportional to $e^{-d^2}$), or other
+spatial correlation matrices.
+Consult \cite{MASS} or a spatial statistics reference
+for more details.
+
+Once you have constructed a
+correlation matrix, multiply it
+by the variance to get a covariance
+matrix suitable for use with the
+\code{dmvnorm} density function.
+For example,  negative log-likelihood
+<<eval=FALSE>>=
+-dmvnorm(z,mu,Sigma=V,log=TRUE)
+@
+where \code{z} is a vector of data,
+\code{mu} is a mean vector,
+and \code{V} is one of the variance-covariance matrices
+defined above.
+You can also use the \code{mvrnorm}
+command from the \code{MASS} package
+to generate random, correlated normal
+deviates.
+For example, \code{mvrnorm(n=1,mu=rep(3,5),Sigma=V)}
+produces a 5-element vector with a mean of 3 for each
+element and variance-covariance matrix \code{V}.
+Asking \code{mvrnorm} for more than one random
+deviate will produce a 5-column matrix where each row is a separate
+draw from the multivariate distribution.
+%The multivariate-normal likelihood function \code{dmvnorm}
+%is available in the \code{mvtnorm} package on CRAN (which also
+%provides a multivariate $t$ distribution).
+
+Statisticians usually deal with non-normal (e.g. Poisson or binomial), 
+correlated data by combining a multivariate normal
+model for the underlying mean values with a
+non-normal distribution based on these varying means.
+We usually exponentiate the MVN distribution to get
+a multivariate log-normal distribution so that the means
+are always positive.
+For example, to model correlated Poisson data we could
+assume that $\Lambda(x)$, the expected number
+of counts at a point $x$, is the exponential of
+a multivariate normally distributed variable
+with variance-covariance matrix $\mat V$:
+\begin{equation}
+\begin{split}
+\mat  Y & \sim  \mbox{Poisson}(\mvec \Lambda) \\
+\mmat \Lambda & \sim  \exp(\mbox{MVN}(\mvec \mu,\mat V)).
+\end{split}
+\end{equation}
+Here $\mat Y$ is a vector of counts at different locations;
+$\mmat \Lambda$ (a random variable) is a vector of expected numbers of
+counts (intensities); $\mvec \mu$ is the log of the average
+intensities; and $\mat V$ describes the variance and correlation
+of intensities.
+If we had already used one of the recipes above to construct
+a variance-covariance matrix \code{V}, and had a model for
+the mean vector \code{mu}, we could simulate
+the values as follows:
+<<eval=FALSE>>=
+Lambda = exp(mvrnorm(1,mu=mu,Sigma=V))
+Y = rpois(length(mu),Lambda)
+@ 
+
+Unfortunately, even though we can easily simulate values from
+this distribution, because there are two different levels
+of variation it's hard to write down a likelihood
+for this model.  The rest of the chapter discusses how to formulate
+and estimate the parameters for such
+multi-level models.
+
+\section{Multi-level models: special cases}
+\label{sec:multi-special}
+
+While correlation models assume that samples
+depend on each other as a function of spatial or temporal distance, 
+with overlapping neighborhoods in
+space or time, traditional
+multi-level models usually break the population into discrete 
+groups such as family, block, or site.  Within groups, all samples
+are equally correlated with each other.  If samples 1 and 2
+are from one site and samples 3 and 4 are from another, 
+each pair would be correlated and we
+would write down this variance-covariance matrix:
+\begin{equation}
+\mat V = \sigma^2 \mat C =
+\sigma^2 \left( \begin{array}{cccc}
+1    &  \rho & 0 & 0 \\
+\rho &    1  & 0 & 0 \\
+0 & 0 &    1 &  \rho  \\
+0 & 0 & \rho &  1 
+\end{array}
+\right)
+\label{eq:corrmat}
+\end{equation}
+Equivalently, we could specify
+a \emph{random-effects} model that
+gives each group its own random
+offset from the overall mean value.  The 
+correlation model (\ref{eq:corrmat})
+is formally identical to a random-effects
+model where the 
+value of the $j^{th}$ individual in the $i^{th}$ group is
+\begin{equation}
+Y_{ij} = \epsilon_i+\epsilon_{ij},
+\label{eq:randeff}
+\end{equation}
+where
+$\epsilon_i \sim N(0,\sigma^2_b)$ is the 
+level of the random effect in the $i^{th}$ block
+and $\epsilon_{ij} \sim N(0,\sigma^2_w)$ is the 
+the difference of the $j^{th}$ individual in
+the $i^{th}$ block from
+the block mean.
+The among-group variance $\sigma^2_b$ 
+and within-group variance $\sigma^2_w$
+correspond to the
+correlation parameters
+($\rho$,$\sigma^2$):
+\begin{equation}
+\sigma^2_b = \rho \sigma^2, \qquad \sigma^2_w = (1-\rho)\sigma^2.
+\end{equation}
+Classical models usually describe variability in
+random-effects terms
+because constructing huge variance-covariance matrices
+is very inefficient.
+
+\subsection{Fitting (normal) mixed  models in \R}
+\label{sec:mixed}
+
+Some special kinds of block 
+models can be fitted with existing
+tools in \R\ and in many other statistics packages.
+Models with two levels of normally distributed
+variation are called \emph{mixed-effect models} 
+(or just \emph{mixed} models)
+because they contain a
+mixture of random (between-group)
+and fixed effects.
+Classical block ANOVA models
+such as split-plot and nested block models
+fall into this category \citep{QuinnKeough2002,GotelliEllison2004}.
+If the variation in your model is normally distributed,
+your predictors are all categorical, and
+your design is balanced, you can use the \code{aov} function 
+with an \code{Error} term to fit mixed models \citep{MASS}.
+The \code{nlme} package, and the newer, more powerful
+(but poorly documented) \code{lme4} package fit a far wider
+range of mixed models \citep{PinheiroBates2000}. 
+The \code{nlme} package allows for unbalanced data sets
+as well as random effects on parameters (e.g. ANCOVA with randomly
+varying slopes among groups), and nonlinear mixed-effect models
+(e.g. an exponential, power-law, logistic, or other
+non-linear curve with random variation in one or
+more of the parameters among groups).
+
+<<echo=FALSE,eval=FALSE>>=
+genf = function() {rnorm(6,sd=1)+rep(rnorm(2,sd=2),each=3)}
+m = t(replicate(1000,genf()))
+cov2cor(var(m))
+@ 
+% $\rho = \sigma^2_b/(\sigma^2_w+\sigma^2_b) = \sigma^2_b/\sigma^2_t$
+% or $\sigma^2_b = \rho \sigma^2_t$; $\sigma^2_w = (1-\rho)\sigma^2_t$
+
+\subsection{Generalized linear mixed models}
+\emph{Generalized linear mixed models}, or GLMMs,
+are a cross between mixed models and generalized
+linear models (p.~\pageref{sec:GLM}).
+GLMMs combine link functions and exponential-family
+variation with random effects.
+The random effects must be normally distributed
+on the scale of the linear predictor --- meaning on the 
+scale of the data as transformed by the link function.
+For example, for a Poisson model with a log link,
+the between-group variation would be log-normal.
+GLMMs are cutting-edge, and the methods 
+for solving them are evolving rapidly.
+The \code{glmmPQL} function in the \code{MASS} package
+can fit an approximation to GLMMs, but one that
+is sometimes inaccurate \cite{BreslowClayton1993,Breslow2003,JangLim2005}.
+The \code{glmmML} and \code{lme4} offer more
+robust GLMM fitting algorithms (use the \code{family}
+argument with \code{lmer} in the \code{lme4}
+package); so does J. Lindsey's
+\code{repeated} package, documented in
+his book \citep{Lindsey1999} and available
+on his web page (linked under ``Related Projects''
+on the R project page).
+If you want to be thorough,
+it may also be worth cross-checking your results with 
+\code{PROC MIXED} or \code{NLMIXED} in SAS.
+
+\R\ has built-in capabilities for incorporating random
+effects into a few other kinds of models.
+\emph{Generalized additive mixed models} (GAMMs)
+(\code{gamm} in the \code{mgcv} package)
+allow random effects and exponential-family
+variation with models where spline curves
+make up the deterministic part of the model.
+\emph{Frailty} models (\code{frailty} in the \code{survival} package)
+incorporate Gamma, $t$, or normally distributed
+variation among groups in a survival analysis.
+Some other variations such as non-normal repeated-measures
+models are described by \cite{Lindsey1999,Lindsey2001,Lindsey2004a}.
+
+
+\subsection{Avoiding mixed models}
+\label{sec:avoidmixed}
+Even when canned packages are available, fitting mixed models
+can be difficult.  The algorithms do not always converge, especially
+when the number of groups is small. If your design is linear,
+balanced, and has only two levels of random effects (i.e., among and
+between blocks) then \code{aov} should always work, but otherwise you
+may be at a loss.
+
+If you want to avoid fitting mixed models altogether, one option
+is to fit fixed-effect models instead, 
+estimating a parameter for each group
+rather than a random variable for the among-group variation
+\citep{ClarkPoulsen+2005}.
+You will probably lose some power this way, so the results are likely
+to be conservative\footnote{
+The distinction between fixed effects and random effects
+is murky in any case: see \citet[][p. 670]{Crawley2002} 
+for some rules of thumb,
+and \citet[][p. 20]{Gelman2005} for more than you ever wanted
+to know about the level of debate even among statisticians
+about the meaning of these terms.}.
+As a second option, \cite[][p. 182]{GotelliEllison2004} 
+recommend that when you have a simple nested design
+(i.e., subsamples within blocks)
+you just collapse each group's data by computing its mean and do a single-level
+analysis. This will be disappointing if you were hoping to glean information
+about the within-group variance as well, but it is simple and
+will usually give the same $p$-value 
+as the classical algorithm coded by \code{aov}.
+%% FIX ME -- check G&E
+Finally, you can try to convince yourself (and your reviewers, readers,
+or supervisor) that between-group variation is unimportant by fitting the
+model ignoring blocks and examining the variation of the residuals
+between blocks both graphically and statistically.
+In order to justify ignoring between-group variation in the model, you must show that
+the between-group variation in the residuals is \emph{both} statistically 
+and biologically irrelevant. Biologically relevant variation is an
+important warning sign even if it is not statistically significant.
+
+\section{General multi-level models}
+\label{sec:multi-general}
+
+Now suppose that your data do not allow analysis by
+classical tools and that you are both brave and
+committed to finding out what a multi-level model
+can tell you.
+
+\subsection{Analytical models for marginal distributions}
+\label{sec:analytical}
+
+In some cases, it may be possible to solve the integrals
+that arise in multi-level problems analytically.
+In this case you can fit the marginal distribution
+directly to your data.
+The marginal distribution
+describes the combination of multiple stochastic processes but doesn't
+attempt to provide information about the individual processes --- %
+analogous to knowing the
+row and column sums (the \emph{marginal totals}) of a table
+without knowing the distribution of values within the table.
+
+If you're comfortable with math, you can
+read an advanced treatment such as \cite{Bailey1964} or
+\cite{Pielou1977} to learn how to solve these problems.
+Otherwise, you should do some research to see if
+someone has already found the answer for your model.
+The most common of these distributions --- the negative
+binomial arising from a Poisson sampling process
+with underlying Gamma-distributed variability, the beta-binomial
+arising from binomial sampling with underlying Beta-distributed
+variability, and the Student $t$ distribution arising from
+normally distributed variation with Gamma-distributed variability
+in the inverse variance --- were already discussed
+on p.~\pageref{sec:compounding}.  Zero-inflated distributions
+(p.~\pageref{zinfl}) are another example of a multi-level
+process --- the combination of a presence/absence process 
+and a discrete sampling process --- for which it is fairly
+easy to figure out the marginal distribution.
+
+If your multi-level process involves summing several
+values  --- for example, if the
+measured value is the sum of a normally distributed block
+mean and a normally distributed individual variation --- then
+the marginal distribution is called a \emph{convolution}.
+If $X$ and $Y$ are random variables with probability densities
+$P_X$ and $P_Y$, then the probability density
+of $X+Y$ is
+\begin{equation}
+P_{X+Y}(z) = \int P_X(x) \cdot P_Y(z-x) \, dx.
+\end{equation}
+The intuition behind this equation is that we are
+adding up all the possible ways we could have gotten
+$z$.  If $X=x$, then the value of $Y$ must be $z-x$ in order for
+$X+Y$ to equal $z$, so we can calculate the total
+probability by integrating over all values of $x$.
+The convolutions of distributions with themselves --- i.e.,
+the distribution of sums of like variables --- can sometimes be
+solved analytically.  The sum of two normal variables
+$N(\mu_1,\sigma_1^2)$ and $N(\mu_2,\sigma_2^2)$ 
+is also normal ($N(\mu_1+\mu_2,\sigma_1^2+\sigma_2^2)$);
+the sum of two Poisson variables is also Poisson
+($\text{Pois}(\lambda_1)+\text{Pois}(\lambda_2) \sim 
+\text{Pois}(\lambda_1+\lambda_2)$); and the sum of $n$
+exponential variables with the same mean is Gamma distributed with
+shape parameter $n$.  These solutions are simple, but they
+also warn us that we may sometimes face an \emph{identifiability} problem
+(p.~\pageref{identifiability}) when we try to 
+separate multiple levels of variability.  If we
+know only that the sum of two normally distributed variables is
+$N(\mu,\sigma^2)$, then we can't recover any more information
+about the means and variance of the individual variables --- except
+that the variances are between 0 and $\sigma^2$.  (In the case of
+classical block models we also know which group any individual
+belong to, so we can partition variability within and among groups.)
+
+\subsection{Numerical integration}
+\label{sec:numeric}
+
+If you can't find anyone who has computed the
+marginal distribution for your problem analytically, 
+you may still be able to compute it numerically.
+
+A common problem in forest ecology is estimating the distribution of
+growth rates $g_i$ of individual trees in a stand from size
+measurements $S_i$ in successive censuses: $g_i = S_{i,2}-S_{i,1}$.
+Foresters also commonly assume that adult trees can't shrink, or at
+least not much, but it's typical to observe a small proportion
+of individuals in a data set whose measured size in the second census is 
+smaller than their initial size. If we really think that measurement error is
+negligible, then we're forced to conclude that the trees actually
+shrank.  It's standard practice to go through the data set and throw
+out negative growth values, along with any that are unrealistically
+big.  Can we do better?
+
+Although it is sensible to throw out really extreme values,
+which may represent transcription errors (being careful
+to keep the original data set intact and document the rules for
+discarding outliers), we may  be able to extract information from
+the data set both about the ``true'' distribution of growth rates
+and about the distribution of errors.  The key is that the
+distributions of growth and error are assumed to be
+different.
+The error distribution is symmetric and narrowly
+distributed (we hope) around zero, while the growth distribution
+starts at zero and is right-skewed.  Thus, the negative tail of the
+distribution tells us about error --- negative values must contain at
+least some error.
+
+Specifically, let's assume a gamma distribution of growth (we could
+equally well use a log-normal) and a normal distribution of error.
+The growth distribution has parameters $a$ (shape) and $s$ (scale),
+while the error distribution has just a variance $\sigma^2$ --- we
+assume that errors are equally likely to be positive or negative,
+so the mean is zero.
+Then 
+\begin{equation}
+\begin{split}
+\ytrue & \sim \text{Gamma}(s,a) \\
+\yobs & \sim \text{Normal}(\ytrue,\sigma^2) 
+\end{split}
+\label{eq:gammanorm}
+\end{equation}
+For normally distributed errors, we can also express
+this as the sum of the true value and an error term:
+\begin{equation}
+\yobs = \ytrue + \epsilon, 
+\epsilon \sim \mbox{Normal}(0,\sigma)
+\end{equation}
+According to the convolution formula, the likelihood of a particular observed
+value is:
+\begin{equation}
+P(\yobs|a,s,\sigma^2) = P(\ytrue+\epsilon=\yobs|a,s,\sigma^2)
+= \int P(\ytrue=\yobs-\epsilon|a,s) \cdot P(\epsilon|\sigma^2) \, d\epsilon
+\label{eq:gnint1}
+\end{equation}
+
+The log-likelihood for the whole data set is:
+\begin{equation}
+L = \sum \log \int P(\ytrue=\yobs-\epsilon|a,s) \cdot P(\epsilon|\sigma^2) \, d\epsilon.
+\label{eq:gnlik}
+\end{equation}
+Unfortunately we can't interchange the logarithm and the integral,
+which would make everything much simpler.
+
+It's very easy to simulate some fake ``data'' from this
+system with plausible parameters in order to test
+our approach:
+<<>>=
+set.seed(1001)
+x.true = rgamma(1000,shape=3,scale=10)
+x.obs = rnorm(1000,mean=x.true,sd=10)
+@ 
+
+In the \R\ supplement (p.~\ref{sec:ch10supp}), I defined
+a \code{getdist} function that implements equations
+\ref{eq:gammanorm}--\ref{eq:gnlik}.  I
+then used \code{mle2} and \code{confint}
+to find the maximum likelihood values and profile
+confidence limits.
+<<echo=FALSE,eval=FALSE>>=
+## all superseded by batch file?
+if (!file.exists("gammanorm1.RData")) {
+  time0 = system.time(m1 <- mle2(minuslogl=getdist,start=list(shape=3,scale=10,sd=1),
+                      data=list(dat=x.obs,debug=TRUE),
+                      method="Nelder-Mead"))
+  time0b = system.time(m1.ci <- confint(m2))
+  save("m1","m2","x.obs","x.true","time0","time0b",file="gammanorm1.RData")
+}
+load("gammanorm1.RData")
+@ 
+<<echo=FALSE>>=
+load("gammanorm-batch.RData")
+S4trans <- function(obj1) {
+  obj2 <- new(class(obj1))
+  for (i in slotNames(obj1)) {
+    t1 <- try(slot(obj2,i) <- slot(obj1,i))
+  }  
+  obj2
+}
+m1 <- S4trans(m1)
+@ 
+It was slow, though: it took about \Sexpr{round(time1[3]/60)}
+minutes (for a total of \Sexpr{m1@details$counts[1]} function evaluations)
+to find the MLE using Nelder-Mead, and \Sexpr{round(time1b[3]/60)} minutes
+to calculate the profile confidence intervals.
+
+<<echo=FALSE,results=tex>>=
+citab <- round(data.frame(true=c(3,10,10),coef(m1),confint(m1,method="quad"),
+                          m1.ci),2)
+colnames(citab) <- c("true","MLE","Quadratic\n2.5\\%","Quadratic\n97.5\\%",
+                     "Profile\n2.5\\%","Profile\n97.5\\%")
+rownames(citab) <- c("shape ($a$)","scale ($s$)","$\\sigma$") 
+latex(citab,file="",table.env=FALSE,title="")
+@ 
+The estimates are encouragingly close to the true values,
+and the confidence limits are reasonable. The quadratic
+confidence intervals, while too narrow (especially for
+$\sigma$) are close enough to the profile confidence intervals
+that the extra 2.5 hours of computation may have been unnecessary.
+Figure~\ref{fig:gammanorm} plots the observed histogram along with the
+estimated and true distributions of actual growth rates and the
+estimated and true distributions of measurement error.
+Excitingly, we are actually able to recover a significant amount
+of accurate information about the growth rates and the measurement
+process in this example.
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5,mgp=c(2.5,1,0),mar=c(5,5.5,2,2)+0.1)
+hist(x.obs,prob=TRUE,col="lightgray",breaks=50,main="",ylab="",
+     xlab="Observed growth rate",ylim=c(0,0.03))
+mtext(side=2,"Probability density",at=0.015,line=3.5,cex=1.5,las=0)
+box()
+##lines(density(x.true),lwd=2)
+curve(dgamma(x,shape=3,scale=10),lty=1,lwd=2,add=TRUE)
+with(as.list(coef(m1)),curve(dgamma(x,shape=shape,scale=scale),lty=2,lwd=2,add=TRUE))
+curve(dgamma(x,shape=3,scale=10),lty=1,lwd=2,add=TRUE)
+curve(dnorm(x,mean=0,sd=10)/2,lty=1,lwd=2,col="darkgray",add=TRUE)
+curve(dnorm(x,mean=0,sd=coef(m1)["sd"])/2,lty=2,lwd=2,col="darkgray",add=TRUE)
+text(c(35,-9),c(0.029,0.023),c("growth","error"),
+     col=c("black","gray"))
+legend("topright",c("true","estimated"),lty=1:2,lwd=2,bty="n",cex=0.8)
+par(op)
+@ 
+\caption{True and estimated distributions of growth rates and
+measurement error for simulated forest data.  Histogram, observed data.
+Lines, true and estimated distributions of 
+actual growth rate and measurement error.}
+\label{fig:gammanorm}
+\end{figure}
+
+Numerical integration works well here, although it's
+slow if we insist on calculating profile confidence limits.
+Hand-coded numerical integration will always be slower,
+and less stable, than the special-case algorithms built into
+packages like \code{lme4} or \code{glmmML}.
+A commercial package called AD Model Builder 
+uses sophisticated integration techniques to solve some very difficult
+multi-level modeling problems, but I have not evaluated it
+\citep{SkaugFournier2006,Kitakado+2006}.
+\cite{GelmanHill2006} primarily use R and BUGS to fit multi-level
+models, but provide an appendix that describes how to fit
+some multi-level models in SAS, AD Model Builder, and other packages.
+% Numerical integration is most valuable in the cases where
+% someone else has developed a fast, accurate approximation
+% technique, such as inside canned mixed-model and GLMM software
+% such as \code{nlme} and \code{lme4} (or \code{PROC NLMIXED}
+% in SAS). 
+% (A commercial package called  AD Model Builder
+% can do some very difficult mixed-model problems.)
+Brute-force numerical integration
+can work reasonably well as long as you have enough data
+(both enough individual data points and enough groups) and
+as long as your problem has only one, or at most two,
+random variables to integrate.
+The estimation process is fairly straightforward,
+and numerical failures are usually obvious --- although you should
+do all the usual checks for convergence.
+Numerical integration methods also 
+remain firmly in the maximum-likelihood paradigm, so you won't 
+have to defend your use of Bayesian methods.
+
+\subsection{MCMC for mixed models}
+\label{sec:mixed-mcmc}
+
+Most of the time, brute-force
+numerical integration as illustrated above is just too hard.
+Once you have to integrate over more than one or two
+random variables, computing the integrals becomes extremely slow.
+MCMC is an alternative way of doing these
+high-dimensional integrals, and it gets you 
+confidence limits ``for free''.  The disadvantages
+are that (1) it may be slower than sufficiently clever
+numerical integration approximations; (2) you have
+to deal with the Bayesian framework, including deciding
+on a set of reasonable priors (although \cite{Lele+2007}
+have recently suggested a simple method for using MCMC to
+do ML estimation for multi-level models); 
+and (3) in badly determined cases where your
+model is poorly defined or where the data don't really
+contain enough information, BUGS is more likely
+to give you an answer that doesn't make
+sense instead of just crashing --- which is \emph{really}
+bad.
+
+The BUGS input file for the Gamma-normal model
+is extremely simple:
+
+\verbatiminput{gammanorm.bug}
+
+The first half of the model statement is a direct
+translation of the model (eq. \ref{eq:gammanorm}):
+for each value in the data set, the observed
+value is assumed to be drawn from a normal
+distribution centered on the true value, which
+is in turn drawn from a Gamma distribution.
+
+The second half of the model statement specifies
+vague Gamma-distributed priors.  As mentioned in Chapter~\ref{chap:opt},
+BUGS uses slightly different parameterizations from
+\R\ for the normal and Gamma distributions.
+It specifies the normal by the mean and the
+\emph{precision} $\tau$, which is the reciprocal of the
+variance, and the Gamma by the shape
+parameter (just as in \R) and the rate
+parameter, which is the reciprocal of the scale parameter.
+The mean of the gamma distribution
+is $\text{shape}/\text{rate}$  and the
+variance is $\text{shape}/\text{rate}^2$; thus
+a standard weak gamma prior uses
+equal shape and rate parameters (i.e. a mean of 1),
+with both the shape and the rate parameter small 
+(i.e. a large variance).  In this case
+I've chosen (0.01, 0.01).
+
+<<echo=FALSE>>=
+library(R2WinBUGS)
+library(coda)
+@ 
+
+<<echo=FALSE,eval=FALSE>>=
+## hidden code for making bugs work under Wine in my Linux system
+Sys.setenv(WINE="/opt/cxoffice/bin/wine")
+bugs.old <- bugs
+bugs <- function(...) { bugs.old(...,useWINE=TRUE) }
+@ 
+
+We'd like to run chains starting from overdispersed 
+starting points, as recommended in Chapter~\ref{chap:opt},
+so that we can run a Gelman-Rubin diagnostic test
+to see if the chains have converged.
+However, it's still very important to start with
+sensible starting values (so that BUGS doesn't crash
+or take forever to burn in).  A good strategy is
+to find a reasonable starting point and then
+change different parameters by up to an order of magnitude to get
+overdispersed starting points.
+
+We can estimate a starting point for the Gamma parameters
+by fitting a gamma distribution just to the non-zero
+observations:
+<<>>=
+pos.obs = x.obs[x.obs>0]
+f1 = fitdistr(pos.obs,"gamma")
+@ 
+
+We can estimate a starting value for the precision ($\tau$) by
+selecting the negative observations, replicating them
+with the opposite sign, and calculating the reciprocal
+of the variance:
+<<>>=
+neg.obs = x.obs[x.obs<0]
+bineg.obs = c(neg.obs,-neg.obs)
+tau0 = 1/var(bineg.obs)
+@ 
+
+You're not required to specify starting values for all of 
+the parameters --- if you don't, BUGS will pick a random 
+starting value from the prior distribution for that parameter.
+However, BUGS will often crash or converge slowly with
+random starting values,
+especially if you use very weak priors.
+We will start the chains for the true growth rates
+from 1 or from the observed growth rate for each individual,
+whichever is greater: this strategy avoids negative values for the
+true growth rate, which are impossible according to our model.
+<<>>=
+tstart = pmax(x.obs,1)
+@ 
+
+We specify a list of initial values for each chain: in this case
+I've decided to start one chain at the values of the crude estimates
+calculated above, and the other chains with perturbations of those
+estimates, with one or the other of the parameters halved or
+increased to 150\%. I didn't bother to perturb the starting values
+for the rate, but you could in a more thorough analysis.
+<<>>=
+clist = as.list(coef(f1))
+params = list(tau=tau0,sh=clist$shape,rate=clist$rate,x.true=tstart)
+## FIXME: fix perturb.params!
+#inits = perturb.params(params,list(tau=c(0.5,1.5),sh=c(0.5,1.5)),mult=TRUE)
+inits = rep(list(params),5)
+inits[[2]]$tau=0.5*tau0
+inits[[3]]$tau=1.5*tau0
+inits[[4]]$sh=0.5*clist$shape
+inits[[5]]$sh=1.5*clist$shape
+@
+
+We need to specify the data for BUGS:
+<<>>=
+N = length(x.obs)
+data = list("x.obs","N")
+@ 
+
+<<echo=FALSE>>=
+minval = which.min(x.obs)
+minx = x.obs[minval]
+@ 
+Finally, we specify for which parameters of the model we want
+BUGS to save information.
+Of course we want to track the
+parameters of our model.
+In addition, it will be interesting to see what BUGS estimates
+for the true values, uncorrupted by measurement error, of both
+the minimum observed value in the data set (which obviously
+contains a lot of measurement error, since its value
+is \Sexpr{round(minx,1)}) and one of the values closest to the
+median\footnote{Because the data set has an even number of
+points, the median value is halfway between the two values
+closest to the middle.}.
+<<>>=
+(minval = which.min(x.obs))
+(medval = which.min(abs(x.obs-median(x.obs))))
+parameters = c("sh","rate","tau","x.true[670]","x.true[675]")
+@
+
+Running the model:
+<<eval=FALSE,echo=FALSE>>=
+time2 <- system.time(gn1.bugs <- bugs(data,inits,parameters.to.save=parameters,
+  model.file="gammanorm.bug",n.chains=length(inits)))
+@ 
+
+%% why did x.true[] nodes get included twice?? bug in text processing/
+%% bugs command file construction??
+
+<<eval=FALSE>>=
+gn1.bugs = bugs(data,inits,parameters.to.save=parameters,
+                 model.file="gammanorm.bug",n.chains=length(inits))
+@ 
+
+<<eval=FALSE,echo=FALSE>>=
+save("gn1.bugs","time2",file="gn1-bugs.RData")
+@ 
+
+<<echo=FALSE>>=
+load("gn1-bugs.RData")
+@ 
+
+
+%% BUGS wish list: confint() [with option for confidence interval
+%%  on mean of variable or quantiles of distribution?]
+%%
+%%  option to combine chains in densityplot.mcmc?
+
+BUGS took \Sexpr{round(time2[3])} minutes to
+run the models.  The Gelman-Rubin statistics
+were all well below the rule-of-thumb cutoff
+of 1.2, suggesting that the chains had
+converged.
+Using \code{as.mcmc} to convert the BUGS result
+\code{gn1.bugs} to a CODA object and 
+running \code{traceplot} and \code{densityplot} confirmed graphically
+that the chains gave similar answers,
+and that the posterior distributions 
+are approximately normal:
+the Gelman-Rubin test makes this assumption,
+so it's good to check.
+
+<<echo=FALSE,results=tex>>=
+s = gn1.bugs$summary[1:5,c("mean","2.5%","97.5%")]
+s = data.frame(true=c(3,1/10,1/100,round(x.true[minval],1),
+                 round(x.true[medval],1)),s)
+colnames(s) <- c("true","mean","2.5\\%","97.5\\%")
+rownames(s) <- c("shape","rate","$\\tau$",
+                 "min val",
+                 "median val")
+latex(round(s,3),file="",title="",table.env=FALSE)
+@ 
+
+While the estimated ``true'' value of
+the median point is close to its
+observed value of \Sexpr{round(x.obs[medval],1)},
+the Bayesian model correctly adjusted the
+estimated true value for the minimum point
+from its observed value (\Sexpr{round(x.obs[minval],1)})
+to a small but definitely positive value.
+Of course, our estimates
+of the values of particular data points have
+wide distributions --- it would be too good to
+be true if we could use MCMC to magically get
+rid of observation error.
+
+% Figure~\ref{fig:gammanorm-bugs} shows the results
+% graphically --- including the results for the
+% estimated value of the minimum and
+% closest-to-median points, and the deviance
+% (twice the negative log likelihood).
+% The different chains (shown as different line types) have
+% fairly similar distributions, which is good --- this confirms
+% that the chains started from different initial conditions
+% have indeed converged.
+
+%\begin{figure}
+<<eval=FALSE,echo=FALSE>>=
+## FIXME: come up with a way to set "which" in coda plots (less clumsily)
+m1bugs <- as.mcmc(gn1.bugs)
+m2bugs <- lapply(m1bugs,function(x)x[,c(1:5,8)])
+m2bugs <- lapply(m2bugs,function(x) { y <- x; colnames(y)[4:5] <- c("median.point","min.point"); y})
+class(m2bugs) <- "mcmc.list"
+trellis.par.set(canonical.theme(color=FALSE))
+print(densityplot(m2bugs,trace=FALSE))
+@
+%\caption{WinBUGS results for gamma-normal model}
+%\label{fig:gammanorm-bugs}
+%\end{figure}
+
+<<echo=FALSE>>=
+rm(bugs,bugs.old)  ## clean up user defs
+@ 
+
+
+\section{Challenges}
+
+Multi-level models are hard to implement.  General linear models
+like linear regression represent one extreme, where you can put in any
+kind of data and know that you will get a rapid, technically correct
+(if not necessarily sensible) answer.  Multi-level models represent
+the other extreme: the methods for fitting them are computationally
+demanding and must be carefully tuned to a particular type of problem
+in order to ensure an efficient and correct solution.  As with
+analytical solutions, if you are not ready for a technical challenge
+your best bet is to find a pre-built solution for your class of
+models.
+\label{identifiability}
+Another issue we have to face as we incorporate more levels of
+variability, is \emph{identifiability}.  Unidentifiable parameters are
+those that are impossible to estimate separately from our data. 
+For example, if we tried to estimate a linear model 
+with two different intercepts ($Y=a_1+a_2+bX$),
+instead of the more sensible $Y=a+bX$,
+any answer where $a_1+a_2=a$ would fit
+equally well.  We would have the same problem with two predictor
+variables that were perfectly correlated.
+Similarly, there is no way to identify catchability --- the
+probability that you will observe an individual --- from a single
+observational sample; you simply don't have the information to
+estimate how many animals or plants you failed to count.
+Most of these cases of ``perfect'' unidentifiability are easily
+detectable by common sense, although they can be obscured by complex models.
+Always remember that there is no free lunch: if a procedure
+for estimating parameters seems too good to be true, be suspicious.
+
+<<eval=FALSE,echo=FALSE>>=
+## binom-Poisson mixture
+rbind(table(factor(rbinom(10000,size=rpois(10000,lambda=1),prob=0.8),levels=0:8))/10000,
+      table(factor(rbinom(10000,size=rpois(10000,lambda=2),prob=0.4),levels=0:8))/10000,
+round(dpois(0:8,lambda=0.8),4))
+@ 
+
+\emph{Weak identifiability} is more common than perfect
+unidentifiability.  Weakly identifiable parameters are hard to
+estimate even with large, clean data sets --- and practically
+impossible to estimate with moderate-size noisy data sets.
+Identifiability problems are not limited to multi-level models, but
+they are particularly common there.  Weak identifiability is related
+to a lack of statistical power; it means that your model is structured
+in such a way that it will take an enormous amount of data, or very
+extreme kinds of data, in order to have the power to tell different
+ecological processes apart.
+
+The best outcome of analyzing an unidentifiable or weakly
+identifiable model is for your estimation procedure to crash:
+at least you will know something is wrong.  The worst 
+outcome is for your estimation procedure to give you a
+wrong answer, or one that depends sensitively way on the details of your
+numerical algorithm or your prior.  Weak
+identifiability in MLE analysis leads either to numerical problems or to
+apparently well-defined, but misleadingly precise, answers; weak
+identifiability in MCMC analyses leads to poor convergence.
+In the worst case, chains may move through parameter space
+so slowly that it's hard to see that they are not converging.  The
+best defenses against identifiability problems are 
+(1) care and common sense in defining models
+(always remember the ``no free lunch'' principle), 
+(2) examining model diagnostics --- confidence intervals,
+convergence statistics, and the difference between
+prior and posterior distributions --- and (3) running
+models with known inputs (i.e. simulations), with different amounts of
+data and different amounts of noise, to see when they are actually
+capable of getting the right answers.
+
+Coming to grips with the difficulty of separating different types of
+variability, like coming to grips with limitations on statistical
+power (Chapter~\ref{chap:sim}), can be sobering. \cite{Schnute1994} says in a
+paper on state-space models (one kind of multi-level models) that
+\begin{quote}
+  [t]he outcome of the analysis often depends critically on the values
+  of [many variance] parameters, and it is generally impossible to
+  estimate all of them \ldots Statistically, the likelihood surface
+  [may be] ``flat'', i.e. insensitive to large parameter changes.  In
+  cases like this, a large number of conflicting scenarios appear
+  equally consistent with the known data, and the analyst has no
+  objective means to choose among them.
+
+  This apparent limitation can be turned into an advantage \ldots State
+  space model design forces essential questions to be asked about
+  underlying processes, observed data, and sources of variability.
+  When these questions are answered honestly, the model may point to
+  scenarios consistent with the data but in conflict with the
+  prevailing view.  If so, the modeling effort can help to delineate
+  the limits of current knowledge and to establish rational priorities
+  for future data collection.
+\label{schnutequote}
+\end{quote}
+Put another way, acknowledging the many different types of uncertainty
+that actually exist in our models may make us realize that we know
+less than we thought we did about the possible dynamics of our
+study system, and may drive us to make more observations,
+or more useful kinds of observations.
+
+\section{Conclusion}
+
+Why then are multi-level models worth so much effort?
+
+They are clearly the wave of the future
+in ecological statistics.  Books like \cite{GelmanHill2006}
+and \cite{Clark2007}, along with a rapidly growing 
+collection of papers in ecology and statistical ecology,
+demonstrate these models' potential for understanding
+ecological processes.  We know that ecological systems
+are variable at every level, and multi-level models
+give us a framework for estimating this variability
+at multiple levels rather than lumping it into a single
+error term.
+Our statistical models should match
+our conceptual models as closely as possible.
+If we are interested in the 
+differences among individuals or sites or genotypes, we
+would often be satisfied with knowing the amount of variability among 
+groups rather than trying to estimate a value for every individual.
+
+Furthermore, estimating the variability in this way is
+potentially more parsimonious than estimating fixed effects
+for every individual or group.
+While fixed effects requires an additional parameter for
+every additional group in the model, estimating variability takes only
+a single parameter (the variance) no matter how many
+groups there are\footnote{Statisticians are
+still deeply divided about the correct way to count the number
+of effective parameters associated with a random-effect
+term.  The answer certainly lies between 1 (the
+variance) and $n-1$ (the number of parameters required
+to estimate the differences of each group from
+the first), and the possible difference can be huge
+for models containing interaction terms. For a fixed
+effect model, an interaction between two factors
+with $m$ and $n$ factor levels has $(m-1)(n-1)$ degrees
+of freedom, while the random effect model might require
+as few as 1.
+Some researchers have suggested rules
+for calculating or estimating the number, but the
+question is still open (Kenward and Roger, 1997; Spiegelhalter et al., 2002;
+Burnham and Anderson, 2004, p. 315; Lee et al., 2006).}.
+\nocite{KenwardRoger1997}
+
+% (In contrast, in a Bayesian context you \emph{can} examine
+% the posterior distributions of the group effects.
+% I don't understand this; Bayesians have a different
+% concept of parsimony.)
+
+While multi-level models are hard to implement and computationally
+challenging, things are getting better.  Computers are faster every
+year, and infrastructure like grid computing is making it easier to
+access computing power beyond your desktop \citep{Wang+2005}.  Tools
+for both Bayesian and maximum-likelihood estimation are constantly
+improving, both in the power and breadth of algorithms available
+and in the convenience, interoperability, and robustness of software
+\citep{SkaugFournier2006,KermanGelman2006}.
+
+Multi-level models are data-hungry.
+If you are a typical ecological experimenter with
+a small, noisy data set, you may not be able
+to apply multi-level models to your data set \citep{ClarkPoulsen+2005}.
+On the other hand, if you have a \emph{large}, but very noisy,
+data set, then multi-level models may be the perfect tool.
+Because of data collection tools
+such as data loggers, remote sensing, radiotelemetry, and 
+climate proxies, and data synthesis tools
+such as web databases, meta-analysis, and citizen science initiatives,
+more and more ecologists are finding themselves
+with data sets that are appropriate for multi-level modeling.
+Knowing how to use multi-level models, and
+knowing what dangers to avoid, will help you ask many
+more interesting questions about your data.
+
+% \todo{didn't say much about: (1) observable vs. unobservable
+% covariates for variation (= exchangeability??) (2) under what
+% conditions different kinds of variability will actually make
+% a difference, on bias, variance, confidence intervals,
+% predictions \ldots}
+
+\section*{R supplement}
+\label{sec:ch10supp}
+
+\subsection*{Numerical integration}
+Here's a function that calculates the likelihood for a given value of
+the error ($\epsilon$) and the parameters and the observed value
+(the integrand in (\ref{eq:gnint1})): 
+<<>>=
+tmpf = function(eps,shape,scale,sd,x) {
+    exp(dnorm(eps,mean=0,sd=sd,log=TRUE)+dgamma(x-eps,shape=shape,scale=scale,log=TRUE))
+  }
+@ 
+
+Check that it gives a reasonable value (at least not an NA) for the
+first data point:
+<<>>=
+tmpf(1,shape=3,scale=10,sd=1,x=x.obs[1])
+@ 
+
+Integrate numerically, using \code{integrate}:
+<<>>=
+i1 = integrate(f=tmpf,lower=-Inf,upper=Inf,shape=3,scale=10,sd=1,x=x.obs[1]); i1$value
+@ 
+
+To calculate the integral for more than one data point at a time, we
+have to be careful and use \code{sapply}: if we just try to stick in
+a vector for \code{x} in \code{tmpf}, \R\ will do the wrong thing.
+<<>>=
+tmpf2 = function(x,shape,scale,sd) {
+    integrate(f=tmpf,lower=-Inf,upper=Inf,shape=shape,scale=scale,sd=sd,x=x)$value
+  }
+getdist = function(shape,scale,sd,dat,debug=FALSE) {
+  v = -sum(log(sapply(dat,tmpf2,shape=shape,scale=scale,sd=sd)))
+  if (debug) cat(shape,scale,sd,v,"\n")
+  v
+}
+@ 
+
+Try this function for one set of reasonable parameters:
+<<>>=
+getdist(shape=3,scale=10,sd=1,dat=x.obs)
+@ 
+
+Now run \code{mle2} and \code{confint} to estimate the
+parameters and confidence intervals:
+
+<<eval=FALSE>>=
+m1 = mle2(minuslogl=getdist,start=list(shape=3,scale=10,sd=1),
+                      data=list(dat=x.obs),method="Nelder-Mead")
+m1.ci = confint(m2)
+@ 
+
+

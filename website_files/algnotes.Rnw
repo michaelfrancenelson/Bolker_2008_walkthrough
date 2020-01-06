@@ -1,0 +1,265 @@
+\appendix
+\chapter{Algebra and calculus basics}
+
+%\section{Exponentials}
+%Exponential curves: 
+
+\section{Exponentials and logarithms}
+
+Exponentials are written as $e^x$ or $\exp(x)$, where $e=2.718\ldots$.
+By definition $\exp(-\infty)=0$, $\exp(0)=1$, $\exp(1)=e$,
+and $\exp(\infty)=\infty$.
+In \R, $e^x$ is \code{exp(x)}; if you want the value of $e$
+use \code{exp(1)}.
+Logarithms are the solutions to exponential or power 
+equations like $y=e^x$ or $y=10^x$.
+\emph{Natural} logs, $\ln$ or $\log_e$, are logarithms base $e$; 
+\emph{common} logs, $\log_{10}$, are typically logarithms
+base 10.  When you see just ``$\log$'' it's usually in a context where the
+difference doesn't matter (although in \R\  $\log_{10}$ is \code{log10} and $\log_e$ is 
+\code{log}).
+
+<<fig=TRUE,echo=FALSE,eval=FALSE>>=
+curve(log(x),from=0,to=10)
+abline(h=0,lty=2)
+abline(v=1,lty=2)
+@ 
+\begin{enumerate}
+\item{$\log(1)=0$. 
+If $x>1$ then $\log(x)>0$, and vice versa.  $\log(0) = -\infty$
+(more or less); logarithms are undefined for $x<0$.}
+\item{Logarithms convert products to sums: $\log(ab) = \log(a)+\log(b)$.}
+\item{Logarithms convert powers to multiplication: $\log(a^n) = n \log(a)$.}
+\item{You can't do anything with $\log(a+b)$.}
+\item{Converting bases: $\log_x(a) = \log_y(a)/\log_y(x)$.
+In particular, $\log_{10}(a) = \log_e(a)/\log_e(10) \approx \log_e(a)/2.3$ and
+$\log_e(a) = \log_{10}(a)/\log_{10}(e) \approx \log_{10}(a)/0.434$.  This means that converting
+between log bases just means multiplying or dividing by a constant.
+Here's the proof:
+\begin{eqnarray*}
+y & = & \log_{10}(x) \\
+10^y & = & x \\
+\log_e(10^y) & = & \log_e(x) \\
+y \log_e(10) & = & \log_e(x) \\
+y &  = & \log_e(x)/\log_e(10)
+\end{eqnarray*}
+(compare the first and last lines).}
+\item{The derivative of the logarithm, $d(\log x)/dx$, equals $1/x$.
+This is always positive for $x>0$ (which are the only values for which
+the logarithm is defined anyway).}
+\item{The fact that $d(\log x)/dx>0$ means the function is
+\emph{monotonic} (always either increasing or
+decreasing), which means that if $x>y$ then $\log(x)>\log(y)$ and
+if $x<y$ then $\log(x)<\log(y)$. This
+in turn means that if you find the maximum likelihood parameter,
+you've also found the maximum log-likelihood parameter
+(and the minimum negative log-likelihood parameter).}
+\end{enumerate}
+
+\section{Differential calculus}
+\begin{enumerate}
+\item{Notation: differentation 
+of a function $f(x)$ with respect to $x$
+can be written, depending on the
+context, as $\frac{df}{dx}$; $f'$; $\dot f$;
+or $f_x$.}
+\item{Definition of the derivative:
+\begin{equation}
+\frac{df}{dx} =
+\lim_{\Delta x \to 0} \frac{f(x+\Delta x)-f(x)}{(x+\Delta x)-x} = 
+\lim_{\Delta x \to 0} \frac{f(x+\Delta x)-f(x)}{\Delta x}.
+\end{equation}
+In words, the derivative is the slope of the line tangent to a curve at a
+point, or the instantaneous slope of a curve.
+The second derivative, $d^2f/dx^2$, is the rate of change of the
+slope, or the curvature.}
+\item{The derivative of a constant (which is a flat line if you think
+about it as a curve) is zero (slope=0).}
+\item{The derivative of a linear equation, $y=ax$, is the slope of the line,
+$a$.  (The derivative of $y=ax+b$ is also $a$.)}
+\item{Derivatives of polynomials: $\frac{d(x^n)}{dx} = n x^{n-1}$.}
+\item{Derivatives of sums: $\frac{d(f+g)}{dx} =
+\frac{df}{dx}+\frac{dg}{dx}$ 
+(and $d(\sum_i y_i)/dx = \sum_i (d y_i/dx)$).}
+\item{Derivatives of constant multiples: $\frac{d(cf)}{dx} = c
+\frac{df}{dx}$, if $c$ is a constant (i.e. if $\frac{dc}{dx}=0$).}
+\item{Derivative of the exponential: $\frac{d(\exp(ax))}{dx} = a
+\exp(ax)$, if $a$ is a constant.  (If not, use the chain rule.)}
+\item{Derivative of logarithms: $\frac{d(\log(x))}{dx} = \frac{1}{x}$.}
+\item{Chain rule: $\frac{d(f(g(x)))}{dx} = \frac{df}{dg} \cdot
+\frac{dg}{dx}$  (thinking about this as ``multiplying fractions'' is a
+good mnemonic but don't take it too literally!)
+\emph{Example:} 
+\begin{equation}
+\frac{d(\exp(x^2))}{dx} = \frac{d(\exp(x^2))}{d(x^2)} \cdot \frac{d
+x^2}{dx} = \exp(x^2) \cdot 2 x.
+\end{equation}
+Another example: people sometimes express the proportional change in $x$,
+$(dx/dt)/x$, as $d(\log(x))/dt$.  Can you see why?}
+\item{\emph{Critical points} (maxima, minima, and saddle points) of a
+curve $f$ have $df/dx=0$.  The sign of the second derivative
+determines the type of a critical point
+(positive = minimum, negative = maximum, zero = saddle).}
+\end{enumerate}
+
+\section{Partial differentiation}
+\begin{enumerate}
+\item{Partial differentiation acts just like regular differentiation except
+that you hold all but one variable constant, and you use a curly d
+($\partial$) instead of a regular d.  So, for example,
+$\partial(xy)/\partial(x)=y$.
+Geometrically, this is taking the slope of a surface in one particular
+direction.  (Second partial derivatives are curvatures in a particular
+direction.)}
+\item{You can do partial differentiation multiple times with respect
+to different variables: order doesn't
+matter, so $\frac{\partial^2 f}{\partial x \partial y} = \frac{\partial^2 f}{\partial y \partial x}$.} 
+\end{enumerate}
+
+\section{Integral calculus}
+For the material in this book, I'm not asking you to
+remember very much about integration, but it would be useful to remember
+that
+\begin{enumerate}
+\item{the (definite) integral of $f(x)$ from $a$ to $b$,
+$\int_a^b f(x) \, dx$, represents the area under the curve between
+$a$ and $b$; the integral is a limit of the sum
+$\sum_{x_i=a}^b f(x_i) \Delta x$ as $\Delta x \to 0$.}
+\item{You can take a constant out of an integral
+(or put one in):
+$\int a f(x) \, dx = a \int f(x) \, dx$.}
+\item{Integrals are additive:
+$\int (f(x)+g(x)) \, dx = \int f(x) \, dx + \int g(x) \, dx$.}
+\end{enumerate}
+
+\section{Factorials and the gamma function}
+A \emph{factorial}, written 
+with an exclamation point !, 
+means $k! = k \times k-1 \times \ldots 1$.  
+For example, $2!=2$, $3!=6$, and $6!=720$.
+In \R\ a factorial is \code{factorial} --- you
+can't use the shorthand ! notation, especially
+since \code{!=} means ``not equal to'' in \R.
+Factorials come up
+in probability calculations all the time, e.g. as the
+number of permutations with $k$ elements.  The \emph{gamma
+function}, usually written as $\Gamma$ (\code{gamma} in
+\R) is a generalization of factorials.  For integers,
+$\Gamma(x) = (x-1)!$.  Factorials are only defined for
+integers, but for positive, non-integer $x$ (e.g. 2.7),
+$\Gamma(x)$ is still defined and it is still true that $\Gamma(x+1) = x\cdot\Gamma(x)$.
+
+<<echo=FALSE,fig=TRUE,eval=FALSE>>=
+curve(gamma(x),from=0.1,to=5,ylab="")
+mtext(expression(Gamma(x)),side=2,at=12,line=3)
+abline(h=c(1,2,6,24,120),col="gray")
+@ 
+
+Factorials and gamma functions get very large, and
+you often have to compute ratios of factorials
+or gamma functions (e.g. the binomial coefficient,
+$N!/(k! (N-k)!)$.  Numerically, it is more efficient and accurate
+to compute the logarithms of the factorials first,
+add and subtract them, and then exponentiate the
+result: $\exp(\log N! - \log k! - \log(N-k)!)$.
+\R\ provides the log-factorial (\code{lfactorial}) and
+log-gamma (\code{lgamma}) functions for this purpose.
+(Actually, \R\ also provides \code{choose} and \code{lchoose}
+for the binomial coefficient and the log-binomial coefficient,
+but the log-gamma is more generally useful.)
+
+About the only reason that the gamma function 
+(as opposed to factorials) ever comes up
+in ecology is that it is the \emph{normalizing constant}
+(see ch. 4) for the gamma \emph{distribution}, which
+is usually denoted as Gamma (not $\Gamma$):
+$\mbox{Gamma}(x,a,s) = \frac{1}{s^a \Gamma(a)} x^{a-1} e^{-x/s}$.
+
+\section{Probability}
+\begin{enumerate}
+\item{Probability distributions always add or integrate to 1 over all
+possible values.}
+\item{Probabilities of independent events are multiplied:
+$p(A \mbox{ and } B) = p(A) p(B)$.}
+\item{The \emph{binomial coefficient},
+\begin{equation}
+{N \choose k} = \frac{N!}{k! (N-k)!},
+\end{equation}
+is the number of different ways of choosing $k$ objects out of a set
+of $N$, without regard to order. $!$ denotes a factorial: $n!=n \times
+n-1 \times ... \times 2 \times 1$.
+(Proof: think about picking $k$ objects out of $N$,
+without replacement but keeping track
+of order.  The number of different ways to pick the first object
+is $N$. The number of different ways to pick the second object
+is $N-1$, the third $N-2$, and so forth, so the total number
+of choices is $N \times N-1 \times ... N-k+1 = N!/(N-k)!$.
+The number of possible orders for this
+set (permutations) is $k!$ by the
+same argument ($k$ choices for the first element, $k-1$ for
+the next \ldots).  Since we don't care about the order,
+we divide the number of ordered ways
+($N!/(N-k)!$) by the number of possible orders ($k!$) to get the binomial coefficient.)
+}
+\end{enumerate}
+
+\section{The delta method: formula and derivation}
+The formula for the delta method of approximating variances is:
+\begin{equation}
+  \mbox{Var}(f(x,y)) \approx
+  \left(\frac{\partial f}{\partial x} \right)^2 \mbox{Var}(x)
+  + \left(\frac{\partial f}{\partial y} \right)^2 \mbox{Var}(y)
+  + 2 \left(\frac{\partial f}{\partial x}\frac{\partial f}{\partial y} \right) \mbox{Cov}(x,y)
+\end{equation}
+
+\cite{Lyons1991} gives a very readable alternative description
+of the delta method; \cite{Oehlert1992} gives a short technical
+description of the formal assumptions necessary for the delta method
+to apply.
+
+This formula is exact in a bunch of simple cases:
+\begin{itemize}
+\item{Multiplying by a constant: $\mbox{Var}(ax) = a^2 \mbox{Var}(x)$}
+\item{Sum or difference of independent variables: $\mbox{Var}(x\pm y) = \mbox{Var}(x)+ \mbox{Var}(y)$}
+\item{Product or ratio of independent variables: $\mbox{Var}(x \cdot y) = 
+y^2 \mbox{Var}(x)+x^2 \mbox{Var}(y) = 
+x^2 y^2 \left( \frac{\mbox{Var}(x)}{x^2} + \frac{\mbox{Var}(y)}{y^2}\right)$:
+this also implies that $(\mbox{CV}(x \cdot y))^2 = (\mbox{CV}(x))^2 +(\mbox{CV}(y))^2$}
+\item{The formula is exact for linear functions of normal or multivariate normal variables.}
+\end{itemize}
+
+You can also extend the formula to more than two variables if you like.
+
+Derivation: use the (multivariable) Taylor expansion of $f(x,y)$ including \emph{linear terms only}:
+$$
+f(x,y) \approx f(\bar x,\bar y) + \frac{\partial f}{\partial x}(x-\bar x)
++ \frac{\partial f}{\partial y}(y-\bar y)
+$$
+where the derivatives are evaluated at $(\bar x,\bar y)$.
+
+Substitute this in to the formula for the variance of $f(x,y)$:
+\begin{eqnarray}
+\mbox{Var}(f(x,y)) & = & \int P(x,y) (f(x,y) - f(\bar x,\bar y))^2 \, dx \, dy \\
+ & =  & \int P(x,y) \left(f(\bar x,\bar y) + \frac{\partial f}{\partial x}(x-\bar x)
++ \frac{\partial f}{\partial y}(y-\bar y) - f(\bar x,\bar y) \right)^2 \, dx \, dy \\
+ & =  & \int P(x,y) \left(\frac{\partial f}{\partial x}(x-\bar x)
++ \frac{\partial f}{\partial y}(y-\bar y)\right)^2 \, dx \, dy \\
+ & =  & \int P(x,y) \left( \left(\frac{\partial f}{\partial x}\right)^2 (x-\bar x)^2
++ \left(\frac{\partial f}{\partial y}\right)^2(y-\bar y)^2
+  + 2 \frac{\partial f}{\partial x} \frac{\partial f}{\partial y} (x-\bar x) (y - \bar y) \right) \, dx \, dy 
+\nonumber \\
+ & & \\
+ & =  & \int P(x,y) \left(\frac{\partial f}{\partial x}\right)^2 (x-\bar x)^2 \, dx \, dy \nonumber \\
+ &  & \quad \mbox{} + \int P(x,y) \left(\frac{\partial f}{\partial y}\right)^2 (y-\bar y)^2 \, dx \, dy \nonumber \\
+ &  & \quad \mbox{} + \int P(x,y) \, 2 \frac{\partial f}{\partial x} \frac{\partial f}{\partial y} (x-\bar x) (y - \bar y)  \, dx \, dy \\
+ & =  & \left(\frac{\partial f}{\partial x}\right)^2 \int P(x,y) (x-\bar x)^2 \, dx \, dy \nonumber \\
+ &  & \quad \mbox{} + \left(\frac{\partial f}{\partial y}\right)^2 \int P(x,y)  (y-\bar y)^2 \, dx \, dy \nonumber \\
+ &  & \quad \mbox{} + 2 \frac{\partial f}{\partial x} \frac{\partial f}{\partial y} \int P(x,y) (x-\bar x) (y - \bar y)  \, dx \, dy \\
+ & =  & \left(\frac{\partial f}{\partial x}\right)^2 \mbox{Var}(x) +\left(\frac{\partial f}{\partial y}\right)^2 \mbox{Var}(y)
++ 2 \frac{\partial f}{\partial x} \frac{\partial f}{\partial y} \mbox{Cov}(x,y)
+\end{eqnarray}
+
+\section{Linear algebra basics}
+
+
+

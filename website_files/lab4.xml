@@ -1,0 +1,1466 @@
+<?xml version="1.0"?>
+<!DOCTYPE html    PUBLIC "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN"
+           "http://www.w3.org/Math/DTD/mathml2/xhtml-math11-f.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="GENERATOR" content="TtM 3.70" />
+ <style type="text/css">
+ div.p { margin-top: 7pt; }
+ span.roman {font-family: serif; font-style: normal; font-weight: normal;} 
+</style>
+ 
+
+
+<title> Lab 4: probability distributions, averaging, and Jensen's inequality </title>
+</head>
+<body>
+ 
+<h1 align="center">Lab 4: probability distributions, averaging, and Jensen's inequality </h1>
+
+<h3 align="center">&#169; 2005 Ben Bolker </h3>
+
+  <h2><a name="tth_sEc1">
+1</a>&nbsp;&nbsp;Random distributions in  R</h2>
+ R&nbsp;knows about lots of probability distributions.  For each, it
+can generate random numbers drawn from the distribution
+("deviates");
+compute the cumulative distribution function and the probability
+distribution
+function; and compute the <em>quantile</em> function, which gives the
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi></mrow></math> value such that 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msubsup><mrow><mo>&int;</mo></mrow><mrow><mn>0</mn> </mrow>
+<mrow><mi>x</mi></mrow></msubsup>
+<mi>P</mi><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mi>&ensp;</mi><mi>dx</mi></mrow></math> (area under the curve from 0
+to 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi></mrow></math>) is a specified value, such as 0.95 (think about "tail areas"
+from standard statistics).
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+<a name="tth_fIg1">
+</a> <img src="lab4-001.png" alt="lab4-001.png" />
+
+<center>Figure 1:  R&nbsp;functions for an arbitrary distribution
+<tt>dist</tt>, showing density function (<tt>ddist</tt>),
+cumulative distribution function (<tt>pdist</tt>),
+quantile function (<tt>qdist</tt>), and
+random-deviate function (<tt>rdist</tt>).</center>
+<a name="fig:dpqr">
+</a> 
+
+<div class="p"><!----></div>
+Let's take the binomial distribution (yet again) as an example.
+
+<ul>
+<li><tt>rbinom(n,size,p)</tt> gives <tt>n</tt> random draws from the binomial
+distribution with parameters <tt>size</tt> (total number of draws) and
+<tt>p</tt> (probability of success on each draw).  
+You can give different parameters for each draw.
+For example:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;rbinom(10,&nbsp;size&nbsp;=&nbsp;8,&nbsp;p&nbsp;=&nbsp;0.5)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;[1]&nbsp;3&nbsp;6&nbsp;3&nbsp;4&nbsp;6&nbsp;7&nbsp;4&nbsp;3&nbsp;2&nbsp;2
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;rbinom(3,&nbsp;size&nbsp;=&nbsp;8,&nbsp;p&nbsp;=&nbsp;c(0.2,&nbsp;0.4,&nbsp;0.6))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;2&nbsp;4&nbsp;7
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Figure&nbsp;<a href="#fig:rbinom">2</a> shows the result of drawing 200 values
+from a binomial distribution with 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi><mo>=</mo><mn>12</mn></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>p</mi><mo>=</mo><mn>0</mn><mo>.</mo><mn>1</mn></mrow></math> and
+plotting the results as a <tt>factor</tt> (with 200 draws
+we don't have to worry about any of the 13 possible outcomes
+getting missed and excluded from the plot):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(factor(rbinom(200,&nbsp;size&nbsp;=&nbsp;12,&nbsp;p&nbsp;=&nbsp;0.1)),&nbsp;xlab&nbsp;=&nbsp;"#&nbsp;of&nbsp;successes",&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ylab&nbsp;=&nbsp;"#&nbsp;of&nbsp;trials&nbsp;out&nbsp;of&nbsp;200")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+<a name="tth_fIg2">
+</a> <img src="lab4-004.png" alt="lab4-004.png" />
+
+<center>Figure 2: Results of <tt>rbinom</tt></center>
+<a name="fig:rbinom">
+</a>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+</li>
+
+<li><tt>dbinom(x,size,p)</tt> gives the value of the probability
+distribution
+function (pdf) at <tt>x</tt> (for a continous distribution,
+the analogous function would compute the probability density
+function). Since the binomial is discrete, <tt>x</tt>
+has to be an integer, and the pdf is just the probability of getting
+that many successes; if you try <tt>dbinom</tt> with a non-integer <tt>x</tt>, you'll get zero and a warning.
+
+<div class="p"><!----></div>
+</li>
+
+<li><tt>pbinom(q,size,p)</tt> gives the value of the cumulative
+distribution
+function (cdf) at <tt>q</tt> (e.g. <tt>pbinom(7,size=10,prob=0.4)</tt>);
+
+<div class="p"><!----></div>
+</li>
+
+<li><tt>qbinom(p,size,prob)</tt> gives the quantile function,
+where <tt>p</tt> is a number between 0 and 1 (an area under the pdf, or
+value of the cdf) and <tt>qbinom</tt> is the value such that 
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>P</mi><mo stretchy="false">(</mo><mi>X</mi><mo>&le;</mo><mi>p</mi><mo stretchy="false">)</mo><mo>=</mo><mi>q</mi></mrow></math>.
+The <em>quantile function</em> 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>Q</mi></mrow></math> is the inverse of the cumulative distribution
+function 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>C</mi></mrow></math>: if 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>Q</mi><mo stretchy="false">(</mo><mi>p</mi><mo stretchy="false">)</mo><mo>=</mo><mi>q</mi></mrow></math> then 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>C</mi><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>=</mo><mi>p</mi></mrow></math>.
+Example: <tt>qbinom(0.95,size=10,prob=0.4)</tt>.
+
+<div class="p"><!----></div>
+</li>
+</ul>
+
+<div class="p"><!----></div>
+These four functions exist for each of the distributions  R&nbsp;has built
+in: e.g. for the normal distribution they're
+<tt>rnorm()</tt>, <tt>pnorm()</tt>, <tt>dnorm()</tt>, <tt>qnorm()</tt>.
+Each distribution has its own set of parameters (so e.g. <tt>pnorm()</tt>
+is <tt>pnorm(x,mean=0,sd=1)</tt>).
+
+<div class="p"><!----></div>
+<b>Exercise  1</b>:
+For the binomial distribution with 10 trials and a success probability
+of 0.2:
+
+<ul>
+<li>Pick 8 random values and sort them into increasing order
+(if you <tt>set.seed(1001)</tt> beforehand, you should get 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>X</mi><mo>=</mo><mn>0</mn></mrow></math>
+(twice), 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>X</mi><mo>=</mo><mn>2</mn></mrow></math> (5 times), and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>X</mi><mo>=</mo><mn>4</mn></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>X</mi><mo>=</mo><mn>5</mn></mrow></math> (once each)).
+<div class="p"><!----></div>
+</li>
+
+<li>Calculate the probabilities of getting 3, 4, or 5
+successes. Answer: 
+
+<div class="p"><!----></div>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.20132659&nbsp;0.08808038&nbsp;0.02642412
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+</li>
+
+<li>Calculate the probability of getting 5 or more
+successes.
+Answer: 
+
+<div class="p"><!----></div>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.0327935
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+</li>
+
+<li>What tail values would you use to test against the (two-sided)
+null hypothesis that 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>p</mi><mo>=</mo><mn>0</mn><mo>.</mo><mn>2</mn></mrow></math>? (Use <tt>qbinom()</tt> to get the answer,
+and use <tt>pbinom(0:10,size=10,prob=0.2)</tt> 
+and <tt>pbinom(0:10,size=10,prob=0.2,lower.tail=FALSE)</tt> to check that your
+answer makes sense.
+<div class="p"><!----></div>
+</li>
+</ul>
+
+<div class="p"><!----></div>
+You can use the  R&nbsp;functions to test your understanding of
+a distribution and make sure that random draws match up
+with the theoretical distributions as they should.
+This procedure is particularly valuable when you're developing new
+probability distributions by combining simpler ones,
+e.g. by zero-inflating or compounding distributions.
+
+<div class="p"><!----></div>
+The results of a large number of random draws should have
+the correct moments (mean and variance), and a histogram
+of those random draws (with <tt>freq=FALSE</tt> or <tt>prob=TRUE</tt>)
+should match up with the theoretical distribution.
+For example, draws from a binomial distribution with
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>p</mi><mo>=</mo><mn>0</mn><mo>.</mo><mn>2</mn></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi><mo>=</mo><mn>20</mn></mrow></math> should have a mean of approximately 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>Np</mi><mo>=</mo><mn>4</mn></mrow></math>
+and a variance of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>Np</mi><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>p</mi><mo stretchy="false">)</mo><mo>=</mo><mn>3</mn><mo>.</mo><mn>2</mn></mrow></math>:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;set.seed(1001)
+&#62;&nbsp;N&nbsp;=&nbsp;20
+&#62;&nbsp;p&nbsp;=&nbsp;0.2
+&#62;&nbsp;x&nbsp;=&nbsp;rbinom(10000,&nbsp;prob&nbsp;=&nbsp;p,&nbsp;size&nbsp;=&nbsp;N)
+&#62;&nbsp;c(mean(x),&nbsp;var(x))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;4.001200&nbsp;3.144913
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The mean is very close, the variance
+is a little bit farther off.
+Just for the heck of it, we can use the
+<tt>replicate()</tt> function to re-do this
+command many times and see how close we get:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;var_dist&nbsp;=&nbsp;replicate(1000,&nbsp;var(rbinom(10000,&nbsp;prob&nbsp;=&nbsp;p,&nbsp;size&nbsp;=&nbsp;N)))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(this may take a little while; if it takes too long,
+lower the number of replicates to 100).
+
+<div class="p"><!----></div>
+Looking at the summary statistics and
+at the 2.5% and 97.5% quantiles of the
+distribution of variances:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;summary(var_dist)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;Min.&nbsp;1st&nbsp;Qu.&nbsp;&nbsp;Median&nbsp;&nbsp;&nbsp;&nbsp;Mean&nbsp;3rd&nbsp;Qu.&nbsp;&nbsp;&nbsp;&nbsp;Max.&nbsp;
+&nbsp;&nbsp;3.052&nbsp;&nbsp;&nbsp;3.169&nbsp;&nbsp;&nbsp;3.199&nbsp;&nbsp;&nbsp;3.199&nbsp;&nbsp;&nbsp;3.229&nbsp;&nbsp;&nbsp;3.340&nbsp;
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;quantile(var_dist,&nbsp;c(0.025,&nbsp;0.975))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+&nbsp;&nbsp;&nbsp;&nbsp;2.5%&nbsp;&nbsp;&nbsp;&nbsp;97.5%&nbsp;
+3.114357&nbsp;3.285333&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(Try a histogram too.)
+Even though there's some variation (of
+the variance) around the theoretical value,
+we seem to be doing the right thing since
+the 95% confidence limits include the theoretical
+value.
+(Lab 5 will go into more detail on running
+simulations to check the expected variation
+of different measurement as a function
+of parameters and sample size.)
+
+<div class="p"><!----></div>
+Finally, Figure&nbsp;<a href="#fig:binomchk">3</a> shows
+the entire simulated frequency distribution
+along with the theoretical values.
+The steps in  R&nbsp;are:
+
+<ol type="1">
+<li>pick 10,000 random deviates:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;x&nbsp;=&nbsp;rbinom(10000,&nbsp;prob&nbsp;=&nbsp;p,&nbsp;size&nbsp;=&nbsp;N)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+</li>
+
+<li>Tabulate the values, and divide
+by the number of samples to get
+a probability distribution:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;tx&nbsp;=&nbsp;table(factor(x,&nbsp;levels&nbsp;=&nbsp;0:12))/10000
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(The <tt>levels</tt>
+command is necessary in this case
+because the probability of
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi><mo>=</mo><mn>12</mn></mrow></math> with 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>p</mi><mo>=</mo><mn>0</mn><mo>.</mo><mn>2</mn></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>N</mi><mo>=</mo><mn>12</mn></mrow></math>
+is actually so low (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mn>8</mn><mo>.</mo><mn>7</mn><mo>&times;</mo>
+<msup><mrow><mn>10</mn></mrow><mrow><mo>-</mo><mn>5</mn></mrow>
+</msup>
+</mrow></math>)
+that there's a reasonable chance that
+a sample of 10,000 won't include any
+samples with 12 successes.)
+
+<div class="p"><!----></div>
+</li>
+
+<li>
+Draw a barplot of the values, extending
+the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>y</mi></mrow></math>-limits a bit to make room for
+the theoretical values and saving the
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi></mrow></math> locations at which the bars are drawn:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;b1&nbsp;=&nbsp;barplot(tx,&nbsp;ylim&nbsp;=&nbsp;c(0,&nbsp;0.23),&nbsp;ylab&nbsp;=&nbsp;"Probability")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+</li>
+
+<li>Add the theoretical values, plotting them
+at the same 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi></mrow></math>-locations as the centers
+of the bars:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;points(b1,&nbsp;dbinom(0:12,&nbsp;prob&nbsp;=&nbsp;p,&nbsp;size&nbsp;=&nbsp;N),&nbsp;pch&nbsp;=&nbsp;16)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(<tt>barplot()</tt> doesn't put the bars
+at 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi></mrow></math> locations corresponding to their
+numerical values, so you have to save
+those values as <tt>b1</tt> and re-use
+them to make sure the theoretical
+values end up in the right place.)
+
+<div class="p"><!----></div>
+</li>
+</ol>
+A few alternative ways to do this plot would be:
+
+<ol type="1">
+<li>   <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(factor(x))
+&#62;&nbsp;points(b1,&nbsp;10000&nbsp;*&nbsp;dbinom(0:12,&nbsp;prob&nbsp;=&nbsp;p,&nbsp;size&nbsp;=&nbsp;N))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(plots the number of observations without rescaling and
+scales the probability distribution to match);
+
+<div class="p"><!----></div>
+</li>
+
+<li>
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;plot(table(x)/10000)
+&#62;&nbsp;points(0:12,&nbsp;dbinom(0:12,&nbsp;prob&nbsp;=&nbsp;p,&nbsp;size&nbsp;=&nbsp;N))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Plotting a table does a plot with <tt>type="h"</tt> (high
+density), which plots a vertical line for each value.
+I think it's not quite as pretty as the barplot, but
+it works.
+Unlike factors, tables can be scaled numerically,
+and the lines end up at the right numerical locations,
+so we can just use <tt>0:12</tt> as the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>x</mi></mrow></math> locations
+for the theoretical values.
+
+<div class="p"><!----></div>
+</li>
+
+<li>You could also draw a histogram:
+since histograms were really designed
+continuous data you have to make sure the
+breaks occur in the right place (halfway
+between counts):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;h&nbsp;=&nbsp;hist(x,&nbsp;breaks&nbsp;=&nbsp;seq(-0.5,&nbsp;12.5,&nbsp;by&nbsp;=&nbsp;1),&nbsp;col&nbsp;=&nbsp;"gray",&nbsp;prob&nbsp;=&nbsp;TRUE)
+&#62;&nbsp;points(0:12,&nbsp;dbinom(0:12,&nbsp;prob&nbsp;=&nbsp;p,&nbsp;size&nbsp;=&nbsp;N))
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+</li>
+</ol>
+
+<div class="p"><!----></div>
+<a name="tth_fIg3">
+</a> <img src="lab4-018.png" alt="lab4-018.png" />
+
+<center>Figure 3: Checking binomial deviates against
+theoretical values.</center>
+<a name="fig:binomchk">
+</a>
+
+<div class="p"><!----></div>
+Doing the equivalent plot for continuous distributions
+is actually somewhat easier, since you don't have
+to deal with the complications of a discrete distribution:
+just use <tt>hist(...,prob=TRUE)</tt> to show the
+sampled distribution (possibly with <tt>ylim</tt>
+adjusted for the maximum of the theoretical
+density distribution) and
+<tt>ddist(x,[parameters],add=TRUE)</tt> to add the
+theoretical curve
+(e.g.: <tt>curve(dgamma(x,shape=2,scale=1,add=FALSE))</tt>).
+
+<div class="p"><!----></div>
+<b>Exercise 2*</b>:
+Pick 10,000 negative binomial
+deviates with 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi><mo>=</mo><mn>2</mn></mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi><mo>=</mo><mn>0</mn><mo>.</mo><mn>5</mn></mrow></math>.
+Pick one of the ways above to draw
+the distribution.  
+Check that the mean and variance
+agree reasonably well with the theoretical values.
+Add points representing
+the theoretical distribution to the plot.
+Now translate the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math>
+parameters into their 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>p</mi></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>nn</mi></mrow></math>
+equivalents (the coin-flipping derivation
+of the negative binomial), and add
+those points to the plot [use a different
+plotting symbol to make sure you can see
+that they overlap with the theoretical
+values based on the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math>, k parameterization].
+
+<div class="p"><!----></div>
+ <h2><a name="tth_sEc2">
+2</a>&nbsp;&nbsp;Averaging across discrete and continuous distributions</h2>
+
+<div class="p"><!----></div>
+Suppose we have a (tiny) data set;
+we can organize it in two different ways,
+in standard long format or in tabular form:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;dat&nbsp;=&nbsp;c(5,&nbsp;6,&nbsp;5,&nbsp;7,&nbsp;5,&nbsp;8)
+&#62;&nbsp;dat
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;5&nbsp;6&nbsp;5&nbsp;7&nbsp;5&nbsp;8
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;tabdat&nbsp;=&nbsp;table(dat)
+&#62;&nbsp;tabdat
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+dat
+5&nbsp;6&nbsp;7&nbsp;8&nbsp;
+3&nbsp;1&nbsp;1&nbsp;1&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+To get the (sample) probability distribution of the data,
+just scale by the total sample size:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;prob&nbsp;=&nbsp;tabdat/length(dat)
+&#62;&nbsp;prob
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+dat
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8&nbsp;
+0.5000000&nbsp;0.1666667&nbsp;0.1666667&nbsp;0.1666667&nbsp;
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(dividing by <tt>sum(tabdat)</tt> would
+be equivalent).
+
+<div class="p"><!----></div>
+In the long format, we can take
+the mean with <tt>mean(dat)</tt>
+or, replicating the formula 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo>&sum;</mo>
+<msub><mrow><mi>x</mi></mrow><mrow><mi>i</mi></mrow>
+</msub>
+<mo stretchy="false">/</mo><mi>N</mi></mrow></math>
+exactly, <tt>sum(dat)/length(dat)</tt>.
+
+<div class="p"><!----></div>
+In the tabular format, we
+can calculate the mean 
+with the formula 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo>&sum;</mo><mi>P</mi><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mi>x</mi></mrow></math>,
+which in  R&nbsp;would be
+<tt>sum(prob*5:8)</tt> or
+more generally
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;vals&nbsp;=&nbsp;as.numeric(names(prob))
+&#62;&nbsp;sum(prob&nbsp;*&nbsp;vals)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;6
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(you could also get the values
+by <tt>as.numeric(levels(prob))</tt>,
+or by <tt>sort(unique(dat))</tt>).
+
+<div class="p"><!----></div>
+However, <tt>mean(prob)</tt>
+or <tt>mean(tabdat)</tt> is just plain wrong
+(at least, I can't think of a situation where
+you would want to calculate this value).
+
+<div class="p"><!----></div>
+<b>Exercise  3:</b> figure out
+what it means that
+<tt>mean(tabdat)</tt> equals 1.5.
+
+<div class="p"><!----></div>
+Going back the other way, from a table to raw values, we can use
+the <tt>rep()</tt> function to repeat values an appropriate number of times.
+In its simplest form, <tt>rep(x,n)</tt> just creates
+a vector repeats <tt>x</tt> (which
+may be either a single value or a vector) <tt>n</tt> times, but
+<b>if n is a vector as well</b> then each element of <tt>x</tt>
+is repeated the corresponding number of times: for example,
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;rep(c(1,&nbsp;2,&nbsp;3),&nbsp;c(2,&nbsp;1,&nbsp;5))
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;1&nbsp;1&nbsp;2&nbsp;3&nbsp;3&nbsp;3&nbsp;3&nbsp;3
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+gives two copies of 1, one copy of 2, and five copies of 3.
+
+<div class="p"><!----></div>
+Therefore,
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;rep(vals,&nbsp;tabdat)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;5&nbsp;5&nbsp;5&nbsp;6&nbsp;7&nbsp;8
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+will recover our original data (although not in the original
+order) by repeating each element of <tt>vals</tt>
+the correct number of times.
+
+<div class="p"><!----></div>
+     <h3><a name="tth_sEc2.1">
+2.1</a>&nbsp;&nbsp;Jensen's inequality</h3>
+
+<div class="p"><!----></div>
+Looking at Schmitt et al's data, the recruitment level very
+nearly fits an exponential distribution with 
+a mean of 24.5 (so 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&lambda;</mi><mo>=</mo><mn>1</mn><mo stretchy="false">/</mo><mn>24</mn><mo>.</mo><mn>5</mn></mrow></math>).
+Schmitt et al. also say that recruitment (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>R</mi></mrow></math>)
+as a function of settlement (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>S</mi></mrow></math>) is 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>R</mi><mo>=</mo><mi>aS</mi><mo stretchy="false">/</mo><mo stretchy="false">(</mo><mn>1</mn><mo>+</mo><mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">/</mo><mi>b</mi><mo stretchy="false">)</mo><mi>S</mi><mo stretchy="false">)</mo></mrow></math>,
+with 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi><mo>=</mo><mn>0</mn><mo>.</mo><mn>696</mn></mrow></math> (initial slope, recruits per 0.1 m
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow></math> patch reef per recruit)
+and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi><mo>=</mo><mn>9</mn><mo>.</mo><mn>79</mn></mrow></math> (asymptote, recruits per 0.1 m
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow></math> patch reef).
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+Let's see how strong Jensen's inequality is for this population.
+We'll figure out the average by approximating an integral
+by a sum: 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msubsup><mrow><mo>&int;</mo></mrow><mrow><mn>0</mn> </mrow>
+<mrow><mi>&infin;</mi></mrow></msubsup>
+<mi>f</mi><mo stretchy="false">(</mo><mi>S</mi><mo stretchy="false">)</mo><mi>P</mi><mo stretchy="false">(</mo><mi>S</mi><mo stretchy="false">)</mo><mi>&ensp;</mi><mi>dS</mi><mo>&ap;</mo><mo>&sum;</mo><mi>f</mi><mo stretchy="false">(</mo>
+<msub><mrow><mi>S</mi></mrow><mrow><mi>i</mi></mrow>
+</msub>
+<mo stretchy="false">)</mo><mi>P</mi><mo stretchy="false">(</mo>
+<msub><mrow><mi>S</mi></mrow><mrow><mi>i</mi></mrow>
+</msub>
+<mo stretchy="false">)</mo><mi>&Delta;</mi><mi>S</mi></mrow></math>.
+We need to set the range big enough to get most of the probability
+of the distribution, and the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&Delta;</mi><mi>S</mi></mrow></math> small enough to get most
+of the variation in the distribution; we'll try 0-200 in steps of 0.1.
+(If I set the range too small or the 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&Delta;</mi><mi>S</mi></mrow></math> too big, I'll miss
+a piece of the distribution or the function.  If I try to be too
+precise, I'll waste time computing.)
+
+<div class="p"><!----></div>
+In  R:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;a&nbsp;=&nbsp;0.696
+&#62;&nbsp;b&nbsp;=&nbsp;9.79
+&#62;&nbsp;dS&nbsp;=&nbsp;0.1
+&#62;&nbsp;S&nbsp;=&nbsp;seq(0,&nbsp;200,&nbsp;by&nbsp;=&nbsp;dS)
+&#62;&nbsp;pS&nbsp;=&nbsp;dexp(S,&nbsp;rate&nbsp;=&nbsp;1/24.5)
+&#62;&nbsp;fS&nbsp;=&nbsp;a&nbsp;*&nbsp;S/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;S)
+&#62;&nbsp;sum(pS&nbsp;*&nbsp;fS&nbsp;*&nbsp;dS)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;5.008049
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+ R&nbsp;also knows how to integrate functions numerically:
+it can even approximate an integral from 0 to 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&infin;</mi></mrow></math>.
+First we have to define a (vectorizable) function:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;tmpf&nbsp;=&nbsp;function(S)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dexp(S,&nbsp;rate&nbsp;=&nbsp;1/24.5)&nbsp;*&nbsp;a&nbsp;*&nbsp;S/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;S)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Then we can just ask  R&nbsp;to integrate it:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;i1&nbsp;=&nbsp;integrate(tmpf,&nbsp;lower&nbsp;=&nbsp;0,&nbsp;upper&nbsp;=&nbsp;Inf)
+&#62;&nbsp;i1
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+5.010691&nbsp;with&nbsp;absolute&nbsp;error&nbsp;&lt;&nbsp;5.5e-05
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(Use <tt>adapt()</tt>, in the <tt>adapt</tt> package,
+if you need to do multidimensional integrals.)
+
+<div class="p"><!----></div>
+This integral shows that we were pretty close
+with our first approximation.
+However, numerical integration will always
+imply some level of approximation; be
+careful with functions with sharp spikes,
+because it can be easy to miss important parts 
+of the function.
+
+<div class="p"><!----></div>
+Now to try out the delta function approximation:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;d1&nbsp;=&nbsp;D(expression(a&nbsp;*&nbsp;x/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;x)),&nbsp;"x")
+&#62;&nbsp;d2&nbsp;=&nbsp;D(d1,&nbsp;"x")
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+As stated above,
+the mean value of the distribution is about 24.5.
+The variance of the exponential distribution is
+equal to the mean squared, or 600.25.
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;Smean&nbsp;=&nbsp;24.5
+&#62;&nbsp;Svar&nbsp;=&nbsp;Smean^2
+&#62;&nbsp;d2_num&nbsp;=&nbsp;eval(d2,&nbsp;list(a&nbsp;=&nbsp;0.696,&nbsp;b&nbsp;=&nbsp;9.79,&nbsp;x&nbsp;=&nbsp;Smean))
+&#62;&nbsp;mval&nbsp;=&nbsp;a&nbsp;*&nbsp;Smean/(1&nbsp;+&nbsp;(a/b)&nbsp;*&nbsp;Smean)
+&#62;&nbsp;dapprox&nbsp;=&nbsp;mval&nbsp;+&nbsp;1/2&nbsp;*&nbsp;Svar&nbsp;*&nbsp;d2_num
+&#62;&nbsp;merr&nbsp;=&nbsp;(mval&nbsp;-&nbsp;i1$value)/i1$value
+&#62;&nbsp;merr
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.2412107
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;err&nbsp;=&nbsp;(dapprox&nbsp;-&nbsp;i1$value)/i1$value
+&#62;&nbsp;err
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;-0.04637931
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The answer from the delta method 
+(
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>f</mi><mo stretchy="false">(</mo>
+<mover><mrow><mi>x</mi></mrow>
+<mo>&OverBar;</mo></mover>
+<mo stretchy="false">)</mo><mo>+</mo><mo stretchy="false">(</mo>
+<msup><mrow><mi>&sigma;</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mi>f</mi>"<mo stretchy="false">(</mo>
+<mover><mrow><mi>x</mi></mrow>
+<mo>&OverBar;</mo></mover>
+<mo stretchy="false">)</mo><mo stretchy="false">/</mo><mn>2</mn><mo stretchy="false">)</mo></mrow></math>)
+is only about 5% below
+the true value, as 
+opposed to the naive answer (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>f</mi><mo stretchy="false">(</mo>
+<mover><mrow><mi>x</mi></mrow>
+<mo>&OverBar;</mo></mover>
+<mo stretchy="false">)</mo></mrow></math>) which is about
+25% high.  (We have to say <tt>i1$value</tt>
+to extract the actual value of the integral
+from the variable <tt>i1</tt>; try <tt>str(i1)</tt>
+if you want to see all the information that
+ R&nbsp;is storing about the integral.)
+
+<div class="p"><!----></div>
+<b>Exercise  4*</b>:
+try the above exercise again, but this time
+with a gamma distribution instead of an exponential.
+Keep the mean equal to 24.5 and change the
+variance to 100, 25, and 1 (use the information
+that the mean of the gamma distribution is <tt>shape*scale</tt>
+and the variance is <tt>shape*scale^2</tt>).
+Including the results for the exponential
+(which is a gamma with shape=1), make a table
+showing how the (1) true value of
+mean recruitment [calculated by
+numerical integration in  R&nbsp;either
+using <tt>integrate()</tt> or summing
+over small 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&Delta;</mi><mi>S</mi></mrow></math>] (2) value of
+recruitment at the mean settlement 
+(3) delta-method approximation
+(4,5) proportional error in #2 and #3
+change with the variance.
+
+<div class="p"><!----></div>
+ <h2><a name="tth_sEc3">
+3</a>&nbsp;&nbsp;The method of moments: reparameterizing distributions</h2>
+
+<div class="p"><!----></div>
+In the chapter, I showed how to use the <em>method of moments</em>
+to estimate the parameters of a distribution by setting the
+sample mean and variance (
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<mover><mrow><mi>x</mi></mrow>
+<mo>&OverBar;</mo></mover>
+</mrow></math>, 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msup><mrow><mi>s</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+</mrow></math>) equal to the theoretical
+mean and variance of a distribution and solving for the parameters.
+For the negative binomial, in particular, I found 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi><mo>=</mo>
+<mover><mrow><mi>x</mi></mrow>
+<mo>&OverBar;</mo></mover>
+</mrow></math>
+and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi><mo>=</mo><mo stretchy="false">(</mo>
+<mover><mrow><mi>x</mi></mrow>
+<mo>&OverBar;</mo></mover>
+<mo stretchy="false">)</mo><mo stretchy="false">/</mo><mo stretchy="false">(</mo>
+<msup><mrow><mi>s</mi></mrow><mrow><mn>2</mn></mrow>
+</msup>
+<mo stretchy="false">/</mo>
+<mover><mrow><mi>x</mi></mrow>
+<mo>&OverBar;</mo></mover>
+<mo>-</mo><mn>1</mn><mo stretchy="false">)</mo></mrow></math>.
+
+<div class="p"><!----></div>
+You can also define your own functions that use
+your own parameterizations: call them <tt>my_function</tt>
+rather than just replacing the standard  R&nbsp;functions
+(which will lead to insanity in the long run).
+
+<div class="p"><!----></div>
+For example, defining
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;my_dnbinom&nbsp;=&nbsp;function(x,&nbsp;mean,&nbsp;var,&nbsp;...)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mu&nbsp;=&nbsp;mean
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k&nbsp;=&nbsp;mean/(var/mean&nbsp;-&nbsp;1)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dnbinom(x,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k,&nbsp;...)
++&nbsp;}
+&#62;&nbsp;my_rnbinom&nbsp;=&nbsp;function(n,&nbsp;mean,&nbsp;var,&nbsp;...)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mu&nbsp;=&nbsp;mean
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k&nbsp;=&nbsp;mean/(var/mean&nbsp;-&nbsp;1)
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;rnbinom(n,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;k,&nbsp;...)
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(the <tt>...</tt> in the function takes any other arguments
+you give to <tt>my_dnbinom</tt> and just passes them through,
+unchanged, to <tt>dnbinom</tt>).
+
+<div class="p"><!----></div>
+Defining your own functions can be handy if you need
+to work on a regular basis with a distribution that
+uses a different parameterization than the one built
+into the standard  R&nbsp;function.
+
+<div class="p"><!----></div>
+You can use the kinds of histograms shown above to test your
+results (remembering that the method of moments estimates
+may be slightly biased especially for small samples - but
+they shouldn't cause errors as large as those caused by 
+typical algebra mistakes).
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;x&nbsp;=&nbsp;my_rnbinom(1e+05,&nbsp;mean&nbsp;=&nbsp;1,&nbsp;var&nbsp;=&nbsp;4)
+&#62;&nbsp;mean(x)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;0.9999
+
+&nbsp;
+</pre> </font>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;var(x)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;4.00574
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+   <font color="#FF0000">
+<pre>
+&#62;&nbsp;tx&nbsp;=&nbsp;table(factor(x,&nbsp;levels&nbsp;=&nbsp;0:max(x)))/1e+05
+&#62;&nbsp;b1&nbsp;=&nbsp;barplot(tx,&nbsp;ylab&nbsp;=&nbsp;"Probability")
+&#62;&nbsp;points(b1,&nbsp;my_dnbinom(0:max(x),&nbsp;mean&nbsp;=&nbsp;1,&nbsp;var&nbsp;=&nbsp;4),&nbsp;pch&nbsp;=&nbsp;16)
+&#62;&nbsp;abline(v&nbsp;=&nbsp;1)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab4-031.png" alt="lab4-031.png" />
+
+<div class="p"><!----></div>
+<b>Exercise  5*</b>:
+Morris (1997) gives a definition of the beta function that
+is different from the standard statistical parameterization.
+The standard parameterization is
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow>
+<mtext>Beta</mtext>
+<mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">&verbar;</mo><mi>a</mi><mo>,</mo><mi>b</mi><mo stretchy="false">)</mo><mo>=</mo>
+<mfrac><mrow><mi>&Gamma;</mi><mo stretchy="false">(</mo><mi>a</mi><mo>+</mo><mi>b</mi><mo stretchy="false">)</mo></mrow>
+<mrow><mi>&Gamma;</mi><mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">)</mo><mi>&Gamma;</mi><mo stretchy="false">(</mo><mi>b</mi><mo stretchy="false">)</mo></mrow>
+</mfrac>
+
+<msup><mrow><mi>x</mi></mrow><mrow><mi>a</mi><mo>-</mo><mn>1</mn></mrow>
+</msup>
+<mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>x</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mi>b</mi><mo>-</mo><mn>1</mn></mrow>
+</msup>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+whereas Morris uses
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow>
+<mtext>Beta</mtext>
+<mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">&verbar;</mo><mi>P</mi><mo>,</mo><mi>&theta;</mi><mo stretchy="false">)</mo><mo>=</mo>
+<mfrac><mrow><mi>&Gamma;</mi><mo stretchy="false">(</mo><mi>&theta;</mi><mo stretchy="false">)</mo></mrow>
+<mrow><mi>&Gamma;</mi><mo stretchy="false">(</mo><mi>&theta;</mi><mi>P</mi><mo stretchy="false">)</mo><mi>&Gamma;</mi><mo stretchy="false">(</mo><mi>&theta;</mi><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>P</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow>
+</mfrac>
+
+<msup><mrow><mi>x</mi></mrow><mrow><mi>&theta;</mi><mi>P</mi><mo>-</mo><mn>1</mn></mrow>
+</msup>
+<mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>x</mi>
+<msup><mrow><mo stretchy="false">)</mo></mrow><mrow><mi>&theta;</mi><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo><mi>P</mi><mo stretchy="false">)</mo><mo>-</mo><mn>1</mn></mrow>
+</msup>
+<mo>.</mo></mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+Find expressions for 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>P</mi></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&theta;</mi></mrow></math> in terms of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>a</mi></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>b</mi></mrow></math>
+and vice versa.  Explain why you might prefer Morris's
+parameterization.
+Define a new set of functions that generate random
+deviates from the beta distribution (<tt>my_rbeta</tt>)
+and calculate the density function (<tt>my_dbeta</tt>)
+in terms of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>P</mi></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&theta;</mi></mrow></math>.
+Generate a histogram from this distribution
+and draw a vertical line showing the mean of the distribution.
+
+<div class="p"><!----></div>
+ <h2><a name="tth_sEc4">
+4</a>&nbsp;&nbsp;Creating new distributions</h2>
+
+<div class="p"><!----></div>
+     <h3><a name="tth_sEc4.1">
+4.1</a>&nbsp;&nbsp;Zero-inflated distributions</h3>
+The general formula for the probability distribution of
+the a zero-inflated distribution, with an underlying
+distribution 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>P</mi><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo></mrow></math> and a zero-inflation probability
+of 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msub><mrow><mi>p</mi></mrow><mrow><mi>z</mi></mrow>
+</msub>
+</mrow></math>, is:
+<br />
+<table width="100%"><tr><td align="center">
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+    <mstyle displaystyle="true"><mrow>
+<mtable align="right" width="80%">
+<mtr><mtd columnalign="right" columnspan="1"><mrow>
+<mtext>Prob</mtext>
+<mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow>
+<msub><mrow><mi>p</mi></mrow><mrow><mi>z</mi></mrow>
+</msub>
+<mo>+</mo><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo>
+<msub><mrow><mi>p</mi></mrow><mrow><mi>z</mi></mrow>
+</msub>
+<mo stretchy="false">)</mo><mi>P</mi><mo stretchy="false">(</mo><mn>0</mn><mo stretchy="false">)</mo></mrow>
+</mtd></mtr>
+<mtr><mtd columnalign="right" columnspan="1"><mrow>
+<mtext>Prob</mtext>
+<mo stretchy="false">(</mo><mi>x</mi><mo>&gt;</mo><mn>0</mn><mo stretchy="false">)</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo>=</mo></mrow>
+</mtd><mtd columnalign="left">
+<mrow><mo stretchy="false">(</mo><mn>1</mn><mo>-</mo>
+<msub><mrow><mi>p</mi></mrow><mrow><mi>z</mi></mrow>
+</msub>
+<mo stretchy="false">)</mo><mi>P</mi><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo></mrow>
+</mtd></mtr>
+</mtable>
+</mrow>
+    </mstyle></math>
+</td></tr></table>
+<br />
+
+So, for example, we could define a probability distribution
+for a zero-inflated negative binomial as follows:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;dzinbinom&nbsp;=&nbsp;function(x,&nbsp;mu,&nbsp;size,&nbsp;zprob)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ifelse(x&nbsp;==&nbsp;0,&nbsp;zprob&nbsp;+&nbsp;(1&nbsp;-&nbsp;zprob)&nbsp;*&nbsp;dnbinom(0,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;size&nbsp;=&nbsp;size),&nbsp;(1&nbsp;-&nbsp;zprob)&nbsp;*&nbsp;dnbinom(x,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;size))
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+(the name, <tt>dzinbinom</tt>, follows the  R&nbsp;convention
+for a probability distribution function: a <tt>d</tt>
+followed by the abbreviated name of the distribution,
+in this case <tt>zinbinom</tt> for
+"<b>z</b>ero-<b>i</b>nflated <b>n</b>egative
+<b>binom</b>ial").
+
+<div class="p"><!----></div>
+The <tt>ifelse()</tt> command checks every element of
+<tt>x</tt> to see whether it is zero or not and fills
+in the appropriate value depending on the answer.
+
+<div class="p"><!----></div>
+A random deviate generator would look like this:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;rzinbinom&nbsp;=&nbsp;function(n,&nbsp;mu,&nbsp;size,&nbsp;zprob)&nbsp;{
++&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ifelse(runif(n)&nbsp;&lt;&nbsp;zprob,&nbsp;0,&nbsp;rnbinom(n,&nbsp;mu&nbsp;=&nbsp;mu,&nbsp;size&nbsp;=&nbsp;size))
++&nbsp;}
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The command <tt>runif(n)</tt> picks <tt>n</tt>
+random values between 0 and 1; the <tt>ifelse</tt>
+command compares them with the value of
+<tt>zprob</tt>.  If an individual value is
+less than <tt>zprob</tt> (which happens with probability
+<tt>zprob</tt>=
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+<msub><mrow><mi>p</mi></mrow><mrow><mi>z</mi></mrow>
+</msub>
+</mrow></math>), then the corresponding
+random number is zero; otherwise it is a value
+picked out of the appropriate negative binomial
+distribution.
+
+<div class="p"><!----></div>
+<b>Exercise  6</b>:
+check graphically that these functions actually
+work. For an extra challenge, calculate the mean
+and variance of the zero-inflated negative binomial
+and compare it to the results of
+<tt>rzinbinom(10000,mu=4,size=0.5,zprob=0.2)</tt>.
+
+<div class="p"><!----></div>
+ <h2><a name="tth_sEc5">
+5</a>&nbsp;&nbsp;Compounding distributions</h2>
+
+<div class="p"><!----></div>
+The key to compounding distributions in  R&nbsp;is
+that the functions that generate random deviates
+can all take a vector of different parameters
+rather than a single parameter.  For example,
+if you were simulating the number of hatchlings
+surviving (with individual probability 0.8)
+from a series of 8 clutches, all of size
+10, you would say
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;rbinom(8,&nbsp;size&nbsp;=&nbsp;10,&nbsp;prob&nbsp;=&nbsp;0.8)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;7&nbsp;6&nbsp;9&nbsp;7&nbsp;9&nbsp;9&nbsp;6&nbsp;8
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+but if you had a series of clutches
+of different sizes, you could still
+pick all the random values at the same time:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;clutch_size&nbsp;=&nbsp;c(10,&nbsp;9,&nbsp;9,&nbsp;12,&nbsp;10,&nbsp;10,&nbsp;8,&nbsp;11)
+&#62;&nbsp;rbinom(8,&nbsp;size&nbsp;=&nbsp;clutch_size,&nbsp;prob&nbsp;=&nbsp;0.8)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;10&nbsp;&nbsp;7&nbsp;&nbsp;8&nbsp;&nbsp;8&nbsp;&nbsp;6&nbsp;&nbsp;7&nbsp;&nbsp;6&nbsp;&nbsp;8
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Taking this a step farther, the clutch size
+itself could be a random variable:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;clutch_size&nbsp;=&nbsp;rpois(8,&nbsp;lambda&nbsp;=&nbsp;10)
+&#62;&nbsp;rbinom(8,&nbsp;size&nbsp;=&nbsp;clutch_size,&nbsp;prob&nbsp;=&nbsp;0.8)
+&nbsp;
+</pre> </font>
+  <font color="#0000FF">
+<pre>
+[1]&nbsp;&nbsp;7&nbsp;10&nbsp;&nbsp;7&nbsp;11&nbsp;13&nbsp;&nbsp;4&nbsp;&nbsp;5&nbsp;&nbsp;4
+
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+We've just generated a Poisson-binomial
+random deviate ...
+
+<div class="p"><!----></div>
+As a second example, I'll 
+follow Clark <em>et al.</em> in constructing
+a distribution that is a compounding
+of normal distributions, with 1/variance of each sample drawn from
+a gamma distribution.
+
+<div class="p"><!----></div>
+First pick the variances as the reciprocals of 10,000 values
+from a gamma distribution with shape 5 (setting the scale equal
+to 1/5 so the mean will be 1):
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;var_vals&nbsp;=&nbsp;1/rgamma(10000,&nbsp;shape&nbsp;=&nbsp;5,&nbsp;scale&nbsp;=&nbsp;1/5)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Take the square root, since <tt>dnorm</tt> uses
+the standard deviation and not the variance
+as a parameter:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;sd_vals&nbsp;=&nbsp;sqrt(var_vals)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Generate 10,000 normal deviates using this
+range of standard deviations:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;x&nbsp;=&nbsp;rnorm(10000,&nbsp;mean&nbsp;=&nbsp;0,&nbsp;sd&nbsp;=&nbsp;sd_vals)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+Figure&nbsp;<a href="#fig:dt">4</a> shows a histogram of the
+following commands:
+
+<div class="p"><!----></div>
+  <font color="#FF0000">
+<pre>
+&#62;&nbsp;hist(x,&nbsp;prob&nbsp;=&nbsp;TRUE,&nbsp;breaks&nbsp;=&nbsp;100,&nbsp;col&nbsp;=&nbsp;"gray")
+&#62;&nbsp;curve(dt(x,&nbsp;df&nbsp;=&nbsp;11),&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;lwd&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+The superimposed curve is a 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>t</mi></mrow></math> distribution
+with 11 degrees of freedom; it turns out that
+if the underlying gamma distribution has 
+shape parameter 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>p</mi></mrow></math>, the resulting 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>t</mi></mrow></math> distribution
+has 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>df</mi><mo>=</mo><mn>2</mn><mi>p</mi><mo>+</mo><mn>1</mn></mrow></math>.
+(Figuring out the analytical form of the compounded
+probability distribution or density function, or
+its equivalence to some existing distribution,
+is the hard part; for the most part, though,
+you can find these answers in the ecological
+and statistical literature if you search hard
+enough.
+
+<div class="p"><!----></div>
+
+<div class="p"><!----></div>
+<a name="tth_fIg4">
+</a>    <font color="#FF0000">
+<pre>
+&#62;&nbsp;hist(x,&nbsp;prob&nbsp;=&nbsp;TRUE,&nbsp;breaks&nbsp;=&nbsp;100,&nbsp;col&nbsp;=&nbsp;"gray")
+&#62;&nbsp;curve(dt(x,&nbsp;df&nbsp;=&nbsp;11),&nbsp;add&nbsp;=&nbsp;TRUE,&nbsp;lwd&nbsp;=&nbsp;2)
+&nbsp;
+</pre> </font>
+
+<div class="p"><!----></div>
+<img src="lab4-041.png" alt="lab4-041.png" />
+
+<center>Figure 4: Clark model: inverse gamma compounded with normal,
+equivalent to the Student 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>t</mi></mrow></math> distribution</center>
+<a name="fig:dt">
+</a>
+
+<div class="p"><!----></div>
+<b>Exercise  7*</b>:
+generate 10,000 values from
+a gamma-Poisson compounded distribution
+with parameters shape=
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi><mo>=</mo><mn>0</mn><mo>.</mo><mn>5</mn></mrow></math>, scale=
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi><mo stretchy="false">/</mo><mi>k</mi><mo>=</mo><mn>4</mn><mo stretchy="false">/</mo><mn>0</mn><mo>.</mo><mn>5</mn><mo>=</mo><mn>8</mn></mrow></math>
+and demonstrate that it's equivalent to a
+negative binomial with the appropriate
+
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>&mu;</mi></mrow></math> and 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>k</mi></mrow></math> parameters.
+
+<div class="p"><!----></div>
+<em>Extra credit</em>: generate 10,000
+values from a lognormal-Poisson distribution
+with the same expected mean and variance
+(the variance of the lognormal should
+equal the variance of the gamma distribution
+you used as a compounding distribution;
+you will have to do some algebra
+to figure out the values of <tt>meanlog</tt>
+and <tt>sdlog</tt> needed to produce a lognormal
+with a specified mean and variance.
+Plot the distribution and superimpose
+the theoretical distribution of the
+negative binomial with the same mean
+and variance
+to see how different the shapes of the distributions
+are.
+
+<div class="p"><!----></div>
+
+<br /><br /><hr /><small>File translated from
+T<sub><font size="-1">E</font></sub>X
+by <a href="http://hutchinson.belmont.ma.us/tth/">
+T<sub><font size="-1">T</font></sub>M</a>,
+version 3.70.<br />On 28 Sep 2005, 13:38.</small>
+</body></html>

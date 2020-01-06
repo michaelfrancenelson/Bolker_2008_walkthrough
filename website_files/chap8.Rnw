@@ -1,0 +1,2470 @@
+% version of chap8 that uses formula interface to trim ...
+<<echo=FALSE,results=hide>>=
+library(bbmle)
+library(emdbook)
+library(plotrix)
+library(lattice)
+library(Hmisc)
+library(MASS)
+source("chapskel.R")
+@ 
+
+\section*{Summary}
+This chapter combines all the methods we've
+considered so far to carry out
+some more complete analyses of the example data sets,
+specifically the data of \cite{VoneshBolker2005}
+on tadpole predation, \cite{Wilson2004}
+on goby survival, and \cite{DuncanDuncan2000} on seed predation.
+
+\section{Tadpole predation experiments}
+
+\subsection{Introduction}
+
+The goal of Vonesh and Bolker's (2005)
+tadpole predation study was to quantify
+the effects of prey size and density on predation
+rate, and to use the results along with data
+on growth rates to understand the tradeoffs
+between growth and survival.
+The response variable in all of the data we
+will consider here is the number of tadpoles killed by
+a given number or density of 
+predators in a specified amount of time;
+the covariates are changing (initial) number
+of tadpoles (which gives rise to a \emph{functional response}
+curve) and the size of tadpoles (estimating the presence
+of a ``size refuge'').
+
+The binomial distribution is an obvious choice as a
+stochastic model for predation data,
+because the data are a discrete sample with a fixed upper
+limit.  The challenge for the frog predation data
+is to decide on deterministic models
+that adequately describe the changes in predation probability
+with tadpole size and density.
+
+\subsection{Fitting the size-predation curve}
+
+\cite{VoneshBolker2005} used the function
+\begin{equation}
+\gamma(S) = \frac{e^{\epsilon (\phi-S)}}{1+ e^{\beta \epsilon (\phi-S)}}
+\label{eq:VB1}
+\end{equation}
+to represent the dependence of 
+predation probability,
+$\gamma(S)$, on prey size $S$.
+
+The location parameter $\phi$ represents a baseline prey size at which
+50\% of tadpoles are eaten; $\epsilon$ is the rate of
+change of mortality with size, controlling
+the steepness of the curve; and $\beta$ determines
+the asymmetry of the curve --- the extent to
+which prey escape predation at 
+both small and large sizes.
+If $\beta=1$ then (\ref{eq:VB1}) 
+describes a logistic predation function
+that decreases (if $\beta>0$) or increases
+(if $\beta<0$) with size.
+
+Some slightly tedious calculus 
+establishes that the most vulnerable
+size is $\hat S = \phi+\log(\beta-1)/(\epsilon \beta)$,
+which gives a predation probability
+$$
+(\beta-1)^{(-1/\beta)}/(1+1/\beta-1).
+$$
+The peak predation probability depends only
+on $\beta$.
+If $\beta<1$, then the function is
+monotonically decreasing, with no peak.
+(To find $\hat S$, solve $d\gamma/dS=0$ for $S$, using
+the quotient and chain rules to calculate the derivative,
+and remembering that you only need to worry about
+setting the numerator to zero.  Then plug $\hat S$ back into
+$\gamma(S)$ to find the predation probability.)
+
+%Setting up functions to draw the curve of
+%predation vs. size and calculate the
+%location and height of the peak:
+<<echo=FALSE>>=
+sizefun = function(S,phi=20,eps=1,beta=1) {
+   exp(eps*(phi-S))/(1+exp(beta*eps*(phi-S)))
+}
+maxxval = function(phi=20,eps=1,beta=1) {
+  phi+log(beta-1)/(beta*eps)
+}
+maxyval = function(beta) {
+  (beta-1)^(-1/beta)/(1+1/(beta-1))
+}
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op = par(cex=1.2,mar=c(4,4,0,1)+0.1,
+  mgp=c(2.5,0.75,0),las=1,bty="l")
+curve(sizefun(x),from=5,to=40,xlab="Prey size",ylab="Predation risk")
+curve(sizefun(x,beta=1.1),add=TRUE,lty=2)
+curve(sizefun(x,beta=3),add=TRUE,lty=3)
+curve(sizefun(x,beta=1.1,eps=5),add=TRUE,lty=4)
+text(x=c(19.5,5,6.5,28),y=c(0.9,0.5,0.08,0.5),
+     c(expression(list(beta==1,epsilon==1)),expression(list(beta==1.1,epsilon==1)),
+       expression(list(beta==1.1,epsilon==5)),
+       expression(list(beta==3,epsilon==1))),
+     adj=0)
+arrows(27.5,0.49,21.5,0.4)
+par(op)
+@ 
+\caption{Modified logistic function
+from \cite{VoneshBolker2005} (eq. \ref{eq:VB1}). 
+Location parameter $\phi=20$ for all curves.}
+\label{fig:modlogist}
+\end{figure}
+
+
+A more traditional function to describe
+a humped dependence of predation on
+size is the \emph{generalized Ricker function}
+\citep{Persson+1998},
+\begin{equation}
+y= b \left(\frac{S}{a} \exp\left(1-\frac{S}{a}\right)\right)^\alpha.
+\end{equation}
+This function is basically a reparameterization
+of the Ricker function ($y=ax e^{-bx}$)
+with an added power parameter $\alpha$ that can broaden or narrow
+the peak; if
+$\alpha=1$, the generalized Ricker reduces to the
+standard Ricker function.
+
+A third possibility is another modification of the
+Ricker, which I will call the truncated Ricker:
+this function shifts the Ricker's origin away from zero
+by a distance $t$, and sets the function to zero
+below $t$ (so that it doesn't become negative):
+\begin{equation}
+y =
+\begin{cases}
+0 & \mbox{if } S<t \\
+b \left(\frac{S-t}{a} e^{1-\left(\frac{S-t}{a}\right)}\right) & \mbox{if } S \ge t.
+\end{cases}
+\end{equation}
+
+All of these functions are phenomenological rather
+than mechanistic: while ecologists have ideas
+about the mechanisms leading to low predation
+at small size (poor detectability and
+being of little value to the predator)
+and large size (escape speed and
+predator gape limitation), they don't
+know enough about these mechanisms
+to guess at an appropriate functional form.
+
+Bring in the data and \code{attach} it:
+<<>>=
+data(ReedfrogSizepred)
+attach(ReedfrogSizepred)
+@ 
+
+Define the functions (\code{modlogist} for
+the modified logistic, \code{powricker}
+and \code{tricker} for the generalized (power)
+and truncated Ricker):
+<<>>=
+modlogist = function(x,eps,beta,phi) {
+ exp(eps*(phi-x))/(1+exp(beta*eps*(phi-x)))
+}
+##ricker = function(x,a,b) {
+##  a*x*exp(-b*x)
+##}
+powricker = function(x,a,b,alpha) {
+  b*(x/a*exp(1-x/a))^alpha
+}
+tricker = function(x,a,b,t,min=0.0001) {
+  ifelse(x<t,min,b*((x-t)/a*exp(1-(x-t)/a)))
+}
+@ 
+
+Set up negative log-likelihood functions
+for each model, including one for the
+modified logistic that uses a beta-binomial
+distribution (p.~\pageref{sec:betabinom}) of numbers killed
+(\code{NLL.modlogist.bb},
+with overdispersion parameter $\theta$) instead of
+a binomial in order
+to account for possible overdispersion%
+\footnote{A quick and dirty way to check for overdispersion is
+to compute the \emph{residual deviance},
+which is -2 $\times$ the log-likelihood for the most
+complex model you fit.
+For sufficiently large
+data sets the scaled residual deviance should
+be $\chi^2$ distributed with degrees of freedom
+equal to the residual degrees of freedom.
+However, \citet[p. 208]{MASS} warn that this estimate
+can be misleading for moderate-size data sets
+(e.g. expected Poisson means less than 5 or
+expected number of successes in a binomial
+trial ($Np$) less than 10).
+For this data set, the quick and dirty approach
+suggests that there is overdispersion, but
+the likelihood fit below shows more
+accurately that there isn't.}.
+
+<<>>=
+NLL.modlogist = function(eps,beta,phi) {
+  p.pred = modlogist(TBL,eps,beta,phi)
+  -sum(dbinom(Kill,size=10,prob=p.pred,log=TRUE))
+}
+NLL.modlogist.bb = function(eps,beta,phi,theta) {
+  p.pred = modlogist(TBL,eps,beta,phi)
+  -sum(dbetabinom(Kill,size=10,prob=p.pred,theta=theta,log=TRUE))
+}
+##NLL.ricker = function(a,b) {
+##  p.pred = ricker(TBL,a,b)
+##  -sum(dbinom(Kill,size=10,prob=p.pred,log=TRUE))
+##}
+NLL.powricker = function(a,b,alpha) {
+  p.pred = powricker(TBL,a,b,alpha)
+  -sum(dbinom(Kill,size=10,prob=p.pred,log=TRUE))
+}
+NLL.tricker = function(a,b,t) {
+  p.pred = tricker(TBL,a,b,t)
+  -sum(dbinom(Kill,size=10,prob=p.pred,log=TRUE))
+}
+@ 
+
+Eyeballing the data (Figure~\ref{fig:frogsizepred})
+gives approximate starting parameters for the
+modified logistic of $\{\phi=15,\beta=1.1,\epsilon=5\}$
+(compare Figure~\ref{fig:modlogist}, and use $\phi$ to
+shift the peak to approximately $S=15$).
+I'll start the beta-binomial version at 
+the best-fit parameters for the binomial
+model and add $\theta=1000$
+(representing very little overdispersion --- the
+beta-binomial becomes binomial as $\theta \to \infty$),
+setting the \code{parscale} control option to 
+let \R\ know that we expect this parameter to
+be larger than the others.
+(In an initial exploration with worse starting
+parameter guesses,
+I also played around with options like 
+\code{method="Nelder-Mead"} and
+setting the \code{maxit} control parameter
+larger in order to get the optimization to work.)
+
+
+<<>>=
+FSP.modlogist = mle2(NLL.modlogist,
+                    start=list(eps=5,beta=1.1,phi=15))
+FSP.modlogist.bb = mle2(NLL.modlogist.bb,
+                       start=as.list(c(coef(FSP.modlogist),list(theta=1000))),
+                       control=list(parscale=c(1,1,1,1000)))
+@ 
+
+
+The beta-binomial fit estimates $\theta=\Sexpr{round(coef(FSP.modlogist.bb)["theta"])}$,
+evidence that the beta-binomial model is not really
+necessary; 
+the decrease in negative log-likelihood is only
+\Sexpr{-round(c(logLik(FSP.modlogist.bb)-logLik(FSP.modlogist)),3)}.
+
+We hardly need to run the likelihood ratio test
+(\code{anova(FSP.modlogist,FSP.modlogist.bb)}) or the AIC calculation
+(\code{AICtab(FSP.modlogist,FSP.modlogist.bb)}).  Even dividing the
+$p$ value for the Likelihood Ratio Test by 2 to account for the fact
+that the null hypothesis is on the boundary (i.e., the beta-binomial
+model reduces to the binomial model when $\theta \to \infty$) makes no
+difference to the conclusions.
+
+If we try to get confidence limits on $\theta$, however, we run
+into trouble:
+<<eval=FALSE>>=
+confint(FSP.modlogist.bb,which="theta")
+@ 
+\begin{verbatim}
+Profiling has found a better solution, so original 
+fit had not converged:
+New minimum= 12.13806 
+Parameter values:
+         eps    beta.beta          phi        theta 
+   0.3577257    8.9873023    9.7457033 3405.1429647 
+Error in onestep(step) : try restarting fit from values above
+\end{verbatim}
+
+Refitting the parameters from this new starting point
+(using \code{modlogist} instead of \code{modlogist.bb},
+and extending the maximum number of iterations):
+<<>>=
+FSP.modlogist2 = mle2(NLL.modlogist,
+                     start=list(eps=0.357,beta=8.99,phi=9.75),
+                     control=list(maxit=1000))
+@ 
+The parameters of
+this fit are quite different
+<<>>=
+rbind(coef(FSP.modlogist),coef(FSP.modlogist2))
+@ 
+and the negative log-likelihood is slightly lower
+(\Sexpr{round(-logLik(FSP.modlogist2),2)} vs.
+\Sexpr{round(-logLik(FSP.modlogist),2)}).
+You can use \code{plot(calcslice(FSP.modlogist,FSP.modlogist2))}
+to calculate and plot the negative log-likelihoods along a ``slice''
+through parameter space, showing that the two different
+fits probably do represent distinct local minima
+(Figure~\ref{fig:voneshmult}).
+
+However, despite fitting the data a little better
+the fit seems unrealistic, spiking up abruptly
+to a high predation rate and then
+dropping exponentially (Figure~\ref{fig:frogsizepred}).
+
+Fitting the generalized and truncated Ricker models:
+<<>>=
+##FSP.ricker = mle2(NLL.ricker,start=list(a=0.4,b=0.3))
+FSP.powricker = mle2(NLL.powricker,start=list(a=0.4,b=0.3,alpha=1))
+FSP.tricker = mle2(NLL.tricker,start=list(a=0.4,b=0.3,t=8))
+##
+@ 
+<<echo=FALSE>>=
+alpha.ci = confint(FSP.powricker,parm="alpha",quietly=TRUE)
+@ 
+
+The confidence limits on $\alpha$ for the generalized Ricker
+(\code{confint(FSP.powricker,parm="alpha")}) are
+$\{\Sexpr{round(alpha.ci[1],2)},\Sexpr{round(alpha.ci[2],2)}\}$ --- %
+the standard Ricker ($\alpha=1$) is clearly not competitive.
+
+Calculating AIC values with \code{AICtab}:
+<<echo=FALSE,results=tex>>=
+a1 = AICtab(FSP.powricker,FSP.modlogist,FSP.tricker,FSP.modlogist2,
+       weights=TRUE,sort=TRUE)
+a1$AIC = round(a1$AIC,1)
+a1$weight = round(a1$weight,3)
+attr(a1,"row.names") = c("modified logistic (fit 2)",
+                          "truncated Ricker",
+                          "modified logistic (fit 1)",
+                          "generalized Ricker")
+latex(a1,file="",title="",table.env=FALSE)
+@ 
+
+None of the models is nested (all have the same number of
+parameters), and all the fits are (almost) within 2 log-likelihood
+units of each other.  
+Burnham and Anderson would recommend using the weighted
+predictions of all the models in subsequent analyses, but
+in this case (where we are just trying to gain qualitative
+insights into life-history tradeoffs)
+this extra complication feels unnecessary.
+In this case, I would be willing to
+override the narrow definition of ``best fit'' and discard the first
+two models because I don't really believe that predation risk is
+going to increase sharply as tadpoles grow bigger than 9~mm,
+as suggested by the truncated Ricker or by the
+second fit to the modified logistic.  I
+might even choose the generalized Ricker, the worst-fitting model,
+over the first fit of the modified logistic, because the
+generalized Ricker is better established in the literature.  The
+lesson here is that the sparser the data, the more you
+have to use your judgment
+in selecting a model --- whether or not you are explicitly
+Bayesian.
+
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op = par(lwd=2,bty="l",las=1,mgp=c(3,1,0),cex=1.5)
+sizeplot(TBL,Kill,xlab="Tadpole size\n(total body length in mm)",
+         ylab="",
+         xlim=c(0,40),scale=1,ylim=c(0,9))
+mtext(side=2,"Number killed",line=2,cex=1.5,las=0)
+with(as.list(coef(FSP.modlogist)),curve(modlogist(x,eps,beta,phi)*10,
+                                    add=TRUE))
+## with(as.list(coef(FSP.ricker)),curve(ricker(x,a,b)*10,add=TRUE,lty=2))
+with(as.list(coef(FSP.powricker)),curve(powricker(x,a,b,alpha)*10,add=TRUE,lty=2))
+with(as.list(coef(FSP.tricker)),curve(tricker(x,a,b,t)*10,add=TRUE,lty=3))
+with(as.list(coef(FSP.modlogist2)),curve(modlogist(x,eps,beta,phi)*10,
+                                    add=TRUE,lty=4))
+legend("topright",c("modified logistic",
+                    "generalized Ricker",
+                    "truncated Ricker",
+                    "modified logistic #2"),cex=0.7,
+       lty=1:4,bty="n")
+@ 
+\caption{Size-predation relationship
+for \emph{Hyperolius spinigularis} tadpoles:
+modified logistic, generalized and truncated Ricker fits}
+\label{fig:frogsizepred}
+\end{figure}
+
+\subsection{Fitting the functional response curve}
+
+The other data set we will examine from 
+\cite{VoneshBolker2005} is the functional response
+experiment, which varied the density of
+tadpoles (with total body length $\approx 12.8$~mm).
+As many of 67\% (10/15) of the tadpoles in an experiment
+were eaten, suggesting that we should allow
+for the effect of depletion over the course of
+the experiment.
+The standard model for
+saturating functional responses is the Holling
+type~II response, $N=aPT N_0/(1+ahN_0)$,
+where $N$ is the number eaten, $N_0$ is the starting
+number/density, $a$ and $h$ are baseline
+attack rate and handling time,
+$P$ is the predator number
+or density and $T$ is the total
+exposure time\footnote{$P$ and $T$ are 
+usually ignored in the Holling equation,
+giving the function units of
+``number eaten per predator per unit time'',
+but we include them here for consistency
+with the Rogers equation.}.
+The Rogers random-predator equation,
+which allows for depletion, is
+\begin{equation}
+N = N_0 \left( 1- e^{a (N h - P T)} \right)
+\label{eq:rogers}
+\end{equation}
+where $P$ is the number
+of predators, and $T$ is the total time of
+exposure.
+(The predator-exposure factor $PT$ would
+just be multiplied by the Holling equation.)
+
+The Rogers random-predator equation 
+(\ref{eq:rogers}) contains $N$ on both
+the left- and right-hand sides of the
+equation; traditionally, one has had
+to use iterative numerical methods
+to compute the function
+\citep{VoneshBolker2005}.
+However, the \emph{Lambert W} function
+\citep{Corless+1996},
+which gives the solution to the equation
+$W(x)e^{W(x)}=x$, can be used to compute
+the Rogers equation efficiently:
+in terms of the Lambert $W$ the Rogers equation
+is
+\begin{equation}
+N = N_0 - \frac{W\left(a h N_0 e^{-a (P T- h N_0)}\right)}{a h}.
+\end{equation}
+Implement this equation (using the \code{lambertW}
+function in the \code{emdbook} package) in \R, as well as the Holling type~II
+function for comparison:
+<<>>=
+rogers.pred = function(N0,a,h,P,T) {
+   N0 - lambertW(a*h*N0*exp(-a*(P*T-h*N0)))/(a*h)
+}
+holling2.pred = function(N0,a,h,P,T) {
+  a*N0*P*T/(1+a*h*N0)
+}
+@ 
+
+
+<<eval=FALSE,echo=FALSE>>=
+curve(rogers.pred(x,a=1,h=0.2,P=1,T=1),from=0,to=60,
+  ylab="Number eaten/unit time",xlab="Initial number",ylim=c(0,5),
+  main="Predation: a=1, h=0.2")
+curve(rogers.pred(x,a=1,h=0.2,P=1,T=5)/5,add=TRUE,lty=2,from=0)
+curve(rogers.pred(x,a=1,h=0.2,P=1,T=0.2)*5,add=TRUE,lty=3,from=0)
+curve(rogers.pred(x,a=1,h=0.2,P=1,T=10)/10,add=TRUE,lty=4,from=0)
+curve(holling2.pred(x,a=1,h=0.2),add=TRUE,lty=1,lwd=2,from=0)
+abline(h=5)
+legend(30,2,
+   c(paste("Rogers, T=",c(0.2,1,5,10),sep=""),
+    "Holling type II"),lwd=c(rep(1,4),2),lty=c(3,1,2,4,1))
+@ 
+
+Attach the data:
+
+<<>>=
+data(ReedfrogFuncresp)
+attach(ReedfrogFuncresp)
+@ 
+
+Write the likelihood functions:
+
+<<>>= 
+NLL.rogers = function(a,h,T,P) {
+  if (a<0 || h<0) return(NA)
+  prop.exp = rogers.pred(Initial,a,h,P,T)/Initial
+  -sum(dbinom(Killed,prob=prop.exp,size=Initial,log=TRUE))
+}
+NLL.holling2 = function(a,h,P=1,T=1) {
+  -sum(dbinom(Killed,prob=a*T*P/(1+a*h*Initial),size=Initial,log=TRUE))
+}
+@ 
+In the Rogers
+likelihood function 
+I constrained the range of the
+function by simply returning
+\code{NA} if $a<0$ or $h<0$, rather than
+using constrained optimization; if you
+are not using \code{L-BFGS-B}, this 
+shortcut sometimes works.
+
+What about initial values?
+Eyeballing the data
+(Figure~\ref{fig:frogfuncresp}),
+the initial slope of the functional response curve
+is about 0.5 (50\% of tadpoles are killed at low densities)
+and the asymptote looks like it might be at around
+50.  These values correspond to $aPT=0.5$
+or $a=0.5/(PT) \approx 0.012$ and $PT/h=50$ 
+or $h \approx 0.84$.  These values will be overestimates,
+but still usable, as starting points for the Rogers
+estimation as well:
+<<>>=
+FFR.rogers = mle2(NLL.rogers,start=list(a=0.012,h=0.84),
+  data=list(T=14,P=3))
+FFR.holling2 = mle2(NLL.holling2,start=list(a=0.012,h=0.84),
+  data=list(T=14,P=3))
+@ 
+
+Running
+\code{AICtab(FFR.rogers,FFR.holling2,weights=TRUE)}
+shows that the Holling type~II is a marginally better fit
+(0.3 log-likelihood unit difference):
+<<echo=FALSE,results=tex>>=
+a2 = AICtab(FFR.rogers,FFR.holling2,sort=TRUE,weights=TRUE)
+a2$AIC = round(a2$AIC,1)
+a2$weight = round(a2$weight,3)
+attr(a2,"row.names") = c("Holling type II",
+                          "Rogers")
+latex(a2,file="",title="",table.env=FALSE)
+@ 
+
+The best-fit Holling and Rogers curves are practically
+indistinguishable in the plot (Figure~\ref{fig:frogfuncresp})
+as well;
+however, we strongly prefer the Rogers curve on biological
+grounds, because we know that 
+predators are depleting tadpole prey significantly
+over the course of the experiment.
+The ``Rogers (no depletion)''
+curve in Figure~\ref{fig:frogfuncresp} shows
+that depletion decreases the effect of predation
+by about two tadpoles across the board --- as much
+as a 40\% effect at low numbers.  It will be important
+to take depletion into account when we compare
+experiments with different exposure times
+and predator densities below.
+
+<<results=tex,echo=FALSE>>=
+esttab = signif(rbind(coef(FFR.rogers),coef(FFR.holling2)),3)
+dimnames(esttab) = list(c("Rogers","Holling type II"),
+          c("$a$","$h$"))
+latex(esttab,file="",title="",table.env=FALSE)
+@ 
+
+Taking depletion into account leads to
+a \Sexpr{round(100*(coef(FFR.rogers)["a"]/coef(FFR.holling2)["a"]-1))}\%
+increase in the estimated attack rate
+and a 
+\Sexpr{round(100*(coef(FFR.rogers)["h"]/coef(FFR.holling2)["h"]-1))}\%
+increase in the estimated handling time.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op = par(lwd=2,bty="l",las=1,mgp=c(3,1,0),cex=1.5)
+plot(Initial,Killed,xlim=c(0,100))
+with(as.list(coef(FFR.rogers)),
+     curve(rogers.pred(x,a,h,T=14,P=3),add=TRUE))
+with(as.list(coef(FFR.rogers)),
+     curve(a*14*3*x/(1+a*h*x),add=TRUE,lty=3))
+with(as.list(coef(FFR.holling2)),
+     curve(a*14*3*x/(1+a*h*x),add=TRUE,lty=2))
+legend("topleft",
+       c("Rogers","Rogers (no depletion)",
+         "Holling"),
+       lty=c(1,3,2),bty="n")
+par(op)
+@
+\caption{Functional response fit to frog predation
+data.  Both Holling type~II and Rogers random-predator
+fits are shown, but are barely distinguishable.
+``Rogers (no depletion)'' curve plots the
+expected functional response from the 
+estimated Rogers parameters in the absence of depletion.}
+\label{fig:frogfuncresp}
+\end{figure}
+
+\subsection{Combined effects of size and density}
+
+\cite{VoneshBolker2005} combined the effects of
+size and density by algebraically combining the
+parameters of the separate size and density
+fits.  Here, we will instead combine all
+the data in a single likelihood function,
+estimating the functional response parameter ($h$)
+and the size-dependent attack rate
+parameters ($\alpha$, $\beta$, and $\epsilon$)
+at the same time\footnote{It would be realistic to make the
+handling time vary as a function of size
+as well \citep{Persson+1998}, but unfortunately
+we don't have enough data.}.
+The only thing we need to sort out is that
+the experiments were run in different volumes,
+as well as with different numbers of predators
+and for different lengths of time.
+The functional response experiments were
+run in 300~L tanks (1.2 $\times$ 0.8 $\times$ 0.4~m high)
+filled to 220~L; the size experiments were run
+in 35~L plastic tubs (0.32~m in diameter) filled to 25~L.
+Based on the way that predators foraged, \cite{VoneshBolker2005}
+assumed that predation success depended
+on the area 
+of the foraging arena ($1.2 \cdot 0.8 = 0.96 \mbox{ m}^2$ vs 
+$\pi ((0.32)/2)^2 = 0.080 \mbox{ m}^2$) rather than its volume.
+To make the predation probabilities match, we have to divide
+the predator numbers by area\footnote{But \emph{not}
+the prey numbers --- figuring this out reminded me
+of the old riddle ``if a hen and a half lays an egg and a half in
+a day a half, how many eggs can one hen lay in a day?''}
+It is convenient to collect
+the auxiliary parameters for each experiment
+(number of predators, area, exposure time, etc.)
+in a couple of lists:
+<<>>=
+xpars.Funcresp = list(T=14,P=3,vol=220,area=1.2*0.8,size=12.8)
+xpars.Sizepred = list(T=3,P=2,vol=25,area=pi*0.16^2,initprey=10)
+@
+
+Put together a combined data set representing the
+initial numbers, size, 
+number killed, predator density,
+and exposure time for both experiments,
+using \code{rep} to repeat values where necessary:
+<<>>=
+n.Funcresp = nrow(ReedfrogFuncresp)
+n.Sizepred = nrow(ReedfrogSizepred)
+combInit = c(ReedfrogFuncresp$Initial,rep(xpars.Sizepred$initprey,n.Sizepred))
+combSize = c(rep(xpars.Funcresp$size,n.Funcresp),ReedfrogSizepred$TBL)
+combKilled = c(ReedfrogFuncresp$Killed,ReedfrogSizepred$Kill)
+combP = rep(c(xpars.Funcresp$P/xpars.Funcresp$area,
+               xpars.Sizepred$P/xpars.Sizepred$area),
+             c(n.Funcresp,n.Sizepred))
+combT = rep(c(xpars.Funcresp$T,xpars.Sizepred$T),
+             c(n.Funcresp,n.Sizepred))
+@ 
+
+Write a combined function for the expected proportion
+eaten, computing the attack rate $a$ from
+the parameters $\epsilon$, $\beta$, and $\phi$
+and combining it with the handling time $h$:
+<<>>=
+prop.eaten = function(N0,S,h,P,T,eps,beta,phi,minprop=.Machine$double.eps) {
+  a = modlogist(S,eps=eps,beta=beta,phi=phi)
+  N.eaten = rogers.pred(N0,a=a,h=h,P=P,T=T)
+  prop = N.eaten/N0
+  prop[prop<=0] = minprop
+  prop[prop>=1] = 1-minprop
+  prop
+}
+@ 
+The value \verb!.Machine$double.eps! is 
+a built-in constant corresponding to the smallest
+difference between numeric values 
+your computer can keep track of
+without rounding 
+(it is \Sexpr{scinot(.Machine$double.eps,digits=2)}
+on the machine I am using).
+Using \code{minprop} to
+adjust values that are $\le 0$ or $\ge 1$
+takes care of the cases where
+the \code{rogers.pred} function returns an expected proportion
+eaten slightly less than zero, or exactly equal to 1 (which 
+causes an infinite negative log-likelihood if 
+no tadpoles are eaten); these minor errors happen
+because of round-off error.
+
+A negative log-likelihood function incorporating the
+proportion eaten:
+<<>>=
+NLL.rogerscomb = function(a,h,eps,beta,phi,T=combT,P=combP) {
+  if (h<0) return(NA)
+  prob = prop.eaten(combInit,combSize,h,P,T,eps,beta,phi)
+  dprob = dbinom(combKilled,prob=prob,size=combInit,log=TRUE)
+  -sum(dprob)
+}
+@ 
+
+Set the starting values by combining $h$ from the Rogers
+fit (which has to be put inside its own \code{list})
+with the attack rates from the size-dependence fit
+(which will be a slight underestimate since they don't
+incorporate the effects of handling time):
+<<>>=
+startvals = c(list(h=coef(FFR.rogers)["h"]),as.list(coef(FSP.modlogist)))
+@ 
+
+Finding the optimum, avoiding the alternate fit
+(fit \#2 above) when profiling, and avoiding overflow
+errors is quite finicky in this case.
+The easiest way to avoid the alternate fit is
+to restrict $\beta$, but using the \code{L-BFGS-B}
+optimizer leads to lots of headaches with \code{NA}s
+being produced in the Lambert $W$ function.
+I used a two-stage method --- first, optimizing
+with \code{method="Nelder-Mead"} and using
+\code{confint(FPcomb,method="quad")} to get
+approximate confidence limits:
+
+<<cache=TRUE>>=
+FPcomb = mle2(NLL.rogerscomb,start=startvals,
+              method="Nelder-Mead")
+confint(FPcomb,method="quad")
+@ 
+
+<<eval=FALSE,echo=FALSE,cache=TRUE>>=
+FPci2 = try(confint(FPcomb),silent=TRUE)
+startvals2 = list(h=0.88254539,eps=-0.01068388,
+  beta=0.93631205,phi=383.67804375)
+FPcomb2 = mle2(NLL.rogerscomb,start=startvals2,
+  method="Nelder-Mead",control=list(parscale=c(1,1,1,500)))
+@ 
+
+Then using slightly larger values for
+the upper and lower bounds to 
+refit the model and get 
+more precise confidence limits
+(\code{confint} must use the
+same optimization rules that were
+used in the original fit). 
+Getting this to work took
+some frustrating trial and error,
+including 
+incorporating debugging statements like
+<<eval=FALSE>>=
+cat(h,eps,beta,phi,"\n")
+@ 
+or 
+<<eval=FALSE>>=
+if (any(!is.finite(prob))) cat("NAs:",h,eps,beta,phi,"\n")
+@ 
+or
+<<eval=FALSE>>=
+if (any(!is.finite(dprob))) {
+  browser()
+}
+@
+into the \code{NLL.rogerscomb} function
+to track down where the problems were
+occurring in order to set bounds that would prevent
+\code{NA}s. 
+\code{cat} prints a list of variables to the screen
+in the middle of a function evaluation (\code{"\textbackslash n}")
+specifies a new line, while \code{browser} stops the
+function and lets you examine the values of different
+variables.
+In the course of this exploration
+I also went back and incorporated
+the minimum and maximum bounds
+in \code{prop.eaten}, which I had
+initially left out.
+
+<<cache=TRUE>>=
+FPcomb = mle2(NLL.rogerscomb,start=startvals,
+              method="L-BFGS-B",
+              lower=c(0.7,0.5,1,14),
+              upper=c(1.8,2.25,2,20),
+              control=list(parscale=c(1,1,1,10)))
+FPcomb.ci = confint(FPcomb)
+@ 
+
+<<echo=FALSE,cache=TRUE>>=
+NLL.rogerscomb.bb = function(a,h,eps,beta,phi,
+  theta,T=combT,P=combP) {
+  if (h<0) return(NA)
+  prob = prop.eaten(combInit,combSize,h,P,T,eps,beta,phi)
+  dprob = dbetabinom(combKilled,prob=prob,size=combInit,theta=theta,log=TRUE)
+  -sum(dprob)
+}
+FPcomb.bb = mle2(NLL.rogerscomb.bb,start=c(startvals,list(theta=100)),
+              method="L-BFGS-B",
+              lower=c(0.7,0.5,1,14,0.1),
+              upper=c(1.8,2.25,2,20,Inf),
+              control=list(parscale=c(1,1,1,10,100)))
+theta.ci = confint(FPcomb.bb,parm="theta")
+@ 
+
+What is the combined estimate of the
+proportion eaten under the conditions
+of the size-predation experiment
+(12.8~mm body length, 2 predators
+in an area of 
+\Sexpr{round(xpars.Sizepred$area,2)}~m$^2$
+for 3 days)?  How well does it
+match the estimate based only
+on the size-predation experiment?
+(That is, does combining the
+data change the baseline estimate
+from the size-predation experiment?)
+
+Figure~\ref{fig:FPfit2} is mildly alarming
+at first sight, showing that the estimate
+of the size refuge changes markedly when
+we incorporate the data from the
+functional response experiment.
+That suggests a major difference
+between the two experiments.
+A closer look, however, shows that the
+major difference between the results
+falls in a region where we don't have any data,
+between 12.8 and 21~mm body length.
+The slightly
+higher predation rate in the functional response
+experiment (even corrected for predator exposure)
+pulls the curve up.
+
+% SKIP delta method
+% Calculating the uncertainty from the original
+% estimate (size-predation data only), by the delta
+% method (calculating the point estimate, the
+% variance by the delta method, and
+% $\mu \pm 1.96 \sigma$):
+<<echo=FALSE,eval=FALSE>>=
+c1 = coef(FSP.modlogist)
+FSP.expprop.mean = modlogist(12.8,c1["eps"],c1["beta"],c1["phi"])
+FSP.exppropvar = deltavar(exp(eps*(phi-12.8))/(1+exp(beta*eps*(phi-12.8))),
+         meanval=coef(FSP.modlogist),Sigma=vcov(FSP.modlogist))
+FSP.expprop.deltaci = FSP.expprop.mean+c(-1.96,1.96)*sqrt(FSP.exppropvar)
+@ 
+
+How would we go about quantifying the uncertainty
+in the two curves and convincing ourselves that
+they're not (statistically) significantly different?
+
+Calculating the estimates of the proportion eaten
+at size 12.8~mm from the size-predation fit alone:
+<<>>=
+c1 = coef(FSP.modlogist)
+FSP.expprop.mean = modlogist(12.8,c1["eps"],c1["beta"],c1["phi"])
+@ 
+and from the combined fit:
+<<>>=
+c2 = coef(FPcomb)
+FP.expprop.mean = prop.eaten(N0=10,S=12.8,c2["h"],
+  P=2/0.08,T=3,eps=c2["eps"],beta=c2["beta"],phi=c2["phi"])
+@ 
+The estimated predation proportions
+are 
+\Sexpr{round(FSP.expprop.mean,2)} for the size-predation
+experiment alone and
+\Sexpr{round(FP.expprop.mean,2)} for the combined data --- %
+a difference that certainly might be biologically
+significant, if it were statistically significant.
+
+As discussed in Chapter~7,
+population projection intervals are a simple
+way to calculate the confidence intervals
+of a quantity of interest that is not a parameter
+in the model.
+Using \code{mvrnorm} to generate 5000 values from
+the sampling distribution of the parameters and
+calculating the 95\% population projection intervals
+of the size-predation data:
+<<>>=
+set.seed(1001)
+FSP.expprop.pars = mvrnorm(5000,mu=c1,Sigma=vcov(FSP.modlogist))
+FSP.expprop.val = numeric(5000)
+for (i in 1:5000) {
+  FSP.expprop.val[i] = modlogist(12.8,FSP.expprop.pars[i,1],
+                                  FSP.expprop.pars[i,2],FSP.expprop.pars[i,3])
+}
+FSP.expprop.ppi = quantile(FSP.expprop.val,c(0.025,0.975))
+@ 
+
+Doing the same thing for the combined fit:
+<<echo=FALSE,eval=FALSE>>=
+FP.exppropvar = deltavar(prop.eaten(N0=10,S=12.8,h,P=2/0.08,T=3,eps,beta,phi),
+  meanval=coef(FPcomb),Sigma=vcov(FPcomb))
+FP.expprop.deltaci = FP.expprop.mean+c(-1.96,1.96)*sqrt(FP.exppropvar)
+@ 
+
+%Using \code{mvrnorm} to generate 5000 values from
+%the sampling distribution of the parameters and
+%calculating the 95\% population projection intervals:
+<<cache=TRUE>>=
+FP.expprop.pars = mvrnorm(5000,mu=c2,Sigma=vcov(FPcomb))
+FP.expprop.val = numeric(5000)
+for (i in 1:5000) {
+  FP.expprop.val[i] = prop.eaten(N0=10,S=12.8,P=2/0.08,T=3,
+                                  h=FP.expprop.pars[i,"h"],
+                                  eps=FP.expprop.pars[i,"eps"],
+                                  beta=FP.expprop.pars[i,"beta"],
+                                  phi=FP.expprop.pars[i,"phi"])
+}
+FP.expprop.ppi = quantile(FP.expprop.val,c(0.025,0.975))
+@
+
+<<echo=FALSE,results=tex>>=
+##esttab = rbind(c(FSP.expprop.mean,NA,NA),
+##               c(NA,FSP.expprop.deltaci),
+##                c(NA,FSP.expprop.ppi),
+##                c(FP.expprop.mean,NA,NA),
+##                c(NA,FP.expprop.deltaci),
+##                c(NA,FP.expprop.ppi))
+## dimnames(esttab) = list(c("size-pred",
+##                            "delta method",
+##                            "PPI",
+##                            "combined",
+##                            "delta method",
+##                            "PPI"),
+##                          c("mean","low","high"))
+esttab = rbind(c(FSP.expprop.mean,FSP.expprop.ppi),
+                c(FP.expprop.mean,FP.expprop.ppi))
+dimnames(esttab) = list(c("size-pred","combined"),
+                         c("mean","low","high"))
+latex(round(esttab,3),file="",title="",table.env=FALSE)
+@ 
+
+The results show that the uncertainty in the
+estimates is large enough that at least 
+the confidence limits of the size-predation estimates
+(\Sexpr{round(FSP.expprop.ppi[1],2)},
+\Sexpr{round(FSP.expprop.ppi[2],2)})
+overlap with the estimate from the combined
+data
+(\Sexpr{round(FP.expprop.mean,2)}),
+if not \emph{vice versa}.
+
+\cite{VoneshBolker2005} took results like these
+(although they did not try fitting the combined data
+as we have done here) and used them together with
+size-dependent growth rate estimates from a growth experiment
+to simulate the survival of tadpoles hatching
+at different sizes.  They found that because
+smaller-starting tadpoles grew faster through
+the window of vulnerability between 10 and 20~mm,
+their overall survival was comparable to tadpoles
+that hatched at a larger size.
+
+This analysis has opened up several
+more questions.
+\begin{itemize}
+\item Because it must compromise between two
+sets of data with slightly different survival rates,
+the fit of the combined curve to the size-predation
+data is slightly worse than the fit of the
+size-predation curve itself (Figure~\ref{fig:FPfit2}).
+We initially rejected the need for a beta-binomial
+model to account for overdispersion, but the
+larger deviations suggest that it might be
+worth testing again.
+\item Following \cite{VoneshBolker2005}, we
+assumed that predator efficiency scaled with
+area, not volume; this approach may have
+understated the predator threat in the
+functional response experiment, leading to
+an inflation of the expected proportion
+eaten per unit of exposure.  
+<<echo=FALSE>>=
+spredarea = with(xpars.Sizepred,P*T/area)
+frpredarea = with(xpars.Funcresp,P*T/area)
+spredvol = with(xpars.Sizepred,P*T/vol)
+frpredvol = with(xpars.Funcresp,P*T/vol)
+@ 
+The total predator exposure ($P \times T$)
+in the functional response experiment
+was $14 \times 3 =42$ predator-days, in contrast to
+$3 \times 2 = 6$ predator-days for the
+size-predation experiment.  If we calculate
+$PT/\mbox{area}$ for each experiment
+and take the ratio, we get a relative
+risk of 
+$\Sexpr{round(frpredarea,1)}/\Sexpr{round(spredarea,1)} =
+\Sexpr{round(frpredarea/spredarea,1)}$;
+overall predator pressure per unit area
+was lower in the functional response experiment.
+On the other hand, repeating the same calculation
+but scaling by volume gives
+a risk ratio of 
+$\Sexpr{round(frpredvol,2)}/\Sexpr{round(spredvol,2)} =
+\Sexpr{round(frpredvol/spredvol,2)}$ --- less
+difference, leading to less inflation of the
+per-predator risk in the functional response.
+We could adjust the model by adding a scaling factor
+to account for the differences between the
+experiments, and tentatively interpret it
+in terms of the geometry of the foraging arena
+\citep{Petersen+1999}.
+While we clearly don't have enough data to make
+a decision just from these two experiments,
+the slight discrepancy between the results of
+the two experiments does open up
+some interesting questions \ldots
+\end{itemize}
+
+\begin{figure}
+<<cache=TRUE,echo=FALSE>>=
+svec = seq(0,40,by=0.25)
+FP.expprop = prop.eaten(N0=10,S=svec,c2["h"],
+  P=2/0.08,T=3,eps=c2["eps"],beta=c2["beta"],phi=c2["phi"])
+FSP.expprop = with(as.list(coef(FSP.modlogist)),
+  modlogist(svec,eps,beta,phi))
+FP.expprop.pars = mvrnorm(5000,mu=c2,Sigma=vcov(FPcomb))
+FP.expprop.vals = 
+  t(apply(FP.expprop.pars,1,
+        function(x) {
+          with(as.list(x),prop.eaten(N0=10,S=svec,P=2/0.08,T=3,
+                                     h=h,
+                                  eps=eps,
+                                  beta=beta,
+                                  phi=phi))}))
+FP.expprop.pars = mvrnorm(5000,mu=c2,Sigma=vcov(FPcomb))
+FSP.expprop.vals = 
+  t(apply(FSP.expprop.pars,1,
+        function(x) {
+          with(as.list(x),modlogist(svec,eps,beta,phi))}))
+FSP.env = t(apply(FSP.expprop.vals,2,quantile,c(0.025,0.975)))
+FP.env = t(apply(FP.expprop.vals,2,quantile,c(0.025,0.975)))
+@ 
+<<fig=TRUE,echo=FALSE>>=
+op = par(lwd=2,bty="l",las=1,mgp=c(3,1,0),cex=1.5)
+svec = seq(0,40,by=0.25)
+with(ReedfrogSizepred,sizeplot(TBL,Kill/10,ylim=c(0,1),
+                               xlab="Total body length",
+                               ylab="Proportion eaten"))
+lines(svec,FP.expprop)
+lines(svec,FSP.expprop,lty=2)
+abline(v=12.8,col="gray")
+## matlines(svec,FSP.env,lty=2,col="gray")
+## matlines(svec,FP.env,lty=1,col="gray")
+
+## c3 = coef(FPcomb2)
+## FP.expprop2 = prop.eaten(N0=10,S=svec,c3["h"],
+##   P=2/0.08,T=3,eps=c3["eps"],beta=c3["beta"],phi=c3["phi"])
+## lines(svec,FP.expprop2,lty=3)
+## bit = 0.3
+## plotCI(12.8-bit,FP.expprop.mean,li=FP.expprop.ppi[1],ui=FP.expprop.ppi[2],
+##        add=TRUE,pch=NA)
+## plotCI(12.8+bit,FSP.expprop.mean,li=FSP.expprop.ppi[1],ui=FSP.expprop.ppi[2],
+##        add=TRUE,pch=NA,slty=2)
+legend("topright",c("size-pred.","combined"),lty=2:1,bty="n")
+par(op)
+@ 
+\caption{Observed number eaten as a function of size;
+  predicted values from size-predation experiment only
+and from all data combined.}
+\label{fig:FPfit2}
+\end{figure}
+
+
+<<echo=FALSE>>=
+detach(ReedfrogSizepred)
+detach(ReedfrogFuncresp)
+@ 
+
+\section{Goby survival analysis}
+
+Next, we will take a look at the effects of density and
+``quality'' (spatial variation in habitat quality 
+correlated with natural rates of immigration) on
+the survival of the small marine fishes (gobies)
+\emph{Elacatinus evelynae} and \emph{E. prochilos}
+in field experiments \citep{Wilson2004}.
+
+The questions here are straightforward:
+how fast do fish die (or disappear) at different
+levels of density and quality?  Do quality,
+density, or their interaction (i.e. an effect
+of quality on the density-dependent mortality rate)
+have significant effects?
+
+As a reminder, the data contain information on
+the survival of marine gobies in experiments where
+ambient density was manipulated on coral heads
+with different background settlement rates.
+Settlement
+rates were suspected to be correlated with
+some unknown aspect of environmental quality, such
+as flow patterns or availability of refuges
+\citep{WilsonOsenberg2002}, which
+revealed itself through lower mortality rates
+(Figure~\ref{fig:gobyrep}).
+
+\subsection{Preliminaries}
+Attach the data:
+<<>>=
+library(emdbookx)
+data(GobySurvival)
+attach(GobySurvival)
+@ 
+
+In the data, time starts from day~1 (the day the
+fish were put on the reef) and runs until day~12;
+any fish that survived past the end of
+the experiment (i.e. they were still present on day~12)
+were given a ``last day seen'' (\code{d2}) value of 70
+in the original data set.
+For the following analysis, 
+time should start from zero and run
+to $\infty$ (the cumulative distribution
+functions we will be using can handle
+infinite values), so we will subtract 1 from
+\code{d1} and \code{d2} and set the ending
+value of \code{d2} to \code{Inf}:
+<<>>=
+day1 = d1-1
+day2 = ifelse(d2==70,Inf,d2-1)
+@ 
+
+%We need one more adjustment; for some parameters,
+%the Weibull 
+<<echo=FALSE,eval=FALSE>>=
+day1 = pmax(day1,.Machine$double.eps)
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+xmax = 1
+op = par(cex=1.5,lwd=2,
+  mgp=c(2.5,0.75,0),las=1,bty="l")
+par(mfrow=c(1,2))
+shapes = c(1,0.5,0.2)
+curve(pweibull(x,shape=shapes[1],scale=0.5,lower.tail=FALSE),from=0.001,to=xmax,log="y",
+      ylab="Fraction surviving",xlab="Time",ylim=c(0.1,1),axes=FALSE)
+axis(side=1,at=c(0,0.5,1))
+axis(side=2)
+box()
+curve(pweibull(x,shape=shapes[2],scale=0.5,lower.tail=FALSE),add=TRUE,lty=2)
+curve(pweibull(x,shape=shapes[3],scale=0.5,lower.tail=FALSE),add=TRUE,lty=3)
+## abline(h=exp(-1),col=2)
+## abline(v=0.5,col=2)
+text(rep(xmax+0.1,3),pweibull(xmax,shape=shapes,scale=0.5,lower.tail=FALSE),
+     paste("shape=",shapes,sep=""),
+     adj=0,xpd=NA)
+text(corner.loc(x=1,y=1),adj=1,"scale=0.5",cex=1.5)
+par(mar=c(5,3,4,4)+0.1)
+scales = c(0.5,1,2)
+curve(pweibull(x,shape=0.5,scale=scales[1],lower.tail=FALSE),from=0.001,to=xmax,
+      log="y",
+      axes=FALSE,ylim=c(0.1,1),xlab="Time",ylab="")
+box()
+axis(side=1,at=c(0,0.5,1))
+curve(pweibull(x,shape=0.5,scale=scales[2],lower.tail=FALSE),add=TRUE,lty=2)
+curve(pweibull(x,shape=0.5,scale=scales[3],lower.tail=FALSE),add=TRUE,lty=3)
+text(rep(xmax+0.1,3),pweibull(xmax,shape=0.5,scale=scales,lower.tail=FALSE),
+     paste("scale=",scales,sep=""),
+     adj=0,xpd=NA)
+## abline(h=exp(-1))
+text(corner.loc(x=1,y=1),adj=1,"shape=0.5",cex=1.5)
+par(op)
+@ 
+\caption{Comparisons of Weibull distributions
+with differing scale and shape parameters.
+The \R\ commands to plot the curves are variations on 
+\code{curve(pweibull(x,shape=...,scale=...,lower.tail=FALSE))}.}
+\label{fig:weib}
+\end{figure}
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op = par(lwd=2,bty="l",las=1,mgp=c(3,1,0),cex=1.5)
+dens.cat = factor(ifelse(density>median(density),"high","low"),
+                   levels=c("low","high"))
+qual.cat = factor(ifelse(qual>median(qual),"high","low"),
+                   levels=c("low","high"))
+intcat = interaction(qual.cat,dens.cat)
+cattab = table(intcat)
+## when (average) did they die?
+meansurv = (d1+d2)/2
+## tabulate
+morttab = table(meansurv,intcat)
+## reverse order
+morttab = morttab[nrow(morttab):1,]
+## get cumulative sum: this is number surviving until day x
+csurvtab = apply(morttab,2,cumsum)
+## divide by total number in category
+cnsurvtab = sweep(csurvtab,2,cattab,"/")
+days = as.numeric(rownames(csurvtab))
+matplot(days,cnsurvtab,type="s",xlab="Time (days)",
+        ylab="Proportion of cohort surviving",
+        log="y",col=1,xlim=c(0,40))
+legend("topright",
+       c("high quality/high density",
+         "low quality/low density",
+         "high quality/low density",
+         "low quality/high density"),bty="n",
+       lty=c(4,1,2,3),cex=0.9)
+par(op)
+@ 
+\caption{Goby survival curves by quality and density
+categories (above/below median values), based on
+mean survival time \code{(d1+d2)/2}.}
+\label{fig:gobyrep}
+\end{figure}
+
+%Survival rates over time:
+%calculate mortality per day?
+<<echo=FALSE,eval=FALSE>>=
+numsurv = diag(table(d1,d2))
+days = c(1,4,8,11,70)
+csurv = nrow(X)-c(0,cumsum(numsurv))
+1-exp(log(csurv[2:5]/csurv[1:4])/diff(days))
+@ 
+
+As discussed in Chapter~\ref{chap:opt},
+we will use the Weibull distribution to
+fit the data, allowing for the observed
+decrease in mortality rate over time.
+We are interested in whether mortality
+is density-dependent, and whether quality
+affects either the 
+density-independent or the
+density-dependent mortality rate.
+We may need to allow for the possibility
+that different experiments show
+different results (this data
+set combines the results from 5~experiments
+run over the course of three years).
+
+The most complete model of the survival
+time of an individual fish
+in experiment $x$ with density
+(number of neighboring fish) $d$
+and quality (background settlement rate) $q$
+would be:
+\begin{equation}
+\begin{split}
+T & \sim \mbox{Weibull}(a_{x}(d,q),s_{x}(d,q)) \\
+a_{x}(d,q) & = \exp(\alpha_{a,x} + \beta_{a,x} \cdot q
++ (\gamma_{a,x} + \delta_{a,x} \cdot q) d) \\
+s_{x}(d,q) & = \exp(\alpha_{s,x} + \beta_{s,x} \cdot q
++ (\gamma_{s,x} + \delta_{s,x} \cdot q) d)
+\end{split}
+\end{equation}
+In other words, we are fitting the shape and
+scale parameters on the log scale.
+For both the shape and the scale parameter we are allowing
+for a baseline value ($\alpha$),
+a linear effect (on the log scale) of quality
+($\beta$), a linear effect of density ($\gamma$),
+and an interaction between density and quality
+($\delta$) --- i.e., a linear effect of quality on
+the density-dependent mortality coefficient.
+As indicated by the $x$ in the subscripts, we
+are also allowing each parameter to be different
+in each experiment, for a total of 40 (!)
+parameters.  Given that we have only 
+\code{length(day1)} observations, unevenly
+divided among experiments (with as
+few as \Sexpr{min(table(exper))} observations
+in an experiment), and that each observation
+tells us fairly imprecisely when a fish disappeared,
+this model is certainly more complex than we
+can hope to fit.
+
+We might try anyway,
+fitting all possible submodels
+and using model-selection rules to decide which
+pieces really belong in the model\footnote{The statistical
+equivalent of the advice of a crusading abbot
+who when asked how to tell the innocents and
+the heretics apart said, ``Kill them all, God will recognize his own'' \ldots},
+but even so there would be far too many submodels to consider.
+There are two possibilities
+for the intercept parameter $\alpha$ (the same for
+all experiments or different among experiments),
+and three for each of the other parameters
+$\beta$, $\gamma$, and $\delta$
+(zero for all experiments, meaning no effect
+of density or quality or their interaction;
+non-zero but the same for all experiments;
+or different for different experiments).
+There are 34~possible models for shape and 34 for scale%
+\footnote{You might expect
+$2 \times 3 \times 3 \times 3=54$ for each parameter
+of the Weibull, but there are a few combinations that
+don't make sense --- specifically, 
+fitting the $\delta$ (density-quality
+interaction parameter) if either the density
+or quality effect is set to zero.}
+or
+$34^2=1156$ models in total, even for this
+moderate-sized problem!
+
+We must make some \emph{a priori} decisions
+about which parameters to drop --- decisions
+made harder by the difficulty of
+graphically representing the dependence of survival
+on continuous covariates.
+Figure~\ref{fig:weib} shows the effects
+of the shape and scale parameter on the Weibull
+distribution.  Comparing these difference to
+the survival curves in Figure~\ref{fig:gobyrep} suggests
+that the scale, but not the shape, of the
+Weibull distribution varies between density 
+and quality categories.
+Figure~\ref{fig:gobyrep}
+also suggests an interaction between quality 
+and density categories, because 
+survival in the low quality/high density category
+is considerably below that in any other category.
+Figure~\ref{fig:gobyrep} does not separate the
+results of different experiments. It might be
+worth drawing this figure to check, but for
+now we will assume that the only possible
+difference among experiments is in the baseline
+scale parameter, not in the effects of
+density and quality.
+\cite{Wilson2004}
+used a standard survival analysis to demonstrate
+non-significant interactions between experiment
+and density/quality,
+supporting this assumption.
+
+
+% alpha(2) x beta(2) x delta(2) x gamma(2) = 16 
+% { 0, {x, b , d , g} , {xb, xd, xg, bd, bg, dg}, {xbd, xbg, bdg, xdg},
+%    xbdg} -- but (bg) and (dg) combinations are not allowed so
+% { 0, {x, b , d , g} , {xb, xd, xg, bd}, {xbd },
+%    -- but (bg) and (bd) combinations are not allowed so
+%      down to 10?  (16 - 4 - 4 + 2)
+
+These simplifications reduce our most complex model
+to 
+\begin{equation}
+\begin{split}
+T & \sim \mbox{Weibull}(a,s_{x}(d,q)) \\
+s_{x}(d,q) & = \exp(\alpha_{s,x} + \beta_{s} \cdot q
++ (\gamma_{s} + \delta_{s} \cdot q) d),
+\end{split}
+\end{equation}
+with
+9~parameters (5 for treatment effects on scale, 3 for
+the effects of density, quality and their interaction on scale,
+and 1 for the shape parameter).
+Our suite of models reduces to 10.
+If we denote
+the simplest model (a single shape and scale parameter)
+by \code{0};
+the presence of treatment effects 
+($\alpha_i \neq \alpha_j$ for at least one
+pair of experiments) by \code{x};
+a quality effect ($\beta_{s} \neq 0$)
+by \code{q}; a density effect ($\gamma_s >0$)
+by \code{d}; and a quality-density interaction ($\delta_s >0$)
+by \code{i}, then our remaining models
+with their numbers of parameters are: \\
+\begin{center}
+\begin{tabular}{ccccc}
+\code{0} (2) & \code{x} (6) & \code{xq} (7) & \code{xqd} (8) & \code{xqdi} (9) 
+\\
+             & \code{q} (3) & \code{xd} (7) & \code{qdi} (5) &    \\
+             & \code{d} (3) & \code{qd} (4) &                &
+\end{tabular}
+\end{center}
+(These are all combinations of \code{x}, \code{q}, \code{d}, and \code{i},
+with the restriction that \code{i}
+cannot be included without both \code{q} and \code{d}.)
+If we wanted to allow the shape parameter to vary with
+quality and density, but not experiment, we would
+have a most-complex model with 12~parameters and
+a total of 40 ($4 \times 10$) model possibilities.
+
+Here is the most complex model, which fits
+scale and shape parameters that differ with quality,
+density, and their interaction:
+<<>>=
+NLL.GS.xqdi = function(lscale0,lscale.q,lscale.d,lscale.i,
+                          lscale.x2,lscale.x3,lscale.x4,lscale.x5,
+                          lshape) {
+  lscalediff = c(0,lscale.x2,lscale.x3,lscale.x4,lscale.x5)
+  scale=exp(lscale0+lscalediff[exper]+
+    lscale.q*qual+(lscale.d+lscale.i*qual)*density)
+  shape = exp(lshape)
+  -sum(log(pweibull(day2,shape,scale)-
+          pweibull(day1,shape,scale)))
+}
+@ 
+The only unusual thing here is that we've parameterized
+the difference among experiments so that the baseline
+parameter (\code{lscale0}) represents the log of the
+scale parameter (at density=0 and quality=0) in 
+experiment~1, while the experiment parameters
+(\code{lscale.x2}, etc.) represent the differences
+between experiment~1 and the other experiments:
+this parameterization is consistent with the way that
+other functions in \R\ define parameters, and makes
+it possible to test the hypothesis that all experiments
+are the same by setting \code{lscale.x2} and the other
+experiment parameters to zero.
+The differences among parameters are indexed by
+\code{exper} and added to the baseline value along
+with the effects of density and quality.
+
+Since we don't know exactly when (between \code{day1}
+and \code{day2}) a given fish disappeared, we calculate
+the probability that it disappeared somewhere between
+\code{day1} and \code{day2}
+taking the difference between the probability
+that it disappeared before \code{day2}
+(\code{pweibull(day2,...)}) and the probability that
+it disappeared before \code{day1} (\code{pweibull(day1,...)});
+we take the log only \emph{after} calculating the difference.
+
+What about starting values for this model?
+The mean of the Weibull distribution with
+shape $a$ and scale $s$ is $s \Gamma(1+1/a)$,
+which for an exponential ($a=1$) is equal to
+$s$.
+We'll start $\log(s)$ from the log of
+the overall mean survival time
+(calculated from \code{d1} and \code{d2}
+rather than \code{day1} and \code{day2} because
+\code{day2} contains infinite values that
+will mess up the mean calculation), and
+$\log(a)$ from 0, which represents an
+exponential distribution.
+Since the rest of the parameters represent
+differences from the baseline case, we'll try
+starting them all from zero.
+
+
+<<cache=TRUE>>=
+totmeansurv = mean((d1+d2)/2)
+startvals.GS = list(lscale0=log(totmeansurv),
+                  lscale.x2=0,lscale.x3=0,lscale.x4=0,lscale.x5=0,
+                  lscale.q=0,lscale.d=0,lscale.i=0,
+                  lshape=0)
+GS.xqdi = mle2(NLL.GS.xqdi,startvals.GS)
+@ 
+
+<<echo=FALSE,eval=FALSE>>=
+## this also works!
+dicweib = function(x,shape,scale,log=FALSE) {
+  if (is.matrix(x)) {
+    day1 = x[,1]
+    day2 = x[,2]
+  } else {
+    day1 = x[1]
+    day2 = x[2]
+  }
+  v = log(pweibull(day2,shape,scale)-pweibull(day1,shape,scale))
+  if (log) v else exp(v)
+}
+
+fexper = factor(exper)
+mle2(cbind(day1,day2)~dicweib(exp(shape),exp(scale)),
+     parameters=list(scale~fexper+qual*density),
+     start=list(scale=log(totmeansurv),shape=0))
+@
+
+Looking at the estimates of the parameters
+and their approximate $p$-values:
+<<>>=
+summary(GS.xqdi)
+@ 
+
+From this summary, it appears that there may be an
+effect of experiment (experiments 2 and 3  both
+show significantly shorter survival times than
+experiment~1), an effect of density,
+and a shape parameter that is significantly less than
+1 ($\log(a)<0$) --- that is, 
+\emph{per capita} mortality declines significantly
+with time.
+
+In a stepwise analysis, we would continue by
+dropping the interaction term from the model
+(it doesn't really make sense to drop the
+parameters for experiments 4 and 5, since they
+are part of the overall difference among experiments).
+One shortcut for dropping terms from an \code{mle}
+fit, rather than writing another likelihood function
+that is missing one term, is to use the
+\code{fixed=} argument to set a subset of the
+parameters to zero.
+For example, to drop the interaction term from the model:
+<<cache=TRUE>>=
+GS.xqd = mle2(NLL.GS.xqdi,startvals.GS,fixed=list(lscale.i=0))
+@ 
+
+We can use the Likelihood Ratio Test
+on particular series of nested hypotheses
+to test specific conclusions.
+For example, we might be most interested in testing
+whether quality and density have an effect.
+We attempt to drop the interaction term first,
+then quality, then density.
+Because the differences between experiments
+are potentially important, and an unavoidable
+part of the experimental design, 
+we leave them in the model.
+Therefore we want to test the sequence of models
+\code{xqdi} $\to$ \code{xqd} $\to$ \code{xd} $\to$ \code{x}.
+
+Fitting the remaining two models in the sequence:
+<<cache=TRUE>>=
+GS.xd = mle2(NLL.GS.xqdi,startvals.GS,
+             fixed=list(lscale.i=0,lscale.q=0))
+GS.x = mle2(NLL.GS.xqdi,startvals.GS,
+            fixed=list(lscale.i=0,lscale.q=0,lscale.d=0))
+@ 
+Applying \code{anova} to run the Likelihood Ratio Test:
+<<>>=
+anova(GS.xqdi,GS.xqd,GS.xd,GS.x)
+@ 
+
+This analysis confirms the results of \code{summary} on
+the most complex model to some extent.
+It finds that the effect of the interaction
+(model 1 vs. 2) is insignificant and the effect
+of density is significant at $p=0.03$ (model 3 vs. 4).
+The effect of quality (when added
+to a model that already accounts for density)
+is weakly significant.  
+The parameter values (\code{coef(GS.xqd)})
+show the positive effect of quality 
+(\Sexpr{round(coef(GS.xqd)["lscale.q"],3)})
+to be about half the negative effect of density
+(\Sexpr{round(coef(GS.xqd)["lscale.d"],3)}),
+ on the log scale; adding one competitor
+to a reef decreases the scale parameter
+(and hence survival) by a factor of 
+$e^{\Sexpr{round(coef(GS.xqd)["lscale.d"],3)}}=
+\Sexpr{round(exp(coef(GS.xqd)["lscale.d"]),2)}$,
+while an additional background settler indicates
+some element of quality that increases
+survival on average by a factor of
+$e^{\Sexpr{round(coef(GS.xqd)["lscale.q"],3)}}=
+\Sexpr{round(exp(coef(GS.xqd)["lscale.q"]),2)}$.
+
+<<cache=TRUE,echo=FALSE>>=
+GS.qdi = mle2(NLL.GS.xqdi,startvals.GS,fixed=list(lscale.x2=0,lscale.x3=0,lscale.x4=0,lscale.x5=0))
+GS.qd = mle2(NLL.GS.xqdi,startvals.GS,
+             fixed=list(lscale.i=0,
+               lscale.x2=0,lscale.x3=0,lscale.x4=0,lscale.x5=0))
+
+GS.xq = mle2(NLL.GS.xqdi,startvals.GS,
+            fixed=list(lscale.i=0,lscale.d=0))
+GS.d = mle2(NLL.GS.xqdi,startvals.GS,
+            fixed=list(lscale.i=0,lscale.x2=0,lscale.x3=0,lscale.x4=0,
+              lscale.x5=0,lscale.q=0))
+GS.q = mle2(NLL.GS.xqdi,startvals.GS,
+            fixed=list(lscale.i=0,
+              lscale.x2=0,lscale.x3=0,lscale.x4=0,lscale.x5=0,lscale.d=0))
+GS.0 = mle2(NLL.GS.xqdi,startvals.GS,
+            fixed=list(lscale.i=0,lscale.x2=0,lscale.x3=0,lscale.x4=0,
+              lscale.x5=0,lscale.d=0,lscale.q=0))
+@ 
+
+<<echo=FALSE>>=
+a1 = AICtab(GS.xqdi,GS.xqd,GS.qdi,GS.xq,GS.xd,GS.qd,GS.x,GS.q,GS.d,GS.0,delta=TRUE,weights=TRUE)
+a2 = AICctab(GS.xqdi,GS.xqd,GS.qdi,GS.xq,GS.xd,GS.qd,GS.x,GS.q,GS.d,GS.0,
+              nobs=nrow(GobySurvival),delta=TRUE)
+b1 = BICtab(GS.xqdi,GS.xqd,GS.qdi,GS.xq,GS.xd,GS.qd,GS.x,GS.q,GS.d,GS.0,
+              nobs=nrow(GobySurvival),delta=TRUE)
+atab = cbind(a1$df,a1$dAIC,a1$weight,a2$dAICc,b1$dBIC)
+rownames(atab) = gsub("GS\\.","",attr(a1,"row.names"))
+## need to double backslashes
+colnames(atab) = c("params","$\\Delta \\mbox{AIC}$","AIC weights","$\\Delta \\mbox{AIC}_c$","$\\Delta \\mbox{BIC}$")
+atab = round(atab[order(atab[,2]),],3)
+@ 
+
+Alternatively, we can simply fit the remaining
+6 models (\code{qdi}, \code{qd}, \code{xq},
+\code{d}, \code{q}, \code{0} --- not shown) and use
+information criteria (\code{AICtab}, \code{AIcctab},
+or \code{BICtab}) to get the following results:
+<<echo=FALSE,results=tex>>=
+latex(round(atab,2),file="",table.env=FALSE,title="model")
+@ 
+
+This is perhaps too much information --- because of the different
+weighting used by the different information criteria, they give
+qualitatively different answers.  AIC 
+and \aicc\ prefer the model that
+incorporates the effects of quality and density, with all the models
+considered plausible ($\Delta \mbox{AIC}, \Delta \mbox{AIC}_c <6$ 
+for all candidate models) but with the
+simplest models weighted very little; 
+in contrast, BIC prefers
+the simplest models (\code{0}, \code{d}), ruling out the most complex
+ones ($\Delta \mbox{BIC}>10$ for \code{xqd}, \code{xqdi}, \code{xd},
+\code{xq}, \code{x}).
+
+What should one conclude in this situation, with too many possible answers?
+There isn't really a good answer, except that in reality
+one should decide \emph{in advance} which model selection approach
+(if any) comes closest to answering the kind of question
+you have, rather than trying several and then having
+to choose among the answers.  
+Here there is fairly strong evidence that density has an effect, and based
+on the coefficients the effect of quality is about half as strong (per
+fish present) as that of density.
+In terms of the range of values used in the experiment,
+density and quality have approximately equivalent effects 
+(density has a range of 9,
+from 2 to 11, while quality ranges from 1 to 18).
+
+There aren't too many loose ends in this particular analysis,
+but there are a number of possible directions for further
+exploration:
+\begin{itemize}
+\item We have followed standard survival analysis
+in making the mortality rate an exponential function
+of covariates such as density.  Fisheries biologists
+commonly model mortality as a linear (additive) function of density
+instead (i.e., $\mbox{Prob}(\mbox{survival to }t) \propto
+e^{-a+b\cdot d}$ rather than $\mbox{Prob}(\mbox{survival to }t) \propto
+e^{-e^{a+b\cdot d}}$).  The exponential analysis is more convenient
+because it guarantees that the mortality rate will 
+always be positive regardless
+of the parameters, thus avoiding the need for constrained
+optimization.
+For small mortality rates the analysis will give
+approximately the same answers, since by Taylor expansion
+the exponential is approximately linear near zero.
+It would be interesting to re-do the analysis with a linear
+model and see how similar the answers were.  More challengingly,
+one could explore the dependence of survival on density
+and quality in more detail --- perhaps graphically --- and
+see if a more flexible function could give a better answer.
+\item We ignored differences in shape parameter; it would
+be interesting to go back and explore the possibilities
+of differences in shape (representing the differences
+in change in mortality over time) some more, and with a wider
+variety of data; does the shape parameter vary with the
+mode of mortality?
+\end{itemize}
+
+\section{Seed removal}
+
+For the Duncan seed predation/seed removal data,
+some of the ecological questions are:
+how does the probability of seed removal
+vary as a function of distance from the
+forest edge (10 or 25~m)?  With species,
+possibly as a function of seed mass?
+By time?
+
+Since most of the predictor variables
+are categorical in this case (species;
+distance from forest), the deterministic
+models are relatively simple --- simply
+different probabilities for different
+levels of the factors.  On the other hand,
+the distribution of the number
+of seeds taken is unusual, so most
+of the initial modeling effort 
+will go into finding an appropriate stochastic model.
+
+\subsection{Preliminaries}
+
+Pull in the data:
+<<>>=
+data(SeedPred)
+@
+
+Drop \code{NA}s and records where
+there are zero seeds available: attach the
+results.
+<<>>=
+SeedPred = na.omit(subset(SeedPred,available>0))
+attach(SeedPred)
+@ 
+
+About 90\% of the data consist of ``zero taken'' entries.
+We don't want to ignore these data, but sometimes
+we can see more if we look only at the non-zero cases: we'll use
+\code{nz} for that case.
+
+<<>>=
+nz = subset(SeedPred,taken>0)
+@ 
+
+\subsection{Stochastic model: which distribution?}
+
+
+I used \code{barchart} from the \code{lattice}
+package to look at the data in a variety of different ways --- %
+rearranging the order of the factors in the table to 
+get different arrangements of panels and bars, plotting
+data with zero-taken data included and excluded,
+and adding dropping factors from the \code{table}
+command to see coarser views of the data:
+<<eval=FALSE>>=
+barchart(table(nz$taken,nz$available,nz$dist,nz$species),stack=FALSE)
+barchart(table(nz$taken,nz$species,nz$dist,nz$available),stack=FALSE)
+barchart(table(nz$species,nz$available,nz$dist,nz$taken),stack=FALSE)
+barchart(table(nz$available,nz$dist,nz$taken),stack=FALSE)
+barchart(table(nz$available,nz$species,nz$taken),stack=FALSE)
+@ 
+I could also have included the argument \code{subset=taken>0} to restrict
+the plots to non-zero data.
+
+
+Plot all data (not just cases where some seeds are taken):
+<<>>=
+barchart(table(available,dist,taken),stack=FALSE)
+@
+
+Plot by date:
+<<eval=FALSE>>=
+tcumfac = cut(nz$tcum,breaks=c(0,20,40,60,180))
+barchart(table(nz$available,tcumfac,nz$taken),stack=FALSE)
+barchart(table(available,tcumfac,taken),stack=FALSE)
+@ 
+Two additional useful arguments are \code{auto.key=TRUE},
+to draw a legend for the bar colors, and 
+\code{scales=list(relation="free")}, to allow different scales
+in each panel.
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+pcomb = table(nz$available,nz$taken)
+pcomb = sweep(pcomb,1,rowSums(pcomb),"/")
+trellis.par.set(canonical.theme(color=FALSE))
+print(barchart(pcomb[-1,],stack=FALSE,auto.key=list(x=0.8,y=0.8,corner=c(1,1),
+                                        title="Taken",reverse.rows=TRUE),
+               xlab="Frequency",ylab="Seeds available"))
+@ 
+\caption{Distribution of overall number of
+seeds taken as a function of the number available,
+when number available $>1$ and number taken $>0$.}
+\label{fig:seeddist}
+\end{figure}
+
+As with the reed frog predation
+experiment, the data are discrete
+and the results have an upper limit 
+(i.e., the number of seeds available for
+removal at the beginning of the interval).
+The zero-inflated
+binomial introduced in Chapter~4
+might make sense, if there were more
+zeros in the data set than expected from the binomial
+sampling process (e.g. if the probability distribution
+had modes both at zero and away from zero).
+This distribution
+would be appropriate if predators sometimes missed
+the site entirely.  However, 
+Figure~\ref{fig:seeddist} shows that the
+seed removal data set doesn't look
+like a zero-inflated binomial either, because
+the  distribution is lowest in the middle 
+and increases gradually for higher or lower
+values.
+Compare that with Figure~\ref{fig:zi} (p.~\pageref{fig:zi}),
+which shows that the
+probability distribution function of the zero-inflated
+binomial distribution usually drops toward zero,
+then has a spike at zero ($p(0)>p(1)$, $p(1)<p(2)$).
+
+Next I tried the beta-binomial distribution, which allows
+for variability in the underlying probabilities per
+trial and can be bimodal at $0$ and $N$ for
+extreme values of the overdispersion parameter,
+and a zero-inflated beta-binomial distribution.
+
+One should really test
+the fits of distributions on a small piece
+of the data set, or allowing for different parameters
+for each combination of factors: variation
+among groups can mask the shape of the
+underlying distribution.
+However, it can be tedious to try
+to fit parameters for an unknown distribution
+for all combinations of factors simultaneously,
+and the exploratory graphical analysis
+described above convinced me that the pattern
+shown in Figure~\ref{fig:seeddist} holds up
+even when the data are disaggregated by
+species, distance, date, etc..
+
+Using the \code{dzinbinom} function in the \code{emdbook}
+package as a model, I constructed probability density functions
+for the zero-inflated binomial (\code{dzibinom}) and
+zero-inflated beta-binomial (\code{dzibb}):
+%%\todo{move to supplement?}:
+<<>>=
+dzibinom = function(x,prob,size,zprob,log=FALSE) {
+  logv = log(1 - zprob) + 
+    dbinom(x, prob = prob, size = size, log = TRUE)
+  logv = ifelse(x == 0, log(zprob + exp(logv)), logv)
+  if (log) logv  else exp(logv)
+}
+dzibb = function(x,size,prob,theta,zprob,log=FALSE) {
+  logv = ifelse(x>size,
+    NA,log(1 - zprob) + 
+    dbetabinom(x, prob = prob, size = size, theta=theta, log = TRUE))
+  logv = ifelse(x == 0, log(zprob + exp(logv)), logv)
+  if (log) logv  else exp(logv)
+}
+@ 
+
+Next I took shortcut and used the formula interface to \code{mle2}
+rather than writing an explicit negative log-likelihood function.
+I fitted the zero-inflation
+probability on a logit scale,
+using \code{plogis} to transform it on the fly, since it must be
+between 0 and 1:
+<<cache=TRUE>>=
+SP.zibb = mle2(taken~dzibb(size=available,prob,theta,plogis(logitzprob)),
+                start=list(prob=0.5,theta=1,logitzprob=0))
+print(SP.zibb)
+@ 
+
+There were warnings about \code{NaN}s in \code{lbeta}, but
+the final answers look reasonable.  I was surprised to see
+that the zero-inflation probability was so small:
+\code{plogis(\Sexpr{round(coef(SP.zibb)["logitzprob"],2)})}=
+\Sexpr{round(plogis(coef(SP.zibb)["logitzprob"]),3)}.
+I suspected that the zero-inflation parameter and the
+overdispersion parameter ($\theta$) might both be
+affecting the number of zeros, so I checked the
+correlations among the parameters:
+<<>>=
+cov2cor(vcov(SP.zibb))
+@ 
+Indeed, \code{logitzprob} and \code{prob}
+are 99\% correlated --- suggesting that we could
+drop the zero-inflation parameter from the model.
+
+<<cache=TRUE>>=
+SP.bb = mle2(taken~dbetabinom(prob,theta,size=available),
+              start=list(prob=0.5,theta=1))
+@ 
+
+<<>>=
+logLik(SP.bb)-logLik(SP.zibb)
+@ 
+The log-likelihood difference is only
+about \Sexpr{round(c(logLik(SP.bb)-logLik(SP.zibb)),2)}.
+Even allowing for the fact that the null
+value of the zero-inflation parameter is on
+the boundary, so that the appropriate $\bar \chi_1^2$ $p$-value
+is half the usual $\chi_1^2$ $p$-value,
+this difference is certainly not significant.
+
+Just for completeness, I fitted the zero-inflated
+binomial too (although I didn't think it would fit well):
+<<cache=TRUE>>=
+SP.zib = mle2(taken~dzibinom(size=available,prob=p,
+                              zprob=plogis(logitzprob)),
+               start=list(p=0.2,logitzprob=0))
+@ 
+
+Using AIC to compare all three distributions:
+<<>>=
+AICtab(SP.zib,SP.zibb,SP.bb,sort=TRUE,weights=TRUE)
+@ 
+
+Figure~\ref{fig:distcomp} compares the predictions
+of the different distributions, with stacked barplots
+showing the breakdown of different numbers of seeds
+taken for each number of seeds available.
+
+The \R\ code to calculate this distribution for
+the data first computes the table of
+number-taken-by-number-available, then uses
+\code{sweep} to divide each column (margin 2)
+by its sum:
+<<>>=
+comb = table(taken,available)
+pcomb = sweep(comb,2,colSums(comb),"/")
+@ 
+
+The equivalent computation for the zero-inflated
+beta-binomial sets up an empty matrix with 6
+rows (for 0 to 5 seeds taken) and 5 columns
+(for 1 to 5 seeds available).
+For each number available $N$, it then
+sets the first $N+1$ rows in column $N$ of the
+matrix to the predicted probability of
+taking 0 to $N$ seeds.
+<<>>=
+mtab = matrix(0,nrow=6,ncol=5)
+for (N in 1:5) {
+  cvals = coef(SP.zibb)
+  mtab[1:(N+1),N] = dzibb(0:N,size=N,prob=cvals["prob"],
+                             theta=cvals["theta"],
+                             zprob=plogis(cvals["logitzprob"]))
+}
+@ 
+Similar calculations work for the other two distributions.
+<<echo=FALSE>>=
+mtab2 = matrix(0,nrow=6,ncol=5)
+for (av in 1:5) {
+  mtab2[1:(av+1),av] = dbetabinom(0:av,prob=coef(SP.bb)["prob"],
+                             theta=coef(SP.bb)["theta"],size=av)
+
+}
+mtab3 = matrix(0,nrow=6,ncol=5)
+for (av in 1:5) {
+  mtab3[1:(av+1),av] = 
+    dzibinom(0:av,prob=coef(SP.zib)["p"],
+             zprob=plogis(coef(SP.zib)["logitzprob"]),
+             size=av)
+
+}
+@ 
+
+\begin{figure}
+<<fig=TRUE,echo=FALSE>>=
+  tmpf = function(m) {
+    m2 = m[-1,]
+    sweep(m2,2,colSums(m2),"/")
+  }
+op = par(mfrow=c(2,2),mar=c(2,2,2,2))
+##mosaicplot(tmpf(pcomb),main="data")
+barplot(tmpf(pcomb),main="data",axes=FALSE)
+barplot(tmpf(mtab),main="Z-I beta-binomial",axes=FALSE)
+barplot(tmpf(mtab2),main="beta-binomial",axes=FALSE)
+barplot(tmpf(mtab3),main="Z-I binomial",axes=FALSE)
+par(op)
+@ 
+\caption{Observed and predicted distribution of number
+of seeds taken as a function of number available.
+(Zero-taken results are omitted, and columns are
+rescaled to add to 1.)}
+\label{fig:distcomp}
+\end{figure}
+
+As we would expect from the statistical results
+so far, the zero-inflated beta-binomial
+and beta-binomial predictions look nearly
+identical, and much closer than the zero-inflated
+binomial results.  However, there are still
+visible discrepancies for the cases of 4 and
+5 seeds available --- the predicted distributions
+are more regular, and have more even distributions,
+than the observed.
+
+We can calculate standard $\chi^2$ $p$-values
+for the probability of the observed numbers
+taken for each number of seeds available:
+<<>>=
+pval = numeric(5)
+for (N in 1:5) {
+  obs = comb[1:(N+1),N]
+  prob = mtab[1:(N+1),N]
+  pval[N] = chisq.test(obs,p=prob)$p.value
+}
+@ 
+
+The $p$-values are:
+<<results=tex,echo=FALSE>>=
+latex(t(matrix(format.pval(pval,digits=2,eps=0.001),
+               dimnames=list(1:5,NULL))),file="",title="",table.env=FALSE)
+@ 
+
+There are still statistically 
+significant discrepancies between
+the expected and observed distributions
+when 4 or 5 seeds are available.
+We could try to find a way to
+make the stochastic model more
+complex and accurate, but we have
+reached the limit of
+what we can do with simple models,
+and we may also have reached the limit
+of what we can do with the data.
+The mechanism for the pattern
+remains obscure.
+While I can imagine mechanisms that would
+lead to all seeds or none being taken,
+it's hard to see why it's least
+likely that 3 out of 5 available seeds
+would be taken.  I suspect that
+there is some disaggregation of the data
+by species, date, etc., that would 
+divide stations into those where few or
+many seeds were taken, with an extreme
+pattern in each case that combines to
+create the observed bimodal pattern,
+but I haven't been able to find it.
+
+\subsection{Deterministic model: differences among species, etc.}
+
+Now we can check for differences among 
+distances from the forest, species, and 
+possibly differences in space and time:
+how does the distribution of number of seeds removed vary?
+Does $p$, the overall probability that a seed
+will be removed, vary?
+Does $\theta$ (the overdispersion
+parameter, which in this case is more
+related to the probability that any seeds will
+be removed) vary?  Do they both vary?
+
+\subsubsection{Differences among transects (distance from edge)}
+
+\label{contrasts3}
+\code{mle2}'s formula interface allows us to specify that
+some parameters vary among groups, by giving a \code{parameters}
+argument which is a list of the formulas for each group
+(p.~\pageref{mle2params}).
+Here I wanted to parameterize the model so that \code{mle2}
+would estimate the probability and overdispersion
+parameter for each species, rather than estimating
+the parameters for the first group and the differences
+between subsequent groups and the first,
+so I used the formulas \code{prob\~{}dist-1} and
+\code{theta\~{}dist-1} to fit the model without an
+intercept.
+
+<<cache=TRUE>>=
+SP.bb.dist = mle2(taken~dbetabinom(prob,size=available,theta),
+  parameters=list(prob~dist-1,theta~dist-1),start=as.list(coef(SP.bb)))
+@ 
+
+A Likelihood Ratio Test on the two models suggests
+a significant difference between transects:
+<<>>=
+anova(SP.bb,SP.bb.dist)
+@ 
+
+Reparameterizing the model in terms of differences between
+the 10-m and 25-m transect rather than the $p$ and $\theta$
+values for each transect (i.e., dropping the
+\code{-1} in the parameter formulas) allows us
+to calculate confidence limits on the differences between
+transects.  At the same time, I decided to switch to
+fitting $p$ on a logit scale and $\theta$ on a log scale.
+With the formula interface, I can do the inverse transformations
+on the fly with \code{plogis} and \code{exp}.
+
+Set up starting values, using 
+\code{qlogis} (the inverse of \code{plogis})
+and \code{log} to transform the estimated values of 
+the $p$ and $\theta$ parameters from above.
+<<>>=
+startvals =list(lprob=qlogis(coef(SP.bb.dist)["prob.dist10"]),
+  ltheta=log(coef(SP.bb.dist)["theta.dist10"]))
+@ 
+
+<<cache=TRUE>>=
+SP.bb.dist2 = mle2(taken~dbetabinom(plogis(lprob),exp(ltheta),size=available),
+  parameters=list(lprob~dist,ltheta~dist),start=startvals)
+@ 
+
+The summary of the model now gives us approximate
+$p$-values on the parameters, showing that the
+difference between transects is caused by a change
+in $p$ and not a change in $\theta$.
+<<>>=
+summary(SP.bb.dist2)
+@ 
+(The highly significant $p$-values for \code{lprob.10}
+and \code{ltheta.10} are not biologically significant: they merely
+show that $\mbox{logit}(p_{10}) \neq 0$
+(i.e. $p_{10} \neq 0.5$) and
+$\log \theta \neq 0$ ($\theta \neq 1$), neither
+of which is ecologically interesting.)
+
+Now reduce the model, allowing only $p$ to vary
+between transects:
+<<cache=TRUE>>=
+SP.bb.probdist = mle2(taken~dbetabinom(plogis(lprob),exp(ltheta),size=available),
+  parameters=list(lprob~dist),start=startvals)
+@ 
+
+Both the LRT and the AIC approaches suggest
+that the best model is one in which $p$ varies between transects but
+$\theta$ does not (although the AIC table suggests that
+the more complex model with differing $\theta$ should
+be kept in consideration):
+<<>>=
+anova(SP.bb,SP.bb.probdist,SP.bb.dist)
+AICtab(SP.bb,SP.bb.probdist,SP.bb.dist,sort=TRUE,weights=TRUE)
+@ 
+
+How big is the difference between transects?
+
+<<>>=
+c1 = coef(SP.bb.probdist)
+plogis(c(c1[1],c1[1]+c1[2]))
+@ 
+
+The difference is small --- 6\% vs 7\% probability of removal per observation.
+This difference is unlikely to be ecologically significant, and reminds
+us that when we have a big data set (\Sexpr{nrow(SeedPred)} observations)
+even small differences can be statistically significant.
+On the other hand, \cite{DuncanDuncan2000} failed to
+find a significant difference between the transects --- so 
+the likelihood framework is more powerful, and has
+given us answers in terms (average percent difference in
+probability of removal) that we can understand.
+
+\subsubsection{Differences among species}
+
+Now I proceeded to test differences among species.
+First I tried a model with both $\theta$ and $p$ varying.
+(Both parameters are again fitted on transformed scales, logit and log respectively.)
+
+<<cache=TRUE>>=
+SP.bb.sp = mle2(taken~dbetabinom(plogis(lprob),exp(ltheta),size=available),
+  parameters=list(lprob~species,ltheta~species),start=startvals)
+@ 
+
+The parameter estimates (shown in full by \code{summary(SP.bb.sp)}:
+here I have dropped one column of the table)
+suggest that, as in the
+case of differences among transects, differences
+in $p$ and not $\theta$ are driving the differences
+among species:
+<<echo=FALSE>>=
+s1 = summary(SP.bb.sp)
+s1@coef = s1@coef[,-3] ## drop z value
+printCoefmat(s1@coef,has.Pvalue=TRUE)
+@ 
+
+So I fitted a model with
+only probability $p$, and not overdispersion $\theta$, varying by species:
+<<cache=TRUE>>=
+SP.bb.probsp = mle2(taken~dbetabinom(plogis(lprob),exp(ltheta),size=available),
+  parameters=list(lprob~species),start=startvals)
+@ 
+
+Once again, both Likelihood Ratio tests and AIC
+suggest that only the $p$ parameters differ
+among species:
+<<>>=
+anova(SP.bb.sp,SP.bb.probsp,SP.bb)
+AICtab(SP.bb.sp,SP.bb.probsp,SP.bb,sort=TRUE,weights=TRUE)
+@
+
+Now I want to know whether
+seed mass and $p$ are related.
+If they were,
+I could fit a likelihood model
+where $p$ was treated as a function of seed 
+mass, reducing the number of parameters
+to estimate and perhaps allowing me to predict removal
+probabilities for other species on the
+basis of their seed masses.
+
+
+<<echo=FALSE,eval=FALSE>>=
+tmpfun = calc_mle2_function(taken~dbetabinom(plogis(lprob),exp(ltheta),size=available),
+  parameters=list(lprob~species-1),start=startvals)$fn
+pars = coef(SP.bb.probsp)
+pars[2:8] = pars[2:8]+pars[1]
+names(pars) = NULL
+do.call("tmpfun",as.list(pars))
+@ 
+<<cache=TRUE>>=
+SP.bb.probsp0 = mle2(taken~dbetabinom(plogis(lprob),exp(ltheta),size=available),
+  parameters=list(lprob~species-1),start=startvals,
+  method="L-BFGS-B",lower=rep(-10,9),upper=rep(10,9))
+@ 
+
+Fitting this model was numerically problematic.
+In my first attempt, using default methods and parameters,
+\code{mle2} found a ridiculous answer (all the logit-probabilities
+were strongly negative, giving removal probabilities near zero)
+and crashed while evaluating the Hessian.
+I used \code{skip.hessian=TRUE} to temporarily stop \code{mle2}
+from crashing and \code{trace=TRUE} to see where it was going.
+Switching to \code{method="Nelder-Mead"} helped stabilize the
+calculation, but it failed to converge until I increased the
+number of iterations to 3000 (\code{control=list(maxit=3000)}),
+and even then it got stuck on a solution that was worse
+than the previous model.  (In this case, since all I am doing
+is reparameterizing the previous model, \code{mle2} ought to
+be able to achieve an equally good fit.)  I then went back
+to BFGS and tried changing the size of the finite difference interval both down
+(\code{control=list(ndeps=rep(1e-4,9))}) and up
+(\code{control=list(ndeps=rep(1e-2,9))}), neither of which helped.
+I finally got the model to fit as well as the
+previous parameterization by switching to L-BFGS-B and setting
+the parameter boundaries to disallow ridiculous fits.
+
+%% tried: method="Nelder-Mead", control=list(maxit=3000), ndeps=rep(1e-4,9),
+%%   ndeps=rep(1e-2,9), checking initial parameters, trace=TRUE,skip.hessian=TRUE
+
+%% move to supplement/online?
+% I have to reconstruct the estimated $p$
+% values for each species by taking the
+% baseline value (for species~1) and
+% adding the estimated differences between
+% species, then logistic (inverse-logit)
+% transforming with \code{plogis}:
+<<eval=FALSE,echo=FALSE>>=
+ lprob0 = coef(SP.bb.probsp)["lprob0"]
+lprobdiff = lprob0+coef(SP.bb.probsp)[2:nsp]
+probvals = c(lprob0,lprob0+lprobdiff)
+predprob = plogis(probvals)
+@ 
+
+% To calculate the confidence intervals,
+% I compute the standard deviations
+% of the removal probabilities.
+% Since the removal probability
+% for species $i$ is parameterized
+% as $p_i=p_0+\Delta p_i$,
+% the standard error 
+% $\sigma_{p_i} = \sqrt{\sigma^2_{p_i}} =
+% \sqrt{\sigma^2_{p_0}+\sigma^2_{\Delta p_i}}$.
+<<echo=FALSE,eval=FALSE>>=
+sdvals = coef(summary(SP.bb.probsp))[,"Std. Error"]
+sdvals0 = sdvals["lprob0"]
+sdvalsdiff = sqrt(sdvals[1]^2+sdvals[2:nsp]^2)
+sdvals = c(sdvals0,sdvalsdiff)
+@ 
+
+% Finally, I calculate the (approximate)
+% confidence intervals on the basis
+% of $\mu \pm 1.96 \sigma$ and logistic transform:
+<<echo=FALSE,eval=FALSE>>=
+ci.lo = plogis(probvals-1.96*sdvals)
+ci.hi = plogis(probvals+1.96*sdvals)
+@
+
+<<>>=
+predprob = plogis(coef(SP.bb.probsp0))[1:8]
+SP.bb.ci = plogis(confint(SP.bb.probsp0,method="quad"))[1:8,]
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op = par(cex=1.5,mar=c(4,4,0,1)+0.1,bty="l",mgp=c(2.5,0.75,0),las=1)
+data(SeedPred_mass)
+plotCI(SeedPred_mass,predprob,li=SP.bb.ci[,1],ui=SP.bb.ci[,2],pch=NA,gap=0.012,
+       xlab="Seed mass",ylab="Removal probability (p)")
+textrec(SeedPred_mass,predprob,levels(SeedPred$species),cex=0.75,
+        bg="white",expand=1.2)
+text(SeedPred_mass,predprob,levels(SeedPred$species),cex=0.75)
+box()
+par(op)
+@
+\caption{Removal probability parameter ($p$) as
+a function of seed mass: error bars show 
+quadratic confidence intervals.}
+\label{fig:seedmass}
+\end{figure}
+
+Figure~\ref{fig:seedmass} shows the results: rather
+than the possible trend towards higher seed removal
+for larger seeds that I might have expected, the figure
+shows slightly elevated removal rates for the two smallest-seeded
+species (explained by Duncan and Duncan as a possible artifact
+of small seeds being washed out of the trays by rainfall),
+and a hugely elevated rate for species \code{abz}; in this
+case, I would want to go back and see if there was something
+special about this species' characteristics or the way it
+was handled in the experiment.
+
+\subsubsection{Is there a species-distance interaction?}
+
+The initial scan of the data suggested that some
+species might be more sensitive to the distance
+from the edge; this possibility is certainly
+biologically sensible (some species might
+be taken by specialized seed predators that
+have more restricted movement), and it is the
+kind of information that could easily be
+masked by looking at aggregated data.
+
+<<eval=FALSE,echo=FALSE>>=
+NLL.bb.probsptrans = function(p) {
+  nsp = 8
+  lprob0 = p[1]
+  lprobdiff = p[2:nsp]
+  lprobtr = p[nsp+1]
+  lprobtrdiff = p[(nsp+2):(2*nsp)]
+  lprob = c(lprob0,lprob0+lprobdiff,
+             lprob0+lprobtr,lprob0+lprobtr+lprobdiff+lprobtrdiff)
+  probvec = plogis(lprob)
+  ltheta0 = p[2*nsp+1]
+  prob = probvec[interaction(SeedPred$species,SeedPred$dist)]
+  theta = exp(ltheta0)
+  -sum(dbetabinom(taken,size=available,prob=prob,theta=theta,log=TRUE))
+}
+parnames(NLL.bb.probsptrans) = c(parnames(NLL.bb.sp)[1:nsp],
+                           paste("tr",parnames(NLL.bb.sp)[1:nsp],sep=""),
+                           "ltheta")
+svec.probtr = c(svec[1:nsp],rep(0,nsp),svec[nsp+1])
+names(svec.probtr) = parnames(NLL.bb.probsptrans)
+SP.bb.probsptrans = mle2(NLL.bb.probsptrans,start=svec.probtr,vecpar=TRUE)
+@ 
+
+Using the formula interface, we can simply say
+\code{lprob\~{}species*dist} to allow for such an interaction:
+if you need to code such a model by hand,
+\code{interaction(f1,f2)} will create a factor
+that represents the interaction of factors \code{f1}
+and \code{f2}.
+
+<<cache=TRUE>>=
+SP.bb.probspdist = mle2(taken~dbetabinom(plogis(lprob),exp(ltheta),size=available),
+  parameters=list(lprob~species*dist),start=startvals,
+  method="L-BFGS-B",lower=rep(-10,9),upper=rep(5,9))
+@ 
+I had to restrict the upper bounds still further, to 5, to make L-BFGS-B happy,
+since values of 10 gave \code{NaN} results for some parameter combinations.
+
+A likelihood ratio test (\code{anova(SP.bb.probsp,SP.bb.probspdist)})
+gives a $p$-value of 
+\Sexpr{round(anova(SP.bb.probsp,SP.bb.probspdist)[2,5],3)};
+AIC says that the model without distance $\times$ species
+interaction is best, but only by a little bit:
+<<>>=
+AICtab(SP.bb,SP.bb.probsp,SP.bb.probspdist,SP.bb.sp,SP.bb.probdist,SP.bb.dist,
+       weights=TRUE,sort=TRUE)
+@
+
+\subsubsection{Other issues: time}
+
+A minor issue that I have largely neglected so far
+is that the intervals between observations varied
+between 3 and 14~days.  To account
+for these differences in exposure time, I could
+use a model like $p=1-e^{-r (\Delta t)}$, which assumes
+that seeds are taken at a constant rate $r$.
+Do the predictions improve, or the conclusions change,
+if I account for the time interval allowed for removal?
+
+Before going to the trouble of building a model, let's
+look at the data again.
+Calculate the mean and standard error
+of the proportion taken, using \code{tapply}
+to calculate means and standard deviations
+of proportions divided up by the time interval
+(\code{tint}); then use \code{table} to
+calculate the number of observations for
+each time interval and divide by $\sqrt{n}$
+to convert standard deviations to standard errors.
+<<eval=FALSE>>=
+mean.prop.taken = tapply(taken/available,tint,mean,na.rm=TRUE)
+sd.prop.taken = tapply(taken/available,tint,sd,na.rm=TRUE)
+n.tint = table(tint)
+se.prop.taken = sd.prop.taken/sqrt(n.tint)
+@ 
+
+Figure~\ref{fig:tint}a is a surprise: 
+the model 
+$p=1-e^{-r(\Delta t)}$ suggests the
+proportion taken should
+increase rather than decrease with 
+$\Delta t$.  What's going on?
+
+Figure~\ref{fig:tint}b, which plots
+the time interval between observations
+against date, gives the answer:
+the short-interval (3--4~day) observations were
+mostly made before May, when the removal
+rate was high, while the longest intervals
+between observations (10~days) are in September.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE,width=8>>=
+par(mfrow=c(1,2))
+op = par(cex=1.5,
+  mar=c(4,4,0,1)+0.1,bty="l",mgp=c(2.5,0.75,0),
+  bty="l",las=1)
+nint = table(tint)
+mtaken = tapply(taken/available,tint,mean,na.rm=TRUE)
+setaken = tapply(taken/available,tint,sd,na.rm=TRUE)/sqrt(nint)
+par(mfrow=c(1,2))
+plotCI(3:10,mtaken,setaken,xlab="Interval (days)",ylab="Proportion taken")
+corner.label2("a","topleft",inset=0.025)
+plot(date,tint,xlab="Date",ylab="Interval (days)")
+corner.label2("b","topleft",inset=0.025)
+par(op)
+@
+\caption{Relationships between proportion removed
+and time interval ($\Delta t$), and between
+$\Delta t$ and date.
+\R\ command: \code{plotCI(3:10,mean.prop.taken,se.prop.taken)}.}
+\label{fig:tint}
+\end{figure}
+
+
+Which brings us to the issue of 
+temporal variation:  we already know from
+Figure~\ref{fig:seedtime} in Chapter 2 that the removal rate decreases
+over time.  Figure~\ref{fig:seeddate} shows the relationship
+between proportion removed and date, calculated
+in the same way as the removal--$\Delta t$ relationship.
+Removal appears to decrease exponentially with time.  
+Replotting the data with a logarithmic
+$y$ scale suggests that the removal rate might
+level off above zero, but it's hard to tell.
+Similarly,
+it's hard to know what causes the anomalously low proportions
+for some sampling dates throughout the study and
+the anomalously high proportions at the very end of
+the study.
+Nevertheless, we can add a parameter to the model
+allowing for exponential decrease in removal
+rate over time:
+<<eval=FALSE,echo=FALSE>>=
+NLL.bb.probspdate = function(p) {
+  nsp = 8
+  lprob0 = p[1]
+  lprobdiff = p[2:nsp]
+  lprob = c(lprob0,lprob0+lprobdiff)
+  probvec = plogis(lprob)
+  ltheta0 = p[nsp+1]
+  date = p[nsp+2]
+  prob = probvec[SeedPred$species]*exp(-SeedPred$tcum*date)
+  theta = exp(ltheta0)
+  -sum(dbetabinom(taken,size=available,prob=prob,theta=theta,log=TRUE))
+}
+parnames(NLL.bb.probspdate) = c(parnames(NLL.bb.sp)[1:nsp],"ltheta","date")
+svec.probspdate = c(svec[1:(nsp+1)],0.001)
+names(svec.probspdate) = parnames(NLL.bb.probspdate)
+SP.bb.probspdate = mle2(NLL.bb.probspdate,start=svec.probspdate,vecpar=TRUE)
+@ 
+
+<<cache=TRUE>>=
+SP.bb.probspdate = mle2(taken~dbetabinom(plogis(lprob)*exp(-tcum*date),
+  exp(ltheta),size=available),
+  parameters=list(lprob~species),
+  start=c(startvals,date=0),
+  method="L-BFGS-B",lower=c(rep(-10,9),0),upper=c(rep(5,9),2))
+@ 
+The model incorporating date is
+\Sexpr{round(c(logLik(SP.bb.probspdate)-logLik(SP.bb.probsp)),1)}
+log-likelihood units better --- the 
+model should definitely include the effect of date.
+
+<<echo=FALSE,cache=TRUE>>=
+SP.bb.probdate = mle2(taken~dbetabinom(plogis(lprob)*exp(-tcum*date),
+  size=available,exp(ltheta)),
+  start=c(startvals,date=0),
+  method="L-BFGS-B",lower=c(rep(-10,2),0),upper=c(rep(5,2),2))
+@ 
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op = par(cex=1.5,mar=c(4,4,0,1)+0.1,bty="l",mgp=c(2,0.75,0),las=1)
+dates = unique(date)
+ndate = table(date)
+mtaken = tapply(taken/available,date,mean,na.rm=TRUE)
+sdtaken = tapply(taken/available,date,sd,na.rm=TRUE)/sqrt(ndate)
+plotCI(dates,mtaken,sdtaken,xlab="Date",ylab="",ylim=c(0.001,0.4))
+mtext(side=2,"Proportion taken",line=2.5,cex=1.5,las=0)
+t0 = as.numeric(SeedPred$date[1])
+p0 = plogis(coef(SP.bb.probdate)["lprob"])
+dpar = coef(SP.bb.probdate)["date"]
+curve(p0*exp(-dpar*(x-t0)),add=TRUE)
+par(op)
+@
+\caption{Proportion taken as a function of date.
+The line shows fitted exponential dependence
+($p=\Sexpr{round(p0,2)} \times e^{-\Sexpr{round(dpar,3)} t}$), based
+on a fitted model that lumps all the species together.}
+\label{fig:seeddate}
+\end{figure}
+
+We have gotten a lot of mileage from these data,
+but as always there are more questions we could ask: 
+do the removal rates of different
+species drop off at different rates?  Can we figure out
+what causes the anomalous samples in Figure~\ref{fig:seeddate}?
+Once we have split the data according to these criteria,
+does the original distribution simplify to something
+simpler?
+
+<<echo=FALSE>>=
+detach(SeedPred)
+@ 
+

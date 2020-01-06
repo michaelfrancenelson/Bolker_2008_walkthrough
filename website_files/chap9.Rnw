@@ -1,0 +1,1240 @@
+<<echo=FALSE>>=
+library(emdbook)
+library(bbmle)
+library(MASS)
+library(nlme)
+source("chapskel.R")
+@ 
+
+\section*{Summary}
+This chapter rapidly reviews much of 
+classical statistics,
+discussing the underlying likelihood models for procedures such as
+ANOVA, linear regression, and generalized linear models.
+It also gives brief pointers to the built-in procedures in \R\ that implement these
+standard techniques.  This summary connects maximum likelihood approaches
+with more familiar classical techniques.
+If you're already familiar with classical techniques, it may help you
+understood maximum likelihood better.
+It also provides a starting point for using efficient, ``canned'' approaches 
+when they are appropriate for your data.  It does not, and cannot, provide
+full coverage of all these topics.
+For more details, see  \cite{Dalgaard2003}, \cite{Crawley2005},
+or \cite{MASS}.
+
+\section{Introduction}
+
+So far this book has covered maximum likelihood and Bayesian
+estimation in some detail.  In the course of the discussion I have
+sometimes mentioned that maximum likelihood analyses give
+answers equivalent to those provided by familiar, ``old-fashioned'' statistical
+procedures.  For example, the statistical model $Y \sim
+\mbox{Normal}(a+bx,\sigma^2)$ --- specifying 
+that $Y$ is a normally distributed random variable
+whose mean depends linearly on $x$ --- underlies ordinary
+least-squares linear regression.  This chapter will briefly review
+special cases where our general recipe for finding MLEs for
+statistical models reduces to standard procedures that are built
+into \R\ and other statistics packages.
+
+In the best case, your data will match a classical technique
+like linear regression exactly, and the answers provided by classical
+statistical models will agree 
+with the results from your likelihood model.  
+Other models you build may be formally equivalent 
+to a classical model 
+that is parameterized in a different way.
+Most often, the customized model you build
+will not be exactly equivalent to any existing
+classical model, but a similar classical model 
+may be close enough that you wouldn't mind 
+changing your model slightly in order
+to gain the convenience of
+using a standard procedure.
+
+For example, in Chapter~6 we used the model
+\begin{equation}
+Y \sim \mbox{NegBinom}(\mu=a \cdot \mbox{DBH}^b,k)
+\end{equation}
+to represent cone production by fir trees as a
+function of diameter at breast height.
+If we approximated the discrete distribution of cones
+by a continuous log-normal distribution instead,
+\begin{equation}
+Y \sim \mbox{LogNormal}(\mu=a \cdot \mbox{DBH}^b,\sigma^2),
+\end{equation}
+we could log-transform both sides and fit the linear regression
+model
+\begin{equation}
+\log Y \sim \mbox{Normal}(\log a+  b \cdot \log(\mbox{DBH}),\sigma^2).
+\end{equation}
+
+\begin{figure}
+<<echo=FALSE>>=
+data(FirDBHFec)
+firdata = na.omit(FirDBHFec[,c("TOTCONES","DBH","WAVE_NON")])
+firdata$TOTCONES = round(firdata$TOTCONES)
+cones = 1+firdata$TOTCONES
+lm1 = lm(log(cones)~log(DBH),data=firdata)
+lm2 = lm(cones~DBH,data=firdata)
+nbNLL.0 = function(a,b,k) {
+  predcones = a*firdata$DBH^b
+  -sum(dnbinom(firdata$TOTCONES,mu=predcones,size=k,log=TRUE))
+}
+@ 
+<<echo=FALSE,cache=TRUE>>=
+nbfit.0 = mle2(nbNLL.0,start=list(a=1,b=1,k=1))
+cones2 = cones[firdata$DBH>6 & firdata$DBH<8]
+ndb = fitdistr(cones2,"negative binomial")
+nln = fitdistr(cones2,"lognormal")
+ngm = fitdistr(cones2,"gamma")
+@ 
+<<echo=FALSE,fig=TRUE,width=10>>=
+op=par(mfrow=c(1,2),lwd=2,bty="l",las=1,cex=1.5)
+plot(firdata$DBH,cones,log="xy",
+     xlab="DBH",
+     ylab="cones+1",col="gray",cex=0.7,axes=FALSE)
+axis(side=2)
+axis(side=1,at=seq(5,20,by=5))
+box()
+abline(v=c(6,8),col="darkgray")
+curve(exp(coef(lm1)[1])*x^coef(lm1)[2],add=TRUE)
+with(as.list(coef(nbfit.0)),curve(a*(x-1)^b,add=TRUE,lty=2))
+curve(coef(lm2)[1]+coef(lm2)[2]*x,add=TRUE,lty=3)
+par(xpd=NA)
+legend(10.5,6,lty=1:3,
+       c("power/LN",
+         "power/NB",
+         "lin/normal"),
+       cex=0.9,bty="n")
+par(xpd=FALSE)
+plot(density(cones2,adjust=0.8,from=0),ylim=c(0,0.04),
+     main="",xlab="cones+1",lty=2,xlim=c(-20,100),
+     axes=FALSE)
+axis(side=2)
+axis(side=1,at=seq(0,100,by=25))
+box()
+text(40,0.04,"6 < DBH < 8")
+points(cones2,runif(length(cones2),max=0.001),col="gray")
+with(as.list(ndb$estimate),lines(0:100,dnbinom(0:100,size=size,mu=mu),type="s"),
+     lty=1)
+with(as.list(nln$estimate),curve(dlnorm(x,meanlog,sdlog),add=TRUE,lty=3))
+curve(dnorm(x,mean(cones2),sd(cones2)),add=TRUE,lty=4)
+abline(v=0,col="darkgray")
+legend(25,0.038,
+       lty=c(2,1,3,4),
+       c("density","NB","LN","normal"),bty="n")
+
+##with(as.list(ngm$estimate),curve(dgamma(x,shape=shape,rate=rate),add=TRUE,lty=4))
+@ 
+\caption{Comparing different functional forms for fir fecundity data:
+power-law with a lognormal (LN) distribution, power-law with
+a negative binomial (NB) distribution, and linear with a normal
+distribution.  (The linear model appears as a curved line because
+the data are plotted on a log-log scale.)}
+\label{fig:formcomp}
+\end{figure}
+
+Figure~\ref{fig:formcomp}a shows all three models 
+for the DBH--fecundity relationship --- %
+power-law with a negative binomial distribution
+(power/NB), power-law with a
+lognormal distribution (power/LN),
+and linear with a normal distribution ---
+fitted to the fir data; all are plausible.
+Figure~\ref{fig:formcomp}b shows various models for
+the distribution of cone production,
+fitted to the individuals with DBH between 6~and~8~cm: 
+a nonparametric density estimate, the negative binomial,
+log-normal, and normal.  The negative binomial is closest
+to the nonparametric density estimate of the distribution,
+while the lognormal is more peaked and the normal distribution
+has a significant (and unrealistic) negative tail.
+
+Although the power-law/negative binomial is the most realistic and has
+a plausible mechanistic interpretation (the data are discrete,
+positive, and overdispersed; we can imagine individual trees producing
+cones at an approximately constant rate with variation in fecundity
+among trees), the difference between the fit of negative binomial and
+lognormal distributions is small enough that the convenience of linear
+regression may be worthwhile.  When the results of different models
+are similar on both biological and statistical grounds, you
+choose among them by balancing convenience, mechanistic arguments, and convention.
+
+Why might you want to use standard, special-case procedures rather than
+the general MLE approach?
+\begin{itemize}
+\item{\emph{Computational speed and stability}: the special-case procedures 
+use special-case optimization algorithms that are faster 
+(sometimes much faster) and less likely to 
+encounter numerical problems. Many of these procedures relieve
+you of the responsibility of choosing starting parameters.}
+\item{\emph{Stable definitions}: the definitions of standard models have often
+been chosen to simplify parameter estimation. For example, to
+model a relatively sudden change between two states
+you could choose between a logistic equation or a threshold model.
+Both might be equally sensible in terms of the biology, but
+the logistic equation is easier to fit because it involves
+smoother changes as parameters change.
+Similarly, generalized linear models such as logistic or
+Poisson regression fit parameters on scales (logit- or
+log-transformed, respectively) that allow unconstrained optimization.}
+\item{\emph{Convention}: if you use a standard method, you can just
+say (for example) ``we used linear regression'' 
+in your Methods section and no-one will think twice.
+If you use a non-standard method, you need to explain the method carefully
+and overcome readers' distrust of ``fancy'' statistics --- even
+if your model is actually simpler and more appropriate than any standard model.  
+Similarly, it may minimize confusion
+to use the same models, and the same parameterizations,
+as previous studies of your system.
+}
+\item{\emph{Varying models and comparing hypotheses}: the machinery
+built into \R\ and other packages makes it easy to compare a variety of
+models.
+For example, when analyzing a factorial growth experiment that
+manipulates nitrogen (\code{N}) and 
+phosphorus (\code{P}),
+you can easily switch between models incorporating the effects of
+nitrogen only (\verb+growth~N+), phosphorus only (\verb+growth~P+),
+additive effects of N and P (\verb!growth~N+P!), or the 
+main effects plus interactions
+between nitrogen and phosphorus
+(\verb!growth~N*P!). 
+You can carry out all of these comparisons
+by hand with your own models, 
+and \code{mle2}'s formula interface is helpful,
+but \R's built-in functions make the process easy
+for classical models.
+}
+\end{itemize}
+
+This chapter discusses how a variety of different kinds
+of models fit together, and how they all represent special cases of a
+general likelihood framework.  
+Figure~\ref{fig:allmodels} shows how many of these areas are connected.
+The chapter also gives \emph{brief} descriptions
+of how to use them in \R: if you want more details on any of these
+approaches, you'll need to check an
+introductory \citep{Dalgaard2003,Crawley2005,Verzani2005},
+intermediate \citep{Crawley2002},
+or advanced \citep{ChambersHastie1992,MASS} reference.
+
+\begin{figure}
+\includegraphics[width=5in]{models}
+\caption{All (or most) of statistics.  
+The labels in parentheses (non-normal errors and
+nonlinearity) imply restricted cases: (non-normal errors)
+means exponential family (e.g. binomial or Poisson)
+distributions, while (nonlinearity) means nonlinearities
+with an invertible linearizing transformation.
+Models to the right of the gray dashed line
+involve multiple levels or types of variability; see
+Chapter~10.}
+\label{fig:allmodels}
+\end{figure}
+
+\section{General linear models}
+
+\emph{General linear models} include linear regression,
+one- and multi-way analysis of variance (ANOVA), and analysis of
+covariance (ANCOVA): \R\ uses the function \code{lm}
+for all of these procedures.  SAS implements this with
+PROC GLM\footnote{This terminology is unfortunate since the rest of the world
+uses ``GLM'' to mean general\emph{ized} linear models, which
+correspond to SAS's PROC GENMOD.}.  While regression, ANOVA, and ANCOVA are
+often handled differently, and they are usually
+taught differently in introductory  statistics classes,
+they are all variants of the same basic
+model.  The assumptions of the general linear model are that all
+observed values are independent and normally distributed with a
+constant variance (\emph{homoscedastic}), and that
+any continuous predictor variables (covariates) are measured without
+error.  (Remember that the assumption of normality applies to the variation
+around the expected value --- the residuals --- not to the whole
+data set.)
+
+The ``linear'' part of ``general linear model''
+means that the models are linear functions
+\emph{of the parameters}, not necessarily of the independent
+variables.  For example, quadratic regression
+\begin{equation}
+Y \sim \mbox{Normal}(a + b x + c x^2,\sigma^2)
+\end{equation}
+is still linear in the parameters ($a$, $b$, $c$), and thus is a
+form of multiple linear regression.  Another way to think about
+this is to say that $x^2$ is just another explanatory
+variables --- if you called it $w$ instead, it would
+be clear that this model is an example of multivariate linear
+regression.  On the other hand, $Y \sim \mbox{Normal}(a x^b,\sigma^2)$
+is nonlinear: it is linear with respect to $a$ (the second derivative
+of $a x^b$ with respect to $a$ is zero), but nonlinear with respect to $b$
+($d^2(a x^b)/db^2 = b\cdot (b-1)\cdot a x^{b-2} \neq 0$).
+
+\subsection{Simple linear regression}
+\label{sec:linreg}
+Simple, or ordinary, linear regression predicts $y$ as a function of a single continuous
+covariate $x$.
+The model is
+\begin{equation}
+Y \sim \mbox{Normal}(a + b x,\sigma^2),
+\end{equation}
+denoting the response variable as $Y$ rather than $y$
+since it's a random variable.
+The equivalent \R\ code is
+<<eval=FALSE>>=
+lm.reg = lm(y~x)
+@ 
+The intercept term $a$ is implicit in the \R\ model.
+If you want to force 
+the intercept to be equal to zero, fitting the model 
+$Y \sim \mbox{Normal}(bx,\sigma^2)$,
+use \verb+lm(Y~X-1)+.  
+
+Typing \code{lm.reg} by itself
+prints only the formula and the estimates of the coefficients;
+\code{summary(lm.reg)} also gives summary statistics (range and
+quartiles) of the residuals, standard errors and $p$-values for the
+coefficients, and $R^2$ and $F$ statistics for the full model;
+\code{coef(lm.reg)} gives the coefficients alone,
+and \code{coef(summary(lm.reg))} pulls out the table of estimates,
+standard errors, $t$ statistics, and $p$ values.  
+\code{confint(lm.reg)} calculates confidence intervals.
+The function \code{plot(lm.reg)} displays various graphical diagnostics
+that show how well the assumptions of the model fit and whether particular
+points have a strong effect on the results: see \code{?plot.lm} for
+details.  \code{anova(lm.reg)} prints an ANOVA table for the
+model%
+\footnote{\code{anova} gives so-called
+\emph{sequential sums of squares}, which SAS calls ``type I'' sums of
+squares.  If you need SAS-style ``type III'' sums of squares,
+you can use the \code{Anova} function in the \code{car} package.
+However, be aware that type~III sums of squares are actually
+problematic, and indeed controversial \citep{Venables1998}.}.
+If you need to extract numeric values of, e.g., $R^2$ values 
+or $F$ statistics for further analysis, wade through the output of
+\code{str(summary(lm.reg))} to find the pieces you need
+(e.g. \verb+summary(lm.reg)$r.squared+).
+
+To do linear regression by brute force
+with \code{mle2},
+you could write
+this negative log-likelihood function
+<<>>=
+linregfun = function(a,b,sigma) {
+  Y.pred = a+b*x
+  -sum(dnorm(Y,mean=Y.pred,sd=sigma,log=TRUE))
+}
+@
+or use the formula interface:
+<<eval=FALSE>>=
+mle2(Y~dnorm(mean=a+b*x,sd=sigma),start=...)
+@ 
+When using \code{mle2} you must explicitly fit a standard deviation
+term $\sigma$ which is implicit in the \code{lm} approach.
+
+\subsection{Multiple linear regression}
+It's easy to extend the simple linear regression model
+to multiple continuous predictor variables
+(covariates).
+If the extra covariates are powers of the original
+variable ($x^2, x^3, \ldots$),
+the model is called \emph{polynomial}
+regression (\emph{quadratic} with just the $x^2$ term
+added):
+\begin{equation}
+Y \sim \mbox{Normal}(a+b_1 x + b_2 x^2,\sigma^2).
+\end{equation}
+Or you can use completely separate variables
+($x_1, x_2, \ldots$):
+\begin{equation}
+Y \sim \mbox{Normal}(a+b_1 x_1 + b_2 x_2 + b_3 x_3,\sigma^2)
+\end{equation}
+As with simple regression, the intercept $a$ and the
+coefficients of the different covariates ($b_1, b_2$) are implicit
+in the \R\ formula:
+<<eval=FALSE>>=
+lm.poly = lm(y~x+I(x^2))
+@ 
+(surround \verb!x^2! 
+and other powers of \code{x} with \code{I()},
+``as is'')
+or
+<<eval=FALSE>>=
+lm.mreg = lm(y~x1+x2+x3)
+@ 
+You can add interactions among
+covariates, testing whether the slope with
+respect to one covariate changes linearly
+as a function of another covariate ---
+e.g. $Y \sim \mbox{Normal}(a + b_1 x_1 + b_2 x_2 + b_{12} x_1 x_2 ,\sigma^2)$:
+in \R, \verb!lm.intreg = lm(y~x1*x2)!.
+
+Use the \code{anova} function 
+with \code{test="Chisq"} 
+to perform likelihood ratio tests
+on a nested series of multivariate linear regression models 
+(e.g. \code{anova(lm1,lm2,lm3,test="Chisq")}).
+If you wonder why \code{anova}
+is a test for regression models,
+remember that regression and analyses of variance are just different subsets
+of the general linear model.
+
+While multivariate regression is conceptually simple, models with many terms
+(e.g. models with many covariates or with multi-way interactions) can be difficult to interpret.
+Blind fitting of models with many covariates
+can get you in trouble \citep{Whittingham+2006}.  
+If you absolutely must go on this kind of fishing
+expedition, you can use \code{step}, or \code{stepAIC} in
+the \code{MASS} package to do stepwise modeling, or  \code{regsubsets}
+in the \code{leaps} package to search for the best model.
+
+\subsection{One-way analysis of variance (ANOVA)}
+
+If the predictor variables are discrete (factors) rather
+than continuous (covariate), the general linear model becomes
+an analysis of variance.  The basic model is
+\begin{equation}
+Y_{i} \sim \mbox{Normal}(\alpha_i,\sigma^{2});
+\end{equation}
+in \R\ it is
+<<eval=FALSE>>=
+lm.1way = lm(y~f)
+@ 
+where \code{f} is a factor.
+If your original data set has names for the factor levels
+(e.g. \{N,S,E,W\} or \{high,low\}) then \R\ will automatically
+transform the treatment variable into a factor when it reads
+in the data.
+However, if the factor levels look like numbers to \R\ (e.g.
+you have site designations 101, 227, and 359, or experiments
+numbered 1 to 5), \R\ will 
+interpret them as continuous rather than discrete predictors,
+and will fit a linear regression rather than
+doing an ANOVA --- not what you want.
+Use \verb+v = factor(v)+
+to turn a numeric variable \code{v} into a factor,
+and then fit the linear model.
+
+Executing \code{anova(lm.1way)} produces a basic ANOVA table;
+\code{summary(lm.1way)} gives a different view of the model, testing
+the significance of each parameter against the null hypothesis
+that it equals 0; for a factor with only two levels, these tests
+are statistically identical.
+
+When fitting regression models, the parameters of the model
+are easy to interpret --- they're just the intercept and the 
+slopes with respect to the covariates.  When you have factors
+in the model, however --- as in ANOVA --- the parameterization
+becomes trickier.  By default, \R\ parameterizes
+the model in terms of the differences between the first
+group and subsequent groups (\emph{treatment contrasts})
+rather than in terms of the mean of each group, although
+you can tell it to fit the means of each group by putting
+a \code{-1} in the formula
+(e.g. \verb+lm.1way = lm(y~f-1)+: see pp.~\pageref{contrasts}, \pageref{contrasts2}, 
+and \pageref{contrasts3}).
+
+% If you were writing a negative log-likelihood model
+% for a one-way ANOVA with three treatment levels,
+% you'd probably write it like this:
+<<echo=FALSE,eval=FALSE>>=
+aov1fun = function(m1,m2,m3,sigma) {
+  Y.pred = c(m1,m2,m3)[f]
+  -sum(dnorm(Y,mean=Y.pred,sd=sigma,log=TRUE))
+}
+@ 
+% The parameters \code{m1}, \code{m2}, and \code{m3} represent the means
+% of each group.  However, \R\ parameterizes the model instead with a
+% parameter called \code{(Intercept)} that represents the mean of the
+% first group (i.e. the group associated with the first level of the
+% factor, which is the first name in an alphabetical list unless you
+% have changed the order by hand) and two parameters that give the
+% \emph{differences} between the baseline group mean and the means of
+% the other two two groups (in the old parameterization, these would be
+% equivalent to \code{m2-m1} and \code{m3-m1}).  This parameterization
+% sets the parameters up so that each parameter represents a
+% \emph{contrast}; i.e., testing whether the value of a parameter is
+% zero is equivalent to testing a particular statistical hypothesis
+% \citep{Crawley2002}.
+%% reference earlier 
+
+\subsection{Multi-way ANOVA}
+
+Multi-way ANOVA models $Y$ as a function of two or more different
+categorical variables (factors).
+For example, the full model for two-way ANOVA with
+interactions is
+\begin{equation}
+Y_{ij} \sim \mbox{Normal}(\alpha_i + \beta_j + \gamma_{ij},\sigma^2)
+\end{equation}
+where $i$ is the level of the first treatment/group,
+and $j$ is the level of the second.
+The \R\ code using \code{lm}
+is:
+<<eval=FALSE>>=
+lm.2way = lm(Y~f1*f2)
+@ 
+(\code{f1} and \code{f2} are factors).
+As before, \code{summary(lm.2way)} gives
+more information, testing whether
+the parameters differ significantly
+from zero; \code{confint(lm.2way)}
+computes confidence intervals; \code{anova(lm.2way)}
+generates a standard ANOVA table; \code{plot(lm.2way)} shows
+diagnostic plots.
+If you want to fit just the main effects
+without the interactions, use \code{lm(Y\~{}f1+f2)};
+use \code{f1:f2} to specify an interaction between
+\code{f1} and \code{f2}.
+
+A negative log-likelihood function for \code{mle} could look like this:
+<<>>=
+aov2fun = function(m11,m12,m21,m22,sigma) {
+  intval = interaction(f1,f2)
+  Y.pred = c(m11,m12,m21,m22)[intval]
+  -sum(dnorm(Y,mean=Y.pred,sd=sigma,log=TRUE))
+}
+@ 
+(\code{interaction(f1,f2)} defines a factor representing
+the interaction of \code{f1} and \code{f2} with levels
+in the order (\code{1.1}, \code{2.1}, \code{1.2}, \code{2.2})).
+Using the formula interface:
+<<eval=FALSE>>=
+mle2(Y~dnorm(mean=m,sd=sigma),parameters=list(m~f1*f2))
+@ 
+
+For a multiway model, \R's parameters are again defined in terms
+of contrasts. If you construct a two-way ANOVA
+with factors \code{f1} (with levels \code{A} and \code{B})
+and \code{f2} (with levels \code{I} and \code{II}),
+the first (``intercept'') parameter will be the mean of
+individuals in level \code{A} of the first factor and
+\code{I} of the second (\code{m11});  the second parameter is the difference
+between \code{A,II} and \code{A,I} (\code{m12-m11}); the third is the
+difference between \code{B,I} and \code{A,I} (\code{m21-m11}); and
+the fourth, the interaction term, is the difference between
+the mean of \code{B,II} and its expectation if the effects
+of the two factors were additive (\code{m22-(m11+(m12-m11)+(m21-m11))}
+= \code{m22-m12-m21+m11}).
+
+%%%% FIX ME: type III SS etc.
+In its \code{anova} tables, \R\
+One difference between \R\ and other statistical packages to watch
+
+\subsection{Analysis of covariance (ANCOVA)}
+Analysis of covariance defines a
+statistical model that allows for different
+intercepts and slopes with respect to a covariate $x$
+in different groups:
+\begin{equation}
+Y_i \sim \mbox{Normal}(\alpha_i + \beta_i x ,\sigma^2)
+\end{equation}
+
+In \R:
+<<eval=FALSE>>=
+lm(Y~f*x)
+@ 
+where $f$ is a factor and $x$ is a covariate
+(the formula \verb$Y~f+x$ would specify parallel
+slopes, \verb$Y~f$ would specify zero slopes
+but different intercepts, \verb$Y~x$ would
+specify a single slope).
+Figure~\ref{fig:firglm} shows the
+fit of the model 
+\code{lm(log(TOTCONES+1) \~{} log(DBH)+WAVE\_NON)}
+to the fir data.
+As suggested by the
+figure, there is a strong effect of DBH
+but no significant effect of population
+(wave vs. non-wave).
+
+As with other general linear models,
+use \code{summary}, \code{confint}, \code{plot},
+and \code{anova} to analyze the model.
+The parameters are now the intercept of the first
+factor level; the slope with
+respect to \code{x} for the first factor level;
+the differences in the intercepts for each factor
+level other than the first; and the differences
+in the slopes for each factor level other than 
+the first.
+
+A negative log-likelihood function for ANCOVA:
+<<>>=
+ancovafun = function(i1,i2,slope1,slope2,sigma) {
+  int = c(i1,i2)[f]
+  slope = c(slope1,slope2)[f]
+  Y.pred =  int+ slope*x
+  -sum(dnorm(Y,mean=Y.pred,sd=sigma,log=TRUE))
+}
+@ 
+
+\subsection{More complex general linear models}
+You can add factors (grouping variables) and interactions between
+factors in different ways to make multi-way ANOVA, covariates
+(continuous independent variables) to make multiple linear regression,
+and combinations to make different kinds of analysis of covariance.
+\R\ will automatically interpret formulas based on whether
+variables are factors or numeric variables.
+
+\begin{figure}
+<<echo=FALSE>>=
+data(FirDBHFec)
+firdata = na.omit(FirDBHFec[,c("TOTCONES","DBH","WAVE_NON")])
+firdata$TOTCONES = round(firdata$TOTCONES)
+cones = 1+firdata$TOTCONES
+logDBH=log(firdata$DBH)
+fir.dwi = lm(log(cones)~logDBH*WAVE_NON,data=firdata)
+fir.dw = lm(log(cones)~logDBH+WAVE_NON,data=firdata)
+fir.d = lm(log(cones)~logDBH,data=firdata)
+fir.w = lm(log(cones)~WAVE_NON,data=firdata)
+fir.0 = lm(log(cones)~1,data=firdata)
+@ 
+
+<<echo=FALSE,fig=TRUE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5,mar=c(5,4,2,4)+0.1,mgp=c(2.5,1,0))
+plot(log(cones)~logDBH,pch=as.numeric(firdata$WAVE_NON),
+     xlab="log(DBH)",ylab="log(cones+1)")
+abline(a=coef(fir.dw)[1],b=coef(fir.dw)[2])
+abline(a=coef(fir.dw)[1]+coef(fir.dw)[3],b=coef(fir.dw)[2],lty=2)
+par(xpd=NA)
+legend(2.65,1.5,lty=1:2,
+       pch=1:2,c("nonwave","wave"),bty="n")
+par(xpd=FALSE)
+par(op)
+@ 
+\caption{General linear model fit to fir fecundity data
+(analysis of covariance):
+\code{lm(log(TOTCONES+1)\~{}log(DBH)+WAVE\_NON,data=firdata)}.
+(Lines are practically indistinguishable between groups.)}
+\label{fig:firglm}
+\end{figure}
+
+\section{Nonlinearity: nonlinear least squares}
+\emph{Nonlinear least squares} 
+models relax the requirement of linearity, but keep the requirements of
+independence and normal errors.  Two common examples are
+the power-law model with normal errors
+\begin{equation}
+Y \sim \mbox{Normal}(a x^b ,\sigma^2)
+\end{equation}
+and the Ricker model with normal errors
+\begin{equation}
+Y \sim \mbox{Normal}(a x e^{-r x},\sigma^2).
+\end{equation}
+
+Before computers were ubiquitous,
+the only practical way to solve these problems
+was to \emph{linearize} them by
+finding a transformation of the parameters (e.g. log-transforming $x$
+and $y$ to do power-law regression).
+A lot of ingenuity went into developing transformation methods
+to linearize common functions.
+However, transforming variables changes the distribution of
+the error as well as the shape of the dependence of $y$ on $x$.
+Ideally we'd like to find a transformation that simultaneously produces
+a linear relationship and makes the errors normally distributed
+with constant variance, but these goals are often incompatible.
+If the errors are normal with constant variance, they won't
+be any longer after you transform the data to linearize $f(x)$.
+
+The modern way to solve these problems without distorting the error
+structure, or to solve other models that cannot be linearized by
+transforming them, is to minimize the sums of squares (equivalent to
+minimizing the negative log-likelihood) computationally, using
+quasi-Newton methods similar to those built into \code{optim}.
+Restricting the variance model to Normally distributed
+errors with constant variance allows the use of
+specific numeric methods that are more powerful and stable than
+the generalized algorithms that \code{optim} uses.
+
+In \R, use the \code{nls}
+command, specifying a nonlinear formula and the starting
+values (as a list): e.g., for the power model
+<<eval=FALSE>>=
+n1 = nls(y~a*x^b,start=list(a=1,b=1))
+@ 
+\code{summary(n1)} shows values of parameters and standard
+errors; \code{anova(n1,...)} does likelihood ratio tests
+for nested sequences of nonlinear fits; and
+\code{confint(n1)} computes profile confidence limits
+which are more accurate than the
+confidence limits suggested by \code{summary(n1)}.
+(Unfortunately, \code{plot(n1)} does nothing.)
+Figure~\ref{fig:nls1} shows the fit of a nonlinear
+least-squares model (\verb!nls(TOTCONES~a*DBH^b)!)
+to the fir fecundity data set, along with the
+log-log fit (equivalent to a power-law fit with
+lognormal errors) calculated above.  The power-lognormal
+model is probably better from a biological point of view,
+since the normal distribution can have negative values,
+but both models are reasonable.
+
+Fitting models
+with both nonlinear covariates and categorical variables
+(the nonlinear analogue
+of ANCOVA --- e.g., fitting different $a$ and $b$ parameters for
+wave and non-wave populations) is more difficult,
+but two functions from the \code{nlme} package,
+\code{nlsList} and \code{gnls} (generalized nonlinear
+least squares), can handle such models.
+\code{nlsList} does completely separate
+fits for separate groups --- for example,
+<<eval=FALSE>>=
+nlsList(TOTCONES~a*DBH^b|WAVE_NON,
+data=firdata,start=list(a=0.1,b=2.7))
+@ 
+would
+fit separate $a$ and $b$ parameters for wave and non-wave
+populations --- but all parameters will vary among
+groups.
+<<echo=FALSE,print=FALSE,results=hide>>=
+nlsList(TOTCONES~a*DBH^b|WAVE_NON,data=firdata,start=list(a=0.1,b=2.7))
+gnls(TOTCONES~a*DBH^b,data=firdata,start=c(0.1,2.7,2.7),
+     params=list(a~1,b~WAVE_NON))
+@ 
+The \code{gnls} command can fit
+models with only a subset of the parameters
+differing among groups: e.g.
+<<eval=FALSE>>=
+gnls(TOTCONES~a*DBH^b,data=firdata,start=c(0.1,2.7,2.7),
+params=list(a~1,b~WAVE_NON))
+@ 
+will fit different
+$b$ parameters but the same $a$ parameter for wave and non-wave
+populations.
+
+While \code{nls} is more automated than \code{mle2}
+(for which you must specify the full negative
+log-likelihood function),
+the numerical methods it uses are similar to 
+\code{mle2}'s
+in that (1) you must specify starting values
+and (2) if the starting values are unrealistic, or if the
+problem is otherwise difficult, the numerical optimization
+may get stuck.
+Errors such as
+\begin{verbatim}
+step factor [] reduced below 'minFactor' of ...
+\end{verbatim}
+\begin{verbatim}
+number of iterations exceeded maximum of ...
+\end{verbatim}
+or
+\begin{verbatim}
+Missing value or an infinity produced when evaluating the model
+\end{verbatim}
+indicate numerical problems.
+To solve these problems
+try to find better starting conditions,
+reparameterize your model, or play with the
+control options of \code{nls}
+(see \code{?nls.control}).
+
+As with ML models, you can often use simpler, more robust
+approaches like linear models to get a first estimate for the
+parameters (e.g. estimate the initial slope of a Michaelis-Menten
+function from the first 10\% of the data and the asymptote from the
+last 10\%, or estimate the parameters by linear regression based on a
+linearizing transform).  \R\ includes some ``self-starting'' functions
+that do these steps automatically.  The functions \code{SSlogis} and
+\code{SSmicmen}, for example, provide self-starting logistic and
+Michaelis-Menten functions.  To fit a self-starting
+Michaelis-Menten model to the tadpole data with
+asymptote \code{a} and half-maximum \code{b}:
+<<results=hide>>=
+data(ReedfrogFuncresp)
+nls(Killed ~ SSmicmen(Initial, a, b), data = ReedfrogFuncresp)
+@ 
+Use \code{apropos("SS",ignore.case=FALSE)} to see a more
+complete list of self-starting models:
+the names are cryptic, so check the help system to see what each model is.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5,mgp=c(2.5,1,0))
+firnls = nls(TOTCONES~a*DBH^b,start=list(a=0.1,b=2.7),
+              data=firdata)
+plot(cones~DBH,data=firdata,ylab="Cones")
+with(as.list(coef(firnls)),curve(a*x^b,add=TRUE))
+curve(exp(coef(fir.d)[1])*x^(coef(fir.d)[2]),add=TRUE,lty=2)
+legend("topleft",c("power/normal","power/LN"),
+       lty=1:2,bty="n")
+par(op)
+@ 
+\caption{A nonlinear least-squares fit 
+to the fir fecundity data
+(\code{nls(TOTCONES\~{}a*DBH\^{}b,start=list(a=0.1,b=2.7,data=firdata))});
+the linear model fit to the log-log data (equivalent to
+a power-law fit with lognormal errors) is also shown.}
+\label{fig:nls1}
+\end{figure}
+
+\textbf{Further reading:} \cite{BatesWatts1988}.
+
+\section{Non-normal errors: generalized linear models}
+
+\label{sec:GLM}
+Generalized linear models 
+(not to be confused with general linear models)
+allow you to analyze models that
+have a particular kind of nonlinearity and particular kinds of
+non-normally distributed (but still independent) errors.
+
+Generalized linear models allow any
+nonlinear relationship that has a
+\emph{linearizing transformation}.
+That is, if $y=f(x)$, there must
+be some function $F$ such that
+$F(f(x))$ is a linear function of $x$.
+The procedure for fitting generalized linear models
+uses the function $F$
+fit the data on the linearized scale ($F(y) = F(f(x))$)
+while calculating the expected variance on
+the untransformed scale in order to 
+correct for the distortions that linearization
+would otherwise induce.
+In generalized-linear-model
+jargon $F$ is called the \emph{link} function.
+For example, when $f$ is the 
+logistic curve ($y=f(x)=e^x/(1+e^x)$),
+the link function $F$ 
+is a the logit function ($F(y)=\log(y/(1-y))=x$:
+see p.~\pageref{eq:logit}
+for the proof that the logit is really the inverse of 
+the logistic).
+% \footnote{
+% Proof that the logit transform linearizes the
+% logistic curve:
+% \begin{equation*}
+% \begin{split}
+% y & = e^x/(1+e^x) \\
+% (1+e^x) y & = e^x \\
+% y & = e^x(1-y) \\
+% y/(1-y) & = e^x \\
+% \log (y/(1-y)) & = x
+% \end{split}
+% \end{equation*}
+% }; 
+\R\ knows about
+a variety of link functions including the 
+log ($x=\log(y)$, which linearizes $y=e^x$); square-root
+($x=\sqrt{y}$, which linearizes $y=x^2$); and inverse ($x=1/y$,
+which linearizes $y=1/x$): see \code{?family} for more
+possibilities.
+
+The class of non-normal errors that 
+generalized linear models can handle is called the
+\emph{exponential family}.
+It includes Poisson, binomial, gamma and
+normal distributions, but not negative binomial or beta-binomial
+distributions.
+Each distribution has a standard link function:
+for example, the log link is standard for a Poisson
+and a logit link is standard for a binomial distribution.
+The standard link functions make sense for 
+typical applications: for example, the
+logit transformation turns unconstrained values into values between 0
+and 1, which are appropriate as probabilities in a binomial model.
+However, \R\ allows you some flexibility to change these associations
+for specific problems.
+
+GLMs are fit by a process called \emph{iteratively reweighted least
+squares}, which overcomes the basic problem that transforming the data
+to make them linear also changes the variance.
+The key is that given an estimate of the regression parameters, and
+knowing the relationship between the 
+variance and the mean for
+a particular distribution, one can calculate the variance associated
+with each point.  With this variance estimate, one re-estimates the
+regression parameters weighting each data
+point by the inverse of its variance;
+the new estimate gives new estimates of the
+variance; and so on.  This procedure quickly and reliably fits the
+models, without the user needing to specify starting points.
+
+Generalized linear models combine 
+a range of non-normal error distributions
+with the ability to work with some reasonable 
+nonlinear functions.
+They also use the same simple
+model specification framework as \code{lm},
+allowing us to explore
+combinations of factors, covariates, and interactions among variables.
+GLMs include logistic and binomial regression and log-linear models.
+They use terminology that should now be familiar to you; they estimate
+log-likelihoods and test the differences between models using the
+likelihood ratio test.
+
+The \code{glm} function implements generalized linear models
+in \R.
+By far the two most common GLMs are Poisson regression,
+for count data, and logistic regression, for survival/failure
+data.
+
+\begin{figure}
+<<echo=FALSE,fig=TRUE>>=
+op=par(lwd=2,bty="l",las=1,cex=1.5,mgp=c(2.5,1,0))
+data(ReedfrogFuncresp)
+glm1 = glm(cbind(Killed,Initial-Killed) ~ Initial, 
+          family=binomial,data=ReedfrogFuncresp)
+glm2 = glm(cbind(Killed,Initial-Killed) ~ Initial, 
+          family=binomial(link="log"),data=ReedfrogFuncresp)
+with(ReedfrogFuncresp,plot(Killed/Initial~Initial,xlab="Initial density",
+                   ylab="Fraction killed"))
+ivec = 1:100
+lines(ivec,predict(glm1,newdata=list(Initial=ivec),type="response"))
+lines(ivec,predict(glm2,newdata=list(Initial=ivec),type="response"),lty=2)
+legend("topright",c("logistic regression","log-binomial model"),
+       lty=1:2,bty="n")
+par(op)
+@ 
+\caption[short]{Logistic (binomial) regression
+and log-binomial regression
+of fraction of tadpoles killed as a function of tadpole density.
+Logistic regression:
+\\
+\code{glm(cbind(Killed,Initial-Killed)\~{}Initial, 
+  data=ReedfrogFuncresp,family="binomial")}
+\\
+Log-binomial regression: \\
+\code{glm(...,family=binomial(link="log"),...)}
+%% VERBATIM (and Schunk) doesn't work in captions?
+% \begin{verbatim}
+% glm(cbind(Killed,Initial-Killed)~Initial, 
+%           data=ReedfrogFuncresp,family="binomial")
+% \end{verbatim}
+% Log-binomial regression:
+% \begin{verbatim}
+% glm(cbind(Killed,Initial-Killed)~Initial, 
+%           data=ReedfrogFuncresp,family="binomial")
+% \end{verbatim}
+<<echo=FALSE,results=hide>>=
+glm(cbind(Killed,Initial-Killed)~Initial, 
+          data=ReedfrogFuncresp,family="binomial")
+glm(cbind(Killed,Initial-Killed)~Initial, 
+          data=ReedfrogFuncresp,family="binomial")
+@ 
+}
+\label{fig:logistreg}
+\end{figure}
+
+\begin{itemize}
+\item{Poisson regression: log link, Poisson error
+($Y \sim \mbox{Poisson}(a e^{bx})$);
+<<eval=FALSE>>=
+glm1 = glm(y~x,family="poisson")
+@ 
+The equivalent likelihood function is:
+<<>>=
+poisregfun = function(a,b) {
+  Y.pred = exp(a+b*x)
+  -sum(dpois(y,lambda=Y.pred,log=TRUE))
+}
+@ 
+}
+\item{Logistic regression: logit link, binomial error
+($Y \sim \mbox{Binom}(p=\exp(a+bx)/(1+\exp(a+bx)),N)$):
+<<eval=FALSE>>=
+glm2 = glm(cbind(y,N-y)~x,family="binomial")
+@ 
+or
+<<>>=
+logistregfun = function(a,b) {
+  p.pred = exp(a+b*x)/(1+exp(a+b*x))
+  -sum(dbinom(y,size=N,prob=p.pred,log=TRUE))
+}
+@ 
+(you could also say \code{p.pred=plogis(a+b*x)}
+in the first line of \code{logistregfun}).
+}
+\end{itemize}
+
+Another useful application of
+GLMs is fitting models of exponentially decreasing
+survival, $Y \sim \mbox{Binom}(p=\exp(a+bx),N)$. 
+\cite{Strong+1999} modeled the survival 
+probability of ghost moth caterpillars as a decreasing function
+of density (and as a function of the presence or
+absence of entomopathogenic nematodes);
+\cite{Tiwari+2006} modeled the probability that
+nesting sea turtles would \emph{not} dig up
+an existing nest as a decreasing function of nest density.
+You can fit such a model this way:
+<<eval=FALSE>>=
+glm3 = glm(cbind(y,N-y)~x,family=binomial(link="log"))
+@ 
+Use \code{family=binomial(link="log")}
+instead of \code{family="binomial"} to
+specify the log instead of the logit link function.
+The equivalent negative log-likelihood function is:
+<<>>=
+logregfun = function(a,b) {
+  p.pred = exp(a+b*x)
+  -sum(dbinom(y,size=N,prob=p.pred,log=TRUE))
+}
+@ 
+
+You can fit Vonesh's tadpole mortality data
+with either a logistic or a log-binomial model
+(Figure~\ref{fig:logistreg}),
+but the fact that expected survival decreases exponentially
+at high densities in both models
+causes problems of interpretation.
+If the probability of survival declines exponentially
+with density --- which is generally true for the log-binomial
+model and approximately true at high densities for
+the logistic --- then the expected \emph{number}. surviving
+is $p(x) \cdot x = e^{-(a+bx)} x = cxe^{-bx}$.
+This is a Ricker function, 
+which decreases to zero at high density rather than
+reaching an asymptote.  The standard type~II functional
+response model uses $p(x)=A/(1+Ahx)$, which has a weaker dependence
+on $x$ (exponentials are always stronger than powers of $x$),
+and so the limit of $p(x) x$ as $x$ becomes large
+is $1/h$.  Thus, the GLM while convenient is not
+really appropriate in this case.
+
+<<echo=FALSE,eval=FALSE>>=
+glm4 = glm(cbind(Killed,Initial-Killed) ~ Initial, 
+            family=quasi(link="inverse",variance="mu(1-mu)"),
+            data=ReedfrogFuncresp)
+x = 10:20
+p = 1/(1.2+5.5*x)
+y = rbinom(length(x),size=x,prob=p)
+testglm = glm(cbind(y,x-y)~x,
+               family=quasi(link="inverse",variance="mu(1-mu)"),
+               start=c(1.9,-0.4))
+testglm = glm(cbind(y,x-y)~x,
+               family=quasi(link="inverse",variance="constant"),
+               start=c(1.2,5.5))
+@ 
+
+After you fit a GLM, you can use the same
+generic set of modeling functions --- %
+\code{summary}, \code{coef}, \code{confint},
+\code{anova}, and \code{plot} --- to %
+examine the parameters, test hypotheses, and plot residuals.
+%%\todo{Check plot.glm -- sensible?}
+\code{anova(glm1,glm2,\ldots)}
+does an \emph{analysis of deviance} (likelihood ratio tests)
+on a nested sequence of models.  As with \code{lm}, the
+default parameters represent (1) the intercept (the
+baseline value of the first treatment),
+(2) differences in the intercept between the first and subsequent
+treatments, (3) the slope(s)
+with respect to the covariate(s) for the first group,
+or (4) differences in the slope between the first
+and subsequent treatments.
+However, all of the parameters are given
+on the scale of the link function (e.g. log scale for
+Poisson models, logit scale for binomial models);
+you interpret them, you need to transform them
+with the inverse link function (exponential for
+Poisson, logistic (=\code{plogis}) for binomial).
+For example, the coefficients of the 
+logistic regression shown in Figure~\ref{fig:logistreg}
+<<echo=FALSE>>=
+a = round(coef(glm1)[1],3)
+b = round(coef(glm1)[2],4)
+@ 
+are intercept=\Sexpr{a}
+slope=\Sexpr{b}.
+To find
+the probability of mortality at a tadpole density of
+60, calculate 
+$\exp(\Sexpr{a}+\Sexpr{b} \cdot 60)/(1+\exp(\Sexpr{a}+\Sexpr{b} \cdot 60)=
+\Sexpr{round(plogis(a+b*60),3)}$. 
+
+\textbf{Further reading:}
+\cite{McCullaghNelder1989,Dobson1990,HastiePregibon1992,%
+Lindsay1997}. \R-specific: \cite{Crawley2002,Faraway2006}.
+
+\subsection{Models for overdispersion}
+
+To go beyond the exponential family of
+distributions (normal, binomial, Poisson, gamma) you
+may well need to roll your own ML estimator.
+\R\ has two built-in possibilities
+for the very common case of discrete data with
+\emph{overdispersion}, i.e. more variance than
+would be expected from the standard (Poisson and binomial)
+models for discrete data.
+
+\subsubsection{Quasilikelihood}
+
+\emph{Quasilikelihood} models ``inflate'' the expected
+variance of models to account for overdispersion
+\citep{McCullaghNelder1989}.
+For example, the expected variance of a binomial distribution with $N$
+samples and probability $p$ is $Np(1-p)$.
+The \emph{quasibinomial} model adds
+another parameter, $\phi$, which inflates the variance
+to $\phi N p (1-p)$.  The \emph{overdispersion parameter}
+$\phi$ (\cite{BurnhamAnderson2004} call it $\hat c$)
+is usually greater than 1 -- we
+usually find more variance than expected, rather than less.
+Quasi-Poisson models are defined similarly, with
+variance equal to $\phi \lambda$.  This 
+approach is called \emph{quasi}likelihood
+because we don't specify a real likelihood model
+with a probability distribution for the data.
+We just specify the relationship between the mean and the variance.
+Nevertheless, the
+quasilikelihood approach works well in practice.  \R\ uses
+the \code{family} function to specify quasilikelihood models.
+
+Because the quasilikelihood is not a true likelihood,
+we cannot use likelihood ratio tests or other
+likelihood-based methods for inference, but
+the parameter estimates and $t$-statistics
+generated by \code{summary} should still work.  However,
+various researchers have suggested that using an
+$F$ test based on the ratio of deviances should still
+be appropriate: use \code{anova(...,test="F")}
+\citep{Crawley2002,MASS}.  \cite{BurnhamAnderson2004}
+suggest using differences in ``quasi-AIC'' (qAIC) in this case,
+where the $\Delta \mbox{qAIC}$ is the $\Delta \mbox{AIC}$ value divided by
+the estimate of $\phi$.
+
+Since the log is the
+default link function for the \code{quasipoisson}
+family, you can fit a
+quasi-Poisson log-log model for fecundity
+as follows:
+<<results=hide>>=
+glm(TOTCONES~log(DBH),data=firdata,family="quasipoisson")
+@ 
+
+\subsubsection{Negative binomial models}
+
+Although the exponential family does not
+strictly include the negative binomial distribution,
+negative binomial models
+can be fit by a small extension
+of the GLM approach, iteratively fitting the $k$ (overdispersion)
+parameter and then fitting the rest of the model with a fixed $k$
+parameter.  The \code{glm.nb} function in the \code{MASS} package
+fits linear negative binomial models, although they 
+restrict the model to a single $k$ parameter
+for all groups.  (Use \verb!$theta! to
+extract the estimate of the negative binomial $k$ parameter
+from a negative binomial model.)
+
+Because we can use a log link, it turns out that we
+can exactly replicate our preferred log-likelihood model
+($\mbox{cones} \sim \mbox{NegBinom}(a \cdot \mbox{DBH}^b,k)$)
+with the following command:
+<<results=hide>>=
+glm.nb(TOTCONES~log(DBH),data=firdata)
+@ 
+The only difference from our
+earlier model is that the estimated intercept parameter
+is $\log(a)$ rather than $a$.
+
+\newpage
+\section*{\R\ supplement}
+
+Here's how to 
+fit various linear models to the log-transformed fir data.
+Since the data (\code{TOTCONES})
+contain some zero values, taking logarithms
+would give us negative infinite values.
+We either need to drop these values
+(\code{subset=TOTCONES>0})
+or add an offset of 1, in order to avoid infinities.  
+However, since there are few zeros in the data
+(\code{sum(firdata\$TOTCONES==0)} is \Sexpr{sum(firdata$TOTCONES==0)}
+out of a total of \Sexpr{nrow(firdata)} data points)
+and the mean number of cones is large, this
+adjustment shouldn't affect the results much.
+If zeros are frequent so that such an adjustment would 
+be likely to affect your results
+significantly, or if the results vary depending
+on how big an offset you add, consider a different
+model (Section~\ref{sec:GLM}).
+<<>>=
+logcones = log(firdata$TOTCONES+1)
+lm.0 = lm(logcones~1,data=firdata)
+lm.d = lm(logcones~log(DBH),data=firdata)
+lm.w = lm(logcones~WAVE_NON,data=firdata)
+lm.dw = lm(logcones~log(DBH)+WAVE_NON,data=firdata)
+lm.dwi = lm(logcones~log(DBH)*WAVE_NON,data=firdata)
+@ 
+
+Since \code{log(DBH)} is a covariate and \verb!WAVE_NON! is
+a factor, \code{lm.d} is a regression;
+\code{lm.w} is a one-way ANOVA; and \code{lm.dw}
+and \code{lm.dwi} are ANCOVA models with parallel
+and non-parallel slopes, respectively.
+
+A few different ways to analyze the data:
+<<>>=
+anova(lm.0,lm.d,lm.dw,lm.dwi)
+AIC(lm.0,lm.d,lm.w,lm.dw,lm.dwi)
+@ 
+(I left \code{lm.w} out of the \code{anova} statement
+because it and \code{lm.d} cannot be nested.)
+\code{anova} compares the models sequentially,
+while \code{AIC} compares them simultaneously.
+\code{AICtab} in the \code{emdbook} offers a
+few more options such as sorting the table
+in order of increasing AIC or computing AIC weights.
+Try \code{coef}, \code{summary},
+and \code{confint} on these models
+as well.
+
+The full ANCOVA model fit via \code{mle2}:
+<<>>=
+ancovafun = function(i1,i2,slope1,slope2,sigma) {
+  int = c(i1,i2)[WAVE_NON]
+  slope = c(slope1,slope2)[WAVE_NON]
+  Y.pred =  int+ slope*log(DBH)
+  -sum(dnorm(logcones,mean=Y.pred,sd=sigma,log=TRUE))
+}
+m1 = mle2(ancovafun,start=list(i1=-2,i2=-2,slope1=2.5,slope2=2.5,sigma=1),
+  data=firdata)
+AIC(m1)
+@ 
+
+The maximum likelihood fit gives the same AIC as
+the \code{lm} fit. 
+You can't always take this
+equality for granted, since different models that are formally
+equivalent may include different constants in the likelihood, and
+different functions may count the number of parameters differently.
+
+As pointed out in the text, the models are
+parameterized differently:
+<<>>=
+coef(lm.dwi)
+coef(m1)
+@ 
+You can check that the
+answers are equivalent: for example, the slope
+of the wave population is 
+\code{slope2}=\Sexpr{round(coef(m1)["slope2"],3)}={}
+\code{logDBH}+\code{logDBH:WAVE\_NONw}.
+
+In order to do the full model comparison with \code{mle2},
+you have to construct a series of nested models
+(analogous to \code{lm.dw}, \code{lm.d}, \code{lm.w}, \code{lm.0}).
+This is a bit tedious --- one reason for using built-in
+functions where possible.
+You may want to read about
+the \code{model.matrix} function, which can simplify
+model construction.
+\code{model.matrix} uses a user-specified
+formula to construct a
+\emph{design matrix} that, when multiplied
+by a vector of parameters, gives the expected value of 
+each data point. By default the design matrix uses
+parameters that represent baseline levels and
+differences among groups, as in \code{lm} and \code{glm}.
+\code{mle2}'s formula interface uses \code{model.matrix}
+internally, so that (for example)
+you can easily fit the full ANCOVA model by specifying
+<<eval=FALSE>>=
+mle2(log(TOTCONES+1)~dnorm(logDBH*WAVE_NON),data=firdata,start=...)
+@ 
